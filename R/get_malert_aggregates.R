@@ -9,6 +9,7 @@
 #' @import sf
 #' @import dplyr
 #' @import stringr
+#' @import httr
 #' @export
 #' @examples
 #' malert_reports = get_malert_data(source = "github")
@@ -18,6 +19,19 @@
 get_malert_aggregates <- function(aggregate_type, filter_year, file_path, country_code, file_layer) {
 
 malerts_reports_github = get_malert_data(source = "github")
+
+url <- "https://geodata.ucdavis.edu/gadm/gadm4.1/gpkg/"
+url <- paste0(url, "gadm41_",country_code, ".gpkg")
+file_path <- tempfile(fileext = ".gpkg")
+
+response <- httr::HEAD(url)
+
+if (status_code(response) == 200) {
+  # Download the file
+  download.file(url, file_path, mode = "wb")
+} else {
+  print("INVALID COUNTRY CODE")
+}
 
 # Handle multiple years or year range
 if (!is.null(filter_year)) {
