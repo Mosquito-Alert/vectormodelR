@@ -2,7 +2,6 @@
 #'
 #' @param aggregate_type String. type of aggragation you would like. Options are country or city
 #' @param filter_year String. The year(s) you would like to filter for. Default is all. "2014,2"
-#' @param file_path String. Link the the geopackage or shapefile you would like to use.
 #' @param country_code String. type of aggragation you would like. Options are country or city
 #' @param file_layer String. the layer of the shapefile/geopackage to access
 #' @returns The aggregated data.
@@ -16,7 +15,7 @@
 #' malert_reports
 
 
-get_malert_aggregates <- function(aggregate_type, filter_year, file_path, country_code, file_layer) {
+get_malert_aggregates <- function(aggregate_type, filter_year, country_code, file_layer) {
 
 malerts_reports_github = get_malert_data(source = "github")
 
