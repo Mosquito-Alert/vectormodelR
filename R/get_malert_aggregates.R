@@ -89,8 +89,8 @@ if(aggregate_type == "country")
     }
 
 
-    file_layer <- paste0("ADM_ADM_", file_layer)
-    polygon_file <- st_read(file_path, layer = file_layer)
+    gpkg_layer <- paste0("ADM_ADM_", file_layer)
+    polygon_file <- st_read(file_path, layer = gpkg_layer)
   } else {
     return("Unknown file type.")
   }
@@ -100,10 +100,9 @@ if(aggregate_type == "country")
                                      crs = 4326)
 
   malerts_reports_github <- st_join(malerts_reports_github,polygon_file)
-
+  file_layer <- paste0("NAME_", file_layer)
   aggregated_data <- malerts_reports_github %>%
-    #group_by_at(vars(file_layer)) %>%
-    group_by(across(all_of(file_layer))) %>%
+    group_by_at(vars(file_layer)) %>%
     summarise(count = n()) %>%
   arrange(desc(count))
 
