@@ -19,18 +19,6 @@ get_malert_aggregates <- function(aggregate_type, filter_year, country_code, fil
 
 malerts_reports_github = get_malert_data(source = "github")
 
-url <- "https://geodata.ucdavis.edu/gadm/gadm4.1/gpkg/"
-url <- paste0(url, "gadm41_",country_code, ".gpkg")
-file_path <- tempfile(fileext = ".gpkg")
-
-response <- httr::HEAD(url)
-
-if (status_code(response) == 200) {
-  # Download the file
-  download.file(url, file_path, mode = "wb")
-} else {
-  print("INVALID COUNTRY CODE")
-}
 
 # Handle multiple years or year range
 if (!is.null(filter_year)) {
@@ -59,6 +47,19 @@ if(aggregate_type == "country")
 
 } else if (aggregate_type == "city")
 {
+
+  url <- "https://geodata.ucdavis.edu/gadm/gadm4.1/gpkg/"
+  url <- paste0(url, "gadm41_",country_code, ".gpkg")
+  file_path <- tempfile(fileext = ".gpkg")
+
+  response <- httr::HEAD(url)
+
+  if (status_code(response) == 200) {
+    # Download the file
+    download.file(url, file_path, mode = "wb")
+  } else {
+    print("INVALID COUNTRY CODE")
+  }
 
   malerts_reports_github <- malerts_reports_github %>%
     filter(country == country_code)
@@ -101,7 +102,8 @@ if(aggregate_type == "country")
   malerts_reports_github <- st_join(malerts_reports_github,polygon_file)
 
   aggregated_data <- malerts_reports_github %>%
-    group_by_at(vars(file_layer)) %>%
+    #group_by_at(vars(file_layer)) %>%
+    group_by(across(all_of(file_layer))) %>%
     summarise(count = n()) %>%
   arrange(desc(count))
 
