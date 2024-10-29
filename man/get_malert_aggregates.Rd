@@ -4,20 +4,12 @@
 \alias{get_malert_aggregates}
 \title{Generates count by country of mosquito alert reports}
 \usage{
-get_malert_aggregates(
-  aggregate_type,
-  filter_year,
-  file_path,
-  country_code,
-  file_layer
-)
+get_malert_aggregates(aggregate_type, filter_year, country_code, file_layer)
 }
 \arguments{
 \item{aggregate_type}{String. type of aggragation you would like. Options are country or city}
 
 \item{filter_year}{String. The year(s) you would like to filter for. Default is all. "2014,2"}
-
-\item{file_path}{String. Link the the geopackage or shapefile you would like to use.}
 
 \item{country_code}{String. type of aggragation you would like. Options are country or city}
 
