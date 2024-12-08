@@ -1,18 +1,22 @@
-#' Generates count by country of mosquito alert reports
+#' Aggregates mosquito alert report data by country or city
 #'
-#' @param aggregate_type String. type of aggragation you would like. Options are country or city
-#' @param filter_year String. The year(s) you would like to filter for. Default is all. "2014,2"
-#' @param country_code String. type of aggragation you would like. Options are country or city
-#' @param file_layer String. the layer of the shapefile/geopackage to access
-#' @returns The aggregated data.
+#' @param aggregate_type String. The type of aggregation to perform. Options are "country" or "city".
+#' @param filter_year String. The year(s) to filter the data. Options include a single year (e.g., "2014"),
+#'   a comma-separated list of years (e.g., "2014,2015"), or a range (e.g., "2014-2016"). Defaults to NULL (all years).
+#' @param country_code String. The ISO country code (required if aggregate_type is "city").
+#' @param file_layer Integer. The layer of the shapefile/geopackage to access (for city aggregation).
+#' @returns A data frame containing the aggregated mosquito alert report counts.
 #' @import sf
 #' @import dplyr
 #' @import stringr
 #' @import httr
 #' @export
 #' @examples
-#' malert_reports = get_malert_data(source = "github")
-#' malert_reports
+#' # Aggregate mosquito reports by country for 2015, 2016 and 2018
+#' get_malert_aggregates(aggregate_type = "country", filter_year = "2015,2016,2018")
+#'
+#' # Aggregate mosquito reports by city for Spain in 2014-2024
+#' get_malert_aggregates(aggregate_type = "city", filter_year = "2014-2024", country_code = "ESP", file_layer = 2)
 
 
 get_malert_aggregates <- function(aggregate_type, filter_year, country_code, file_layer) {

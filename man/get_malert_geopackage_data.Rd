@@ -2,24 +2,25 @@
 % Please edit documentation in R/get_malert_geopackage_data.R
 \name{get_malert_geopackage_data}
 \alias{get_malert_geopackage_data}
-\title{Generates mosquito alert reports with geopackage}
+\title{Retrieves mosquito alert reports with geopackage integration}
 \usage{
 get_malert_geopackage_data(filter_year, country_code, file_layer)
 }
 \arguments{
-\item{filter_year}{String. The year(s) you would like to filter for. Default is all. "2014,2"}
+\item{filter_year}{String. The year(s) to filter the data. Options include a single year (e.g., "2014"),
+a comma-separated list (e.g., "2014,2015"), or a range (e.g., "2014-2016"). Defaults to NULL (all years).}
 
-\item{country_code}{String. Country you would like to select}
+\item{country_code}{String. The ISO country code for the desired country.}
 
-\item{file_layer}{String. the layer of the geopackage to access}
+\item{file_layer}{Integer. The layer of the geopackage to access. Defaults to the last available layer if not specified.}
 }
 \value{
-The aggregated data.
+A spatial data frame containing the mosquito alert reports joined with geopackage data.
 }
 \description{
-Generates mosquito alert reports with geopackage
+Retrieves mosquito alert reports with geopackage integration
 }
 \examples{
-malert_reports = get_malert_data(source = "github")
-malert_reports
+# Retrieve data for mosquito alerts in Spain for 2014-2024
+get_malert_geopackage_data(filter_year = "2014-2024", country_code = "ESP", file_layer = 4)
 }

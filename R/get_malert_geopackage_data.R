@@ -1,17 +1,18 @@
-#' Generates mosquito alert reports with geopackage
+#' Retrieves mosquito alert reports with geopackage integration
 #'
-#' @param filter_year String. The year(s) you would like to filter for. Default is all. "2014,2"
-#' @param country_code String. Country you would like to select
-#' @param file_layer String. the layer of the geopackage to access
-#' @returns The aggregated data.
+#' @param filter_year String. The year(s) to filter the data. Options include a single year (e.g., "2014"),
+#'   a comma-separated list (e.g., "2014,2015"), or a range (e.g., "2014-2016"). Defaults to NULL (all years).
+#' @param country_code String. The ISO country code for the desired country.
+#' @param file_layer Integer. The layer of the geopackage to access. Defaults to the last available layer if not specified.
+#' @returns A spatial data frame containing the mosquito alert reports joined with geopackage data.
 #' @import sf
 #' @import dplyr
 #' @import stringr
 #' @import httr
 #' @export
 #' @examples
-#' malert_reports = get_malert_data(source = "github")
-#' malert_reports
+#' # Retrieve data for mosquito alerts in Spain for 2014-2024
+#' get_malert_geopackage_data(filter_year = "2014-2024", country_code = "ESP", file_layer = 4)
 
 
 get_malert_geopackage_data <- function(filter_year, country_code, file_layer) {
