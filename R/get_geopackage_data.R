@@ -23,14 +23,9 @@ get_geopackage_data <- function(country_code, file_layer) {
 
   if (httr::status_code(response) == 200) {
     # Download the file with a 10-minute timeout
-    req <- httr::GET(url, httr::timeout(600))
-    if (httr::status_code(req) == 200) {
-      writeBin(httr::content(req, as = "raw"), file_path)
-    } else {
-      stop("Failed to download file.")
-    }
+    download.file(url, file_path, mode = "wb", timeout = 600)
   } else {
-    print("INVALID COUNTRY CODE")
+    stop("INVALID COUNTRY CODE")
   }
 
   gpkg_layers <- sf::st_layers(file_path)
