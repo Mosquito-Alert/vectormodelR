@@ -23,7 +23,7 @@ get_geopackage_data <- function(country_code, file_layer) {
 
   if (httr::status_code(response) == 200) {
     # Download the file with a 10-minute timeout
-    download.file(url, file_path, mode = "wb")
+    download.file(url, file_path, mode = "wb", timeout = 600)
   } else {
     stop("INVALID COUNTRY CODE")
   }
