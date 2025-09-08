@@ -38,16 +38,16 @@ if (!is.null(filter_year)) {
   }
 
   malerts_reports_github <- malerts_reports_github %>%
-    filter(creation_year %in% filter_year)
+    dplyr::filter(creation_year %in% filter_year)
 }
 
 if(aggregate_type == "country")
 {
 
   aggregated_data <- malerts_reports_github %>%
-    group_by(country) %>%
-    summarise(count = n()) %>%
-  arrange(desc(count))
+    dplyr::group_by(country) %>%
+    dplyr::summarise(count = dplyr::n()) %>%
+  dplyr::arrange(desc(count))
 
 } else if (aggregate_type == "city")
 {
@@ -58,7 +58,7 @@ if(aggregate_type == "country")
 
   response <- httr::HEAD(url)
 
-  if (status_code(response) == 200) {
+  if (httr::status_code(response) == 200) {
     # Download the file
     download.file(url, file_path, mode = "wb")
   } else {
@@ -66,15 +66,15 @@ if(aggregate_type == "country")
   }
 
   malerts_reports_github <- malerts_reports_github %>%
-    filter(country == country_code)
+    dplyr::filter(country == country_code)
 
   file_ext <- tools::file_ext(file_path)
 
   # Test if the file is a shapefile (.shp) or a GPKG file (.gpkg)
   if (file_ext == "shp") {
 
-    last_digit <- str_extract(file_path, "_\\d+\\.") %>%
-      str_extract("\\d+")
+    last_digit <- stringr::str_extract(file_path, "_\\d+\\.") %>%
+      stringr::str_extract("\\d+")
 
     if(last_digit != file_layer)
     {
@@ -82,9 +82,9 @@ if(aggregate_type == "country")
     }
 
     file_layer <- paste0("NAME_", file_layer)
-    polygon_file <- st_read(file_path)
+    polygon_file <- sf::st_read(file_path)
   } else if (file_ext == "gpkg") {
-    gpkg_layers <- st_layers(file_path)
+    gpkg_layers <- sf::st_layers(file_path)
     num_rows <- nrow(gpkg_layers)-1
 
     if (file_layer>num_rows)
@@ -94,21 +94,21 @@ if(aggregate_type == "country")
 
 
     gpkg_layer <- paste0("ADM_ADM_", file_layer)
-    polygon_file <- st_read(file_path, layer = gpkg_layer)
+    polygon_file <- sf::st_read(file_path, layer = gpkg_layer)
   } else {
     return("Unknown file type.")
   }
 
-  malerts_reports_github <- st_as_sf(malerts_reports_github,
+  malerts_reports_github <- sf::st_as_sf(malerts_reports_github,
                                      coords = c("lon", "lat"),
                                      crs = 4326)
 
-  malerts_reports_github <- st_join(malerts_reports_github,polygon_file)
+  malerts_reports_github <- sf::st_join(malerts_reports_github,polygon_file)
   file_layer <- paste0("NAME_", file_layer)
   aggregated_data <- malerts_reports_github %>%
-    group_by_at(vars(file_layer)) %>%
-    summarise(count = n()) %>%
-  arrange(desc(count))
+    dplyr::group_by_at(dplyr::vars(file_layer)) %>%
+    dplyr::summarise(count = dplyr::n()) %>%
+  dplyr::arrange(desc(count))
 
 }
 

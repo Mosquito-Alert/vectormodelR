@@ -33,7 +33,7 @@ get_geopackage_data <- function(country_code, file_layer) {
     print("INVALID COUNTRY CODE")
   }
 
-  gpkg_layers <- st_layers(file_path)
+  gpkg_layers <- sf::st_layers(file_path)
   num_rows <- nrow(gpkg_layers)-1
 
   if (file_layer > num_rows)
@@ -42,7 +42,7 @@ get_geopackage_data <- function(country_code, file_layer) {
   }
 
   gpkg_layer <- paste0("ADM_ADM_", file_layer)
-  polygon_file <- st_read(file_path, layer = gpkg_layer)
+  polygon_file <- sf::st_read(file_path, layer = gpkg_layer)
 
 
   return(polygon_file)
