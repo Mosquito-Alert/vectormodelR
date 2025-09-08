@@ -2,6 +2,7 @@
 
 export(decimal_places)
 export(download_zenodo)
+export(get_geopackage_data)
 export(get_malert_aggregates)
 export(get_malert_data)
 export(get_malert_geopackage_data)
