@@ -6,39 +6,40 @@
 #' @returns A data frame with country bounding boxes, or formatted strings/vectors depending on format parameter
 #' @import sf
 #' @import rnaturalearth
+#' @import rnaturalearthdata
 #' @import dplyr
 #' @import purrr
 #' @export
 #' @examples
 #' # Get all country bounding boxes
 #' all_boxes <- get_bounding_boxes()
-#' 
+#'
 #' # Get specific countries
 #' selected <- get_bounding_boxes(countries = c("BGD", "ESP", "USA"))
-#' 
+#'
 #' # Get CDS-formatted strings for specific countries
 #' cds_strings <- get_bounding_boxes(countries = "BGD", format = "cds_string")
 
-get_bounding_boxes <- function(scale = "medium", 
-                               format = "dataframe", 
+get_bounding_boxes <- function(scale = "medium",
+                               format = "dataframe",
                                countries = NULL) {
-  
+
   # Suppress R CMD check notes for dplyr variables
   iso3 <- name <- north <- west <- south <- east <- cds_area <- bbox <- NULL
   iso_a3 <- name_long <- geometry <- NULL
-  
+
   # Validate inputs
   if (!scale %in% c("small", "medium", "large")) {
     stop("scale must be one of: 'small', 'medium', 'large'")
   }
-  
+
   if (!format %in% c("dataframe", "cds_string", "vector")) {
     stop("format must be one of: 'dataframe', 'cds_string', 'vector'")
   }
-  
+
   # 1) Get country polygons (WGS84 lon/lat)
   world <- rnaturalearth::ne_countries(scale = scale, returnclass = "sf")
-  
+
   # 2) Compute per-country bbox and convert to CDS area string (N/W/S/E)
   bboxes <- world %>%
     dplyr::transmute(
@@ -54,17 +55,17 @@ get_bounding_boxes <- function(scale = "medium",
       cds_area = sprintf("%.6f/%.6f/%.6f/%.6f", north, west, south, east)  # N/W/S/E
     ) %>%
     dplyr::select(iso3, name, north, west, south, east, cds_area)
-  
+
   # Filter by countries if specified
   if (!is.null(countries)) {
     bboxes <- bboxes %>% dplyr::filter(iso3 %in% countries)
-    
+
     if (nrow(bboxes) == 0) {
       warning("No countries found matching the provided ISO3 codes")
       return(NULL)
     }
   }
-  
+
   # Return in requested format
   switch(format,
     "dataframe" = bboxes,
@@ -73,9 +74,9 @@ get_bounding_boxes <- function(scale = "medium",
       # Return as named list of vectors c(north, west, south, east)
       if (nrow(bboxes) == 0) return(list())
       result <- purrr::map(seq_len(nrow(bboxes)), function(i) {
-        c(north = bboxes$north[i], 
-          west = bboxes$west[i], 
-          south = bboxes$south[i], 
+        c(north = bboxes$north[i],
+          west = bboxes$west[i],
+          south = bboxes$south[i],
           east = bboxes$east[i])
       })
       names(result) <- bboxes$iso3
