@@ -106,7 +106,7 @@ get_era5_data <- function(
     if (nzchar(env_key)) ecmwfr_key <- env_key
   }
   if (!is.null(ecmwfr_key) && isTRUE(write_key)) {
-    ecmwfr::wf_set_key(key = ecmwfr_key, user = ecmwfr_user, overwrite = TRUE)
+    ecmwfr::wf_set_key(key = ecmwfr_key, user = ecmwfr_user)
   }
   # best-effort unlock (linux)
   if (requireNamespace("keyring", quietly = TRUE)) {
