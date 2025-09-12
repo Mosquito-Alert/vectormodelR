@@ -1,6 +1,6 @@
 Package: mosquitoR
 Title: An R toolkit for analyzing mosquito data from citizen science and traditional surveillance
-Version: 0.0.0.9000
+Version: 1.5.0
 Authors@R: c(
     person("John", "Palmer", email="john.palmer@upf.edu", role = c("aut", "cre"), comment = c(ORCID = "0000-0002-2648-7860")),
     person("Otis", "Johnson", email="otis.johnson@upf.edu", role = "aut"))
