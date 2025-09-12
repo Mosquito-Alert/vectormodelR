@@ -30,4 +30,7 @@ Imports:
     utils,
     stats,
     curl,
-    tools
+    tools,
+    ecmwfr,
+    rnaturalearth,
+    purrr
