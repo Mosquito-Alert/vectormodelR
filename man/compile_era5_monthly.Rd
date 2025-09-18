@@ -2,52 +2,46 @@
 % Please edit documentation in R/compile_era5_data.R
 \name{compile_era5_monthly}
 \alias{compile_era5_monthly}
-\title{Wrangle ERA5 monthly GRIB/NetCDF files into long-format CSVs}
+\title{Compile ERA5 monthly CSVs from GRIB/NetCDF files}
 \usage{
 compile_era5_monthly(
   input_dir,
-  processed_dir = file.path(normalizePath(input_dir, mustWork = FALSE), "processed"),
-  metadata_file = file.path(normalizePath(input_dir, mustWork = FALSE),
-    "processing_metadata.json"),
+  processed_dir = file.path(input_dir, "processed"),
+  metadata_file = file.path(input_dir, "processing_metadata.json"),
   file_ext = c("grib", "nc"),
+  prefer = c("terra", "stars"),
   recent_n = 3L,
-  overwrite = FALSE,
-  prefer = c("stars", "terra"),
-  drop_na_values = TRUE,
+  skip_if_exists = TRUE,
   verbose = TRUE
 )
 }
 \arguments{
-\item{input_dir}{Character. Directory containing raw ERA5 files (GRIB or NetCDF).}
+\item{input_dir}{Character. Folder that contains the ERA5 monthly files.}
 
-\item{processed_dir}{Character. Where to write per-month CSVs (default: \code{file.path(input_dir, "processed")}).}
+\item{processed_dir}{Character. Output folder for monthly CSVs.
+Default \code{file.path(input_dir, "processed")}.}
 
-\item{metadata_file}{Character. Path to metadata JSON (default: \code{file.path(input_dir, "processing_metadata.json")}).}
+\item{metadata_file}{Character. JSON file to track processed months.
+Default \code{file.path(input_dir, "processing_metadata.json")}.}
 
-\item{file_ext}{Character. One of \code{"grib"} or \code{"nc"}. Used for discovery pattern. Defaults to \code{"grib"}.}
+\item{file_ext}{Character. "grib" or "nc". Default "grib".}
 
-\item{recent_n}{Integer. How many most recent monthly CSVs to combine (default \code{3}). Set \code{0} to skip.}
+\item{prefer}{Character. Reader preference, "terra" or "stars". Default "terra".}
 
-\item{overwrite}{Logical. Recompute months even if output \code{.csv.gz} already exists (default \code{FALSE}).}
+\item{recent_n}{Integer. Number of most-recent monthly CSVs to combine
+into \code{era5_recent_<n>months.csv.gz} (0 = skip). Default 3.}
 
-\item{prefer}{Character. Reader preference: \code{"stars"} or \code{"terra"} (default \code{"stars"}). Fallback used automatically.}
+\item{skip_if_exists}{Logical. If TRUE, skip writing a monthly CSV when an
+existing output > 1 KB is present. Default TRUE.}
 
-\item{drop_na_values}{Logical. Drop rows with \code{NA} in \code{value} (default \code{TRUE}).}
-
-\item{verbose}{Logical. Print progress to console (default \code{TRUE}).}
+\item{verbose}{Logical. Print progress. Default TRUE.}
 }
 \value{
-A list with elements:
-\itemize{
-\item \code{summary}: list of counts and paths
-\item \code{processed_months}: character vector of YYYY_MM processed/recorded
-\item \code{recent_file}: path to combined recent file (if created), otherwise \code{NULL}
-\item \code{per_month_outputs}: named character vector of monthly CSV paths
-}
+(Invisibly) a list with summary counts.
 }
 \description{
-Scans an input directory for files named like \verb{era5_YYYY_MM_<variable>.(grib|nc)},
-converts each month into a single long-format \code{.csv.gz}, and writes a recent-N-months
-combined file. Persists basic progress in a JSON metadata file so repeated runs skip
-already processed months.
+Scans an input directory for files named like \code{era5_YYYY_MM_<variable>.grib}
+(or \code{.nc}), reads each file to a long table, combines variables per month,
+writes \code{processed/YYYY/era5_YYYY_MM_all_variables.csv.gz}, and optionally
+writes a 3-month combined quick-look file.
 }
