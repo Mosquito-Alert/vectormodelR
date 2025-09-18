@@ -34,4 +34,7 @@ Imports:
     ecmwfr,
     rnaturalearth,
     rnaturalearthdata,
-    purrr
+    purrr,
+    data.table,
+    withr,
+    stars
