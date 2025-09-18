@@ -19,6 +19,10 @@
 #' @param verbose Logical. Print progress. Default TRUE.
 #'
 #' @return (Invisibly) a list with summary counts.
+#' @import data.table
+#' @importFrom stars read_stars
+#' @importFrom jsonlite fromJSON toJSON
+#' @importFrom withr local_options
 #' @export
 compile_era5_monthly <- function(
   input_dir,
