@@ -161,57 +161,64 @@ compile_era5_monthly <- function(
     df
   }
 
-  try_terra <- function(filepath, variable_name, year, month, drop_na_values) {
+    try_terra <- function(filepath, variable_name, year, month, drop_na_values) {
     if (!requireNamespace("terra", quietly = TRUE)) stop("terra not installed and stars failed.")
     r <- terra::rast(filepath)
 
-    # time vector, or attempt to infer hourly sequence if monthly hourly stack
+    # 1) time vector, try to recover hourly stamps if absent
     tvals <- tryCatch(terra::time(r), error = function(e) NULL)
     nlyr  <- terra::nlyr(r)
     if (is.null(tvals) || length(tvals) != nlyr) {
-      d0 <- as.POSIXct(sprintf("%04d-%02d-01 00:00:00", year, month), tz = "UTC")
-      end <- as.POSIXct(format(seq(as.Date(d0), by = "month", length.out = 2)[2], "%Y-%m-01"), tz = "UTC")
-      days_in_mo <- as.integer(difftime(end, d0, units = "days"))
-      expected <- 24L * days_in_mo
-      if (nlyr == expected) tvals <- seq(d0, by = "hour", length.out = nlyr)
+        d0 <- as.POSIXct(sprintf("%04d-%02d-01 00:00:00", year, month), tz = "UTC")
+        end <- as.POSIXct(format(seq(as.Date(d0), by = "month", length.out = 2)[2], "%Y-%m-01"), tz = "UTC")
+        days_in_mo <- as.integer(difftime(end, d0, units = "days"))
+        expected <- 24L * days_in_mo
+        if (nlyr == expected) tvals <- seq(d0, by = "hour", length.out = nlyr)
     }
 
+    # 2) wide → long (no joins)
     df <- as.data.frame(r, xy = TRUE, cells = FALSE, na.rm = FALSE)
     data.table::setDT(df)
     data.table::setnames(df, c("x","y"), c("longitude","latitude"))
     df[, `:=`(longitude = as.numeric(longitude), latitude = as.numeric(latitude))]
 
     data_cols <- setdiff(names(df), c("longitude","latitude"))
-    df_long <- data.table::melt(df, id.vars = c("latitude","longitude"),
-                                measure.vars = data_cols,
-                                variable.name = "layer_name",
-                                value.name   = "value")
-
-    # map time by layer position (robust)
-    layermap <- data.table::data.table(
-      layer_name = data_cols,
-      band_id    = seq_along(data_cols),
-      tval       = if (!is.null(tvals)) tvals else as.POSIXct(NA)
+    # melt without factors; keep the layer name so we can map to its index
+    df_long <- data.table::melt(
+        df,
+        id.vars = c("latitude","longitude"),
+        measure.vars = data_cols,
+        variable.name = "layer_name",
+        value.name = "value",
+        variable.factor = FALSE
     )
-    df_long[, band_id := match(layer_name, layermap$layer_name)]
-    df_long <- merge(df_long, layermap[, .(band_id, tval)], by = "band_id", all.x = TRUE)
-    df_long[, `:=`(band_id = NULL, time = tval, tval = NULL)]
 
-    # clean variable naming (compact)
+    # 3) map layer position → time via direct indexing (no merge → no cartesian)
+    # layer positions are the order of data_cols
+    # band_id in 1..length(data_cols)
+    df_long[, band_id := match(layer_name, data_cols)]
+    if (!is.null(tvals) && length(tvals) == length(data_cols)) {
+        df_long[, time := tvals[band_id]]
+    } else {
+        df_long[, time := as.POSIXct(NA)]
+    }
+    df_long[, layer_name := NULL]  # drop if you don't need it
+    df_long[, band_id := NULL]
+
+    # 4) tidy columns
     df_long[, `:=`(
-      grib_variable_name = variable_name,
-      value = suppressWarnings(as.numeric(value)),
-      variable_name = variable_name,
-      year = as.integer(year),
-      month = as.integer(month)
+        grib_variable_name = variable_name,
+        value = suppressWarnings(as.numeric(value)),
+        variable_name = variable_name,
+        year = as.integer(year),
+        month = as.integer(month)
     )]
-
     if (!inherits(df_long$time, "POSIXct")) df_long[, time := as.POSIXct(time, tz = "UTC")]
 
     data.table::setcolorder(df_long, c("latitude","longitude","time","variable_name","grib_variable_name","value","year","month"))
     if (drop_na_values) df_long <- df_long[!is.na(value)]
     df_long
-  }
+}
 
   load_to_long <- function(filepath, variable_name, year, month) {
     reader_order <- if (prefer == "stars") c("stars","terra") else c("terra","stars")
