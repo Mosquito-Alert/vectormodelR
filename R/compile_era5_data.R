@@ -187,44 +187,60 @@ compile_era5_monthly <- function(
     df
   }
 
-  .read_with_terra <- function(fp, variable_name, year, month) {
-    r <- terra::rast(fp)
-    tvals <- tryCatch(terra::time(r), error = function(e) NULL)
+# ---- terra reader (fast; map time by layer index, not names) ----
+.read_with_terra <- function(filepath, variable_name, year, month) {
+  requireNamespace("terra",      quietly = TRUE)
+  requireNamespace("data.table", quietly = TRUE)
 
-    # pull all values to a data.frame (xy + layers)
-    df <- as.data.frame(r, xy = TRUE, cells = FALSE, na.rm = FALSE)
-    data.table::setDT(df)
-    data.table::setnames(df, c("x","y"), c("longitude","latitude"))
+  r <- terra::rast(filepath)
 
-    data_cols <- setdiff(names(df), c("longitude","latitude"))
-    if (!length(data_cols)) return(data.frame())
-
-    # long pivot (namespaced to avoid data.table import)
-    df_long <- data.table::melt.data.table(
-      df,
-      id.vars = c("latitude","longitude"),
-      measure.vars = data_cols,
-      variable.name = "grib_variable_name",
-      value.name = "value"
-    )
-
-    # time mapping
-    df_long$time <- as.POSIXct(NA)
-    if (!is.null(tvals) && length(tvals) == length(data_cols)) {
-      layermap <- data.table::data.table(grib_variable_name = data_cols, tval = tvals)
-      df_long <- merge(df_long, layermap, by = "grib_variable_name", all.x = TRUE, sort = FALSE)
-      data.table::setnames(df_long, "tval", "time")
-    }
-
-    df_long$variable_name <- variable_name
-    df_long$year  <- as.integer(year)
-    df_long$month <- as.integer(month)
-
-    data.table::setcolorder(df_long, c("latitude","longitude","time","variable_name",
-                                       "grib_variable_name","value","year","month"))
-    df_long <- df_long[!is.na(df_long$value), ]
-    df_long
+  # layer times from terra
+  tvals <- tryCatch(terra::time(r), error = function(e) NULL)
+  if (!is.null(tvals) && !inherits(tvals, "POSIXct")) {
+    tvals <- suppressWarnings(as.POSIXct(as.character(tvals), tz = "UTC"))
   }
+
+  # realize to wide data.frame (one column per layer)
+  df <- as.data.frame(r, xy = TRUE, na.rm = FALSE)
+  data.table::setDT(df)
+  data.table::setnames(df, c("x","y"), c("longitude","latitude"))
+
+  data_cols <- setdiff(names(df), c("longitude","latitude"))
+
+  # melt to long; keep the factor levels to preserve column order
+  df_long <- data.table::melt(
+    df,
+    id.vars        = c("latitude","longitude"),
+    measure.vars   = data_cols,
+    variable.name  = "grib_variable_name",
+    value.name     = "value",
+    variable.factor= TRUE   # <-- critical: levels(data) == data_cols in order
+  )
+
+  # map time by layer index, not by (often duplicate) layer names
+  df_long[, time := as.POSIXct(NA)]
+  if (!is.null(tvals) && length(tvals) == length(data_cols)) {
+    # index of the layer = factor code
+    df_long[, .layer_i := as.integer(grib_variable_name)]
+    # assign time by index
+    df_long[, time := tvals[.layer_i]]
+    df_long[, .layer_i := NULL]
+  }
+
+  # finish
+  df_long[, `:=`(
+    variable_name = variable_name,
+    year          = as.integer(year),
+    month         = as.integer(month)
+  )]
+  data.table::setcolorder(
+    df_long,
+    c("latitude","longitude","time","variable_name","grib_variable_name","value","year","month")
+  )
+
+  # drop NAs
+  df_long[!is.na(value)]
+}
 
   .load_grib_to_long_format <- function(filepath, variable_name, year, month) {
     primary   <- if (prefer == "terra") .read_with_terra else .read_with_stars
