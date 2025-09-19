@@ -154,7 +154,7 @@ compile_era5_monthly <- function(
     # keep and coerce
     keep <- intersect(c("latitude","longitude","time","grib_variable_name","value"), names(df))
     if (!length(keep)) return(data.frame())
-    df <- df[, keep, drop = FALSE]
+    df <- df[, ..keep]               # data.table-aware column selection
 
     if (!all(c("latitude","longitude") %in% names(df)))
       stop("Latitude/longitude columns not found after reading file.")
