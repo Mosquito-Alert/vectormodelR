@@ -7,41 +7,30 @@
 compile_era5_monthly(
   input_dir,
   processed_dir = file.path(input_dir, "processed"),
-  metadata_file = file.path(input_dir, "processing_metadata.json"),
   file_ext = c("grib", "nc"),
   prefer = c("terra", "stars"),
-  recent_n = 3L,
-  skip_if_exists = TRUE,
+  recent_n = 3,
   verbose = TRUE
 )
 }
 \arguments{
-\item{input_dir}{Character. Folder that contains the ERA5 monthly files.}
+\item{input_dir}{Directory containing per-variable files.}
 
-\item{processed_dir}{Character. Output folder for monthly CSVs.
-Default \code{file.path(input_dir, "processed")}.}
+\item{processed_dir}{Output directory for monthly CSVs (default: file.path(input_dir, "processed")).}
 
-\item{metadata_file}{Character. JSON file to track processed months.
-Default \code{file.path(input_dir, "processing_metadata.json")}.}
+\item{file_ext}{"grib" or "nc".}
 
-\item{file_ext}{Character. "grib" or "nc". Default "grib".}
+\item{prefer}{"terra" or "stars" (primary reader; the other is fallback).}
 
-\item{prefer}{Character. Reader preference, "terra" or "stars". Default "terra".}
+\item{recent_n}{Number of most recent monthly CSVs to merge into a summary (default 3).}
 
-\item{recent_n}{Integer. Number of most-recent monthly CSVs to combine
-into \code{era5_recent_<n>months.csv.gz} (0 = skip). Default 3.}
-
-\item{skip_if_exists}{Logical. If TRUE, skip writing a monthly CSV when an
-existing output > 1 KB is present. Default TRUE.}
-
-\item{verbose}{Logical. Print progress. Default TRUE.}
+\item{verbose}{Logical; print progress.}
 }
 \value{
-(Invisibly) a list with summary counts.
+(Invisibly) a list with summary info.
 }
 \description{
-Scans an input directory for files named like \code{era5_YYYY_MM_<variable>.grib}
-(or \code{.nc}), reads each file to a long table, combines variables per month,
-writes \code{processed/YYYY/era5_YYYY_MM_all_variables.csv.gz}, and optionally
-writes a 3-month combined quick-look file.
+Scans \code{input_dir} for \verb{era5_YYYY_MM_<var>.<ext>} files, converts each month
+into a single long-format CSV.GZ under \verb{processed/YYYY/}, and writes a
+3-month recency file in \code{input_dir}.
 }
