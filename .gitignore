@@ -9,3 +9,6 @@ docs/reference/senscape_api_key.txt
 .httr-oauth
 .DS_Store
 docs
+
+data/
+data/*
