@@ -2,62 +2,40 @@
 % Please edit documentation in R/get_gadm_names.R
 \name{get_gadm_names}
 \alias{get_gadm_names}
-\title{Get GADM attributes (names) for a country/level}
+\title{Get GADM attributes for a country/level}
 \usage{
 get_gadm_names(
   country = "Spain",
   level = 2,
   path = "data/",
-  view = c("datatable", "table"),
-  search = NULL,
-  names_only = FALSE,
-  sort = TRUE
+  view = c("datatable", "table")
 )
 }
 \arguments{
-\item{country}{Character scalar. Country name as accepted by \code{geodata::gadm()} (e.g., "Spain").}
+\item{country}{Character scalar. Country name as accepted by \code{geodata::gadm()} (e.g. "Spain").}
 
-\item{level}{Integer. Administrative level (0 = country, 1 = region, 2 = province, 3+ finer).}
+\item{level}{Integer. Administrative level (0 = country, 1 = region, 2 = province, 3 = municipality, etc.).}
 
 \item{path}{Character. Directory where GADM files will be cached/downloaded.}
 
-\item{view}{One of \code{"datatable"} or \code{"table"}.
-If \code{"datatable"}, tries to render an interactive table using \pkg{DT};
-falls back to a regular data.frame when \pkg{DT} is not installed.}
-
-\item{search}{Optional character string. If provided, filters rows where ANY NAME_* column
-contains this pattern (case-insensitive).}
-
-\item{names_only}{Logical. If \code{TRUE}, keep only common name/id columns
-(e.g., \code{GID_*}, \code{NAME_*}, \code{TYPE_*}, \code{ENGTYPE_*}).}
-
-\item{sort}{Logical. If \code{TRUE}, attempts to sort by the first \code{NAME_*} column.}
+\item{view}{Either \code{"datatable"} (default, requires \pkg{DT}) or \code{"table"} for a plain data.frame.}
 }
 \value{
-A list with:
-\itemize{
-\item \code{data}: \code{data.frame} of attributes (possibly filtered/trimmed).
-\item \code{spat}: the \code{terra::SpatVector} (for spatial subsetting/plotting).
-}
-The function also \emph{prints} an interactive table when \code{view = "datatable"} and \pkg{DT} is available.
+A \code{data.frame} of GADM attributes, or an interactive datatable
+object if \code{view = "datatable"} and \pkg{DT} is installed.
 }
 \description{
-Downloads a GADM layer via \pkg{geodata}, returns its attributes as a data.frame,
-and (optionally) shows an interactive \pkg{DT} datatable if available.
+Downloads a GADM layer via \pkg{geodata}, returns its attributes as either
+a regular data.frame or an interactive \pkg{DT} datatable (if available).
 }
 \examples{
 \dontrun{
-  # Provinces of Spain (level 2) as an interactive table
-  res <- explore_gadm_names(country = "Spain", level = 2)
-  # Access the data.frame or SpatVector:
-  head(res$data)
-  terra::plot(res$spat)
+  # Provinces of Spain as interactive table
+  explore_gadm_names("Spain", level = 2)
 
-  # Municipalities, only name/id columns, filtered for "Barc"
-  res <- explore_gadm_names("Spain", level = 3, names_only = TRUE, search = "Barc")
-
-  # Plain data.frame view (no DT widget)
-  res <- explore_gadm_names("Spain", level = 2, view = "table")
+  # Municipalities of Spain as a regular data.frame
+  df <- explore_gadm_names("Spain", level = 3, view = "table")
+  head(df)
 }
 
 }
