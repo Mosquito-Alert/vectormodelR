@@ -34,3 +34,26 @@ Scans \code{input_dir} for \verb{era5_YYYY_MM_<var>.<ext>} files, converts each 
 into a single long-format CSV.GZ under \verb{processed/YYYY/}, and writes a
 3-month recency file in \code{input_dir}.
 }
+\examples{
+\dontrun{
+# Compile ERA5 monthly data from GRIB files in a directory
+compile_era5_monthly(
+  input_dir     = "data/era5/raw",
+  file_ext      = "grib",
+  prefer        = "terra",
+  recent_n      = 3,
+  verbose       = TRUE
+)
+
+# Compile ERA5 monthly data from NetCDF files
+compile_era5_monthly(
+  input_dir     = "data/era5_nc",
+  file_ext      = "nc",
+  prefer        = "stars",
+  verbose       = FALSE
+)
+
+# After running, processed CSVs are available in processed/YYYY/
+# and a recent 3-month combined file in input_dir.
+}
+}

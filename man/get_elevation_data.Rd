@@ -4,38 +4,30 @@
 \alias{get_elevation_data}
 \title{Get ~30 m SRTM DEM for a GADM admin unit}
 \usage{
-get_elevation_data(
-  country,
-  level = 2,
-  name_col = "NAME_2",
-  name_value,
-  z = 11,
-  path = "data/",
-  return_class = c("terra", "raster")
-)
+get_elevation_data(country, level = 2, name_value, z = 11, path = "data/")
 }
 \arguments{
 \item{country}{Country name or ISO3 code accepted by \code{geodata::gadm()} (e.g., "BGD", "Spain").}
 
 \item{level}{Integer GADM level (0 country, 1 region, 2 district/province, etc.). Default: 2.}
 
-\item{name_col}{Character. GADM attribute to match (e.g., "NAME_2"). Default: "NAME_2".}
-
-\item{name_value}{Character. Value to select in \code{name_col} (e.g., "Dhaka"). Required.}
+\item{name_value}{Character. Name of the unit to select (matched against the relevant NAME column).}
 
 \item{z}{Integer zoom for \code{elevatr::get_elev_raster()} (11 ≈ ~30 m). Default: 11.}
 
 \item{path}{Directory to cache GADM files. Default: "data/".}
-
-\item{return_class}{Either \code{"terra"} (default; returns \code{SpatRaster}) or
-\code{"raster"} (returns \code{RasterLayer} directly from \pkg{elevatr}).}
 }
 \value{
-A DEM as either a \code{terra::SpatRaster} or a \code{raster::RasterLayer},
-depending on \code{return_class}.
+A \code{terra::SpatRaster} DEM clipped to the selected admin unit.
 }
 \description{
 Downloads a ~30 m (1 arc-second) DEM via \pkg{elevatr} for a selected
-administrative unit from \pkg{geodata} and returns either a
-\pkg{raster} \code{RasterLayer} or a \pkg{terra} \code{SpatRaster}.
+administrative unit from \pkg{geodata} and returns a \pkg{terra} SpatRaster.
+}
+\examples{
+\dontrun{
+# Dhaka District (level 2 → NAME_2)
+dem <- get_elevation_data("BGD", level = 2, name_value = "Dhaka")
+terra::plot(dem)
+}
 }

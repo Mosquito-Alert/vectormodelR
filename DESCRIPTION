@@ -14,31 +14,50 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Suggests: 
     covr,
-    testthat (>= 3.0.0),
-    DT
+    DT,
+    testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Imports:
-    httr,
-    lubridate,
-    jsonlite,
-    tibble,
-    dplyr,
-    stringr,
-    magrittr,
-    tidyr,
-    sf,
     assertthat,
-    utils,
-    stats,
     curl,
-    tools,
+    data.table,
+    dplyr,
     ecmwfr,
+    geodata,
+    elevatr,
+    httr,
+    jsonlite,
+    lubridate,
+    magrittr,
+    purrr,
     rnaturalearth,
     rnaturalearthdata,
-    purrr,
-    data.table,
-    withr,
+    sf,
     stars,
-    geodata,
-    terra
+    stats,
+    stringr,
+    terra,
+    tibble,
+    tidyr,
+    tools,
+    utils,
+    withr
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
 

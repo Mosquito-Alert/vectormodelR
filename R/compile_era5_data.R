@@ -17,6 +17,29 @@
 #' @importFrom jsonlite fromJSON toJSON
 #' @importFrom withr local_options
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' # Compile ERA5 monthly data from GRIB files in a directory
+#' compile_era5_monthly(
+#'   input_dir     = "data/era5/raw",
+#'   file_ext      = "grib",
+#'   prefer        = "terra",
+#'   recent_n      = 3,
+#'   verbose       = TRUE
+#' )
+#'
+#' # Compile ERA5 monthly data from NetCDF files
+#' compile_era5_monthly(
+#'   input_dir     = "data/era5_nc",
+#'   file_ext      = "nc",
+#'   prefer        = "stars",
+#'   verbose       = FALSE
+#' )
+#'
+#' # After running, processed CSVs are available in processed/YYYY/
+#' # and a recent 3-month combined file in input_dir.
+#' }
 compile_era5_monthly <- function(
   input_dir,
   processed_dir = file.path(input_dir, "processed"),
