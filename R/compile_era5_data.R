@@ -230,23 +230,23 @@ compile_era5_monthly <- function(
 
   data_cols <- setdiff(names(df), c("longitude","latitude"))
 
-  # melt to long; keep the factor levels to preserve column order
+  # melt to long, keeping factor levels to preserve original order
   df_long <- data.table::melt(
     df,
     id.vars        = c("latitude","longitude"),
     measure.vars   = data_cols,
     variable.name  = "grib_variable_name",
     value.name     = "value",
-    variable.factor= TRUE   # <-- critical: levels(data) == data_cols in order
+    variable.factor= TRUE
   )
 
-  # map time by layer index, not by (often duplicate) layer names
+  # always map time by layer index
   df_long[, time := as.POSIXct(NA)]
-  if (!is.null(tvals) && length(tvals) == length(data_cols)) {
-    # index of the layer = factor code
+  if (!is.null(tvals)) {
     df_long[, .layer_i := as.integer(grib_variable_name)]
-    # assign time by index
-    df_long[, time := tvals[.layer_i]]
+    if (max(.layer_i, na.rm = TRUE) <= length(tvals)) {
+      df_long[, time := tvals[.layer_i]]
+    }
     df_long[, .layer_i := NULL]
   }
 

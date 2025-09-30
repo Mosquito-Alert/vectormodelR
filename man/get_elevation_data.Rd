@@ -2,32 +2,42 @@
 % Please edit documentation in R/get_elevation_data.R
 \name{get_elevation_data}
 \alias{get_elevation_data}
-\title{Get ~30 m SRTM DEM for a GADM admin unit}
+\title{Get ~30 m SRTM DEM for a GADM admin unit or full country}
 \usage{
-get_elevation_data(country, level = 2, name_value, z = 11, path = "data/")
+get_elevation_data(
+  country,
+  level = 2,
+  name_value = NULL,
+  z = 11,
+  path = "data/"
+)
 }
 \arguments{
-\item{country}{Country name or ISO3 code accepted by \code{geodata::gadm()} (e.g., "BGD", "Spain").}
+\item{country}{Country name or ISO3 code accepted by \code{geodata::gadm()}.}
 
-\item{level}{Integer GADM level (0 country, 1 region, 2 district/province, etc.). Default: 2.}
+\item{level}{Integer GADM level (0 = country, 1 = region, 2 = district/province, etc.).
+Default: 2.}
 
-\item{name_value}{Character. Name of the unit to select (matched against the relevant NAME column).}
+\item{name_value}{Character. Name of the unit to select (matched against the relevant
+NAME column). If \code{NULL}, the full level is used.}
 
 \item{z}{Integer zoom for \code{elevatr::get_elev_raster()} (11 ≈ ~30 m). Default: 11.}
 
 \item{path}{Directory to cache GADM files. Default: "data/".}
 }
 \value{
-A \code{terra::SpatRaster} DEM clipped to the selected admin unit.
+A \code{terra::SpatRaster} DEM clipped to the selected admin unit or country.
 }
 \description{
 Downloads a ~30 m (1 arc-second) DEM via \pkg{elevatr} for a selected
-administrative unit from \pkg{geodata} and returns a \pkg{terra} SpatRaster.
+administrative unit (or entire country) from \pkg{geodata} and returns a
+\pkg{terra} SpatRaster.
 }
 \examples{
 \dontrun{
-# Dhaka District (level 2 → NAME_2)
-dem <- get_elevation_data("BGD", level = 2, name_value = "Dhaka")
-terra::plot(dem)
+Dhaka District (level 2 → NAME_2)
+
+dem <- get_elevation_data("BGD", level = 2, name_value = "Dhaka") 
+terra::plot(dem) 
 }
 }
