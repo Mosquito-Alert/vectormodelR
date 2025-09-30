@@ -210,57 +210,51 @@ compile_era5_monthly <- function(
     df
   }
 
-.read_with_terra <- function(filepath, variable_name, year, month, verbose = TRUE) {
+.read_with_terra <- function(filepath, variable_name, year, month, parallel = FALSE) {
   requireNamespace("terra",      quietly = TRUE)
   requireNamespace("data.table", quietly = TRUE)
 
   r <- terra::rast(filepath)
 
-  # 1) timestamps
+  # Extract times for each band
   tvals <- tryCatch(terra::time(r), error = function(e) NULL)
   if (!is.null(tvals) && !inherits(tvals, "POSIXct")) {
     tvals <- suppressWarnings(as.POSIXct(as.character(tvals), tz = "UTC"))
   }
 
-  n_layers <- terra::nlyr(r)
-  if (verbose) {
-    message(sprintf("Reading %s — layers: %d, time stamps: %s",
-                    basename(filepath), n_layers,
-                    if (is.null(tvals)) "NULL" else length(tvals)))
-  }
-  if (is.null(tvals) || length(tvals) != n_layers) {
-    stop("Mismatch/NULL time: length(time(r))=", if (is.null(tvals)) "NULL" else length(tvals),
-         " vs nlyr(r)=", n_layers,
-         ". This must match for hourly files (GRIB/NC).")
+  n <- terra::nlyr(r)
+  if (length(tvals) != n) {
+    warning(sprintf("Time stamps (%d) != layers (%d); falling back to NA times.", length(tvals), n))
+    tvals <- rep(as.POSIXct(NA), n)
   }
 
-  # 2) LONG format directly from terra (avoids wide->melt headaches)
-  #    columns: x, y, lyr (1..n_layers), value
-  df <- terra::as.data.frame(r, xy = TRUE, cells = FALSE, na.rm = FALSE, long = TRUE)
-  data.table::setDT(df)
-  data.table::setnames(df, c("x","y"), c("longitude","latitude"))
+  # --- convert to long format ---
+  process_layer <- function(i) {
+    df <- as.data.frame(r[[i]], xy = TRUE, na.rm = FALSE)
+    data.table::setDT(df)
+    data.table::setnames(df, c("x", "y", names(df)[3]), c("longitude", "latitude", "value"))
+    df[, `:=`(
+      time           = tvals[i],
+      variable_name  = variable_name,
+      grib_variable_name = paste0(variable_name, "_layer", i),
+      year           = as.integer(year),
+      month          = as.integer(month)
+    )]
+    df[]
+  }
 
-  # 3) attach time and layer names via layer index
-  #    (terra names can be repetitive; still useful for traceability)
-  nm <- names(r)
-  df[, `:=`(
-    time               = tvals[lyr],
-    grib_variable_name = nm[pmax(1L, pmin(lyr, length(nm)))]
-  )]
+  if (parallel && requireNamespace("future.apply", quietly = TRUE)) {
+    df_list <- future.apply::future_lapply(seq_len(n), process_layer)
+  } else {
+    df_list <- lapply(seq_len(n), process_layer)
+  }
 
-  # 4) metadata, order columns, drop NA values
-  df[, `:=`(
-    variable_name = variable_name,
-    year          = as.integer(year),
-    month         = as.integer(month)
-  )]
+  out <- data.table::rbindlist(df_list, use.names = TRUE, fill = TRUE)
+  data.table::setcolorder(out, c("latitude", "longitude", "time",
+                                 "variable_name", "grib_variable_name",
+                                 "value", "year", "month"))
 
-  data.table::setcolorder(df,
-    c("latitude","longitude","time","variable_name","grib_variable_name","value","year","month","lyr")
-  )
-
-  # keep all rows (including NA values if you prefer); here we drop only NA value rows
-  df[!is.na(value)]
+  return(out[!is.na(value)])
 }
 
   .load_grib_to_long_format <- function(filepath, variable_name, year, month) {
