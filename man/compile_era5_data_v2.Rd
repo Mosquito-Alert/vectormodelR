@@ -14,27 +14,17 @@ compile_era5_data_v2(
 \arguments{
 \item{input_dir}{Directory containing per-variable GRIB files.}
 
-\item{processed_dir}{Output directory for monthly CSVs (default: file.path(input_dir, "processed")).}
+\item{processed_dir}{Output dir for monthly CSVs (default: file.path(input_dir, "processed")).}
 
 \item{recent_n}{Number of most recent monthly CSVs to merge into a summary (default 3).}
 
-\item{verbose}{Logical; print progress.}
+\item{verbose}{Print progress.}
 }
 \value{
-(Invisibly) a list with summary info.
+(invisibly) a list with summary info.
 }
 \description{
 Scans \code{input_dir} for files named \verb{era5_YYYY_MM_<var>.grib}, converts each
 month into a single long-format CSV.GZ under \verb{processed/YYYY/}, and writes a
-\verb{era5_recent_<n>months.csv.gz} in \code{input_dir}.
-}
-\examples{
-\dontrun{
-compile_era5_data_v2(
-  input_dir     = "data/era5/grib",
-  processed_dir = "data/era5/grib/processed",
-  recent_n      = 3,
-  verbose       = TRUE
-)
-}
+recent N-month summary in \code{input_dir}.
 }
