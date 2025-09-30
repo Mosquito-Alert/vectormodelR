@@ -240,15 +240,23 @@ compile_era5_monthly <- function(
     variable.factor= TRUE
   )
 
-  # always map time by layer index
-  df_long[, time := as.POSIXct(NA)]
-  if (!is.null(tvals)) {
-    df_long[, .layer_i := as.integer(grib_variable_name)]
-    if (max(.layer_i, na.rm = TRUE) <= length(tvals)) {
-      df_long[, time := tvals[.layer_i]]
-    }
-    df_long[, .layer_i := NULL]
+# always map time by layer index
+df_long[, time := as.POSIXct(NA)]
+if (!is.null(tvals)) {
+  # create layer index from factor levels (preserves original band order)
+  df_long[, .layer_i := as.integer(grib_variable_name)]
+
+  # compute max index from the COLUMN, not a free symbol
+  max_idx <- max(df_long$.layer_i, na.rm = TRUE)
+
+  if (max_idx <= length(tvals)) {
+    # j-scope reference to the column works fine here
+    df_long[, time := tvals[.layer_i]]
   }
+
+  # clean up helper column
+  df_long[, .layer_i := NULL]
+}
 
   # finish
   df_long[, `:=`(
