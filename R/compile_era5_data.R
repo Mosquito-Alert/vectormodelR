@@ -216,76 +216,51 @@ compile_era5_monthly <- function(
 
   r <- terra::rast(filepath)
 
-  # 1) get timestamps
+  # 1) timestamps
   tvals <- tryCatch(terra::time(r), error = function(e) NULL)
   if (!is.null(tvals) && !inherits(tvals, "POSIXct")) {
     tvals <- suppressWarnings(as.POSIXct(as.character(tvals), tz = "UTC"))
   }
 
-  # 2) sanity checks BEFORE melting
   n_layers <- terra::nlyr(r)
   if (verbose) {
     message(sprintf("Reading %s — layers: %d, time stamps: %s",
                     basename(filepath), n_layers,
                     if (is.null(tvals)) "NULL" else length(tvals)))
   }
-  if (is.null(tvals)) {
-    stop("terra::time(r) returned NULL for: ", basename(filepath),
-         "\nThis file should be hourly. If it’s NetCDF and your GDAL build didn’t decode CF time, ",
-         "add the ncdf4 fallback or convert with cdo/nco.")
-  }
-  if (length(tvals) != n_layers) {
-    stop("Mismatch: length(time(r)) = ", length(tvals), " but nlyr(r) = ", n_layers,
-         "\nThis must be equal for hourly files. Aborting to avoid misaligned times.")
+  if (is.null(tvals) || length(tvals) != n_layers) {
+    stop("Mismatch/NULL time: length(time(r))=", if (is.null(tvals)) "NULL" else length(tvals),
+         " vs nlyr(r)=", n_layers,
+         ". This must match for hourly files (GRIB/NC).")
   }
 
-  # 3) wide -> long (preserve layer order)
-  df <- as.data.frame(r, xy = TRUE, na.rm = FALSE)  # columns: x, y, layer1..layerN
+  # 2) LONG format directly from terra (avoids wide->melt headaches)
+  #    columns: x, y, lyr (1..n_layers), value
+  df <- terra::as.data.frame(r, xy = TRUE, cells = FALSE, na.rm = FALSE, long = TRUE)
   data.table::setDT(df)
   data.table::setnames(df, c("x","y"), c("longitude","latitude"))
 
-  layer_cols <- setdiff(names(df), c("longitude","latitude"))
-  # defensive: ensure layer_cols length equals n_layers
-  if (length(layer_cols) != n_layers) {
-    stop("Internal check failed: number of data columns (", length(layer_cols),
-         ") != nlyr(r) (", n_layers, ").")
-  }
+  # 3) attach time and layer names via layer index
+  #    (terra names can be repetitive; still useful for traceability)
+  nm <- names(r)
+  df[, `:=`(
+    time               = tvals[lyr],
+    grib_variable_name = nm[pmax(1L, pmin(lyr, length(nm)))]
+  )]
 
-  dt <- data.table::melt(
-    df,
-    id.vars         = c("latitude","longitude"),
-    measure.vars    = layer_cols,
-    variable.name   = "layer_name",
-    value.name      = "value",
-    variable.factor = TRUE     # <- layer_name is an ordered factor (1..n)
-  )
-  rm(df); gc()
+  # 4) metadata, order columns, drop NA values
+  df[, `:=`(
+    variable_name = variable_name,
+    year          = as.integer(year),
+    month         = as.integer(month)
+  )]
 
-  # 4) map time by *layer index* (factor code) — no temp columns
-  #    as.integer(layer_name) gives 1..n matching layer order
-  dt[, time := {
-    idx <- as.integer(layer_name)
-    tvals[idx]
-  }]
-
-  # 5) add metadata, reorder, drop NA values
-  dt[, `:=`(variable_name = variable_name,
-            year          = as.integer(year),
-            month         = as.integer(month))]
-
-  data.table::setcolorder(dt,
-    c("latitude","longitude","time","variable_name","layer_name","value","year","month")
+  data.table::setcolorder(df,
+    c("latitude","longitude","time","variable_name","grib_variable_name","value","year","month","lyr")
   )
 
-  # optional: verify mapping on a small sample
-  if (verbose) {
-    # pick 1 cell and check first 5 layers
-    samp <- dt[.N > 0L][1L:.N][1L:min(5L, .N)]
-    message("Time mapping sample: ",
-            paste(format(unique(samp$time), "%Y-%m-%d %H:%M"), collapse = ", "))
-  }
-
-  dt[!is.na(value)]
+  # keep all rows (including NA values if you prefer); here we drop only NA value rows
+  df[!is.na(value)]
 }
 
   .load_grib_to_long_format <- function(filepath, variable_name, year, month) {
