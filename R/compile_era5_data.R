@@ -210,66 +210,58 @@ compile_era5_monthly <- function(
     df
   }
 
-# ---- terra reader (fast; map time by layer index, not names) ----
 .read_with_terra <- function(filepath, variable_name, year, month) {
   requireNamespace("terra",      quietly = TRUE)
   requireNamespace("data.table", quietly = TRUE)
 
   r <- terra::rast(filepath)
 
-  # layer times from terra
+  # 1) Get time stamps from terra
   tvals <- tryCatch(terra::time(r), error = function(e) NULL)
   if (!is.null(tvals) && !inherits(tvals, "POSIXct")) {
     tvals <- suppressWarnings(as.POSIXct(as.character(tvals), tz = "UTC"))
   }
 
-  # realize to wide data.frame (one column per layer)
+  # 2) Wide df: one column per layer
   df <- as.data.frame(r, xy = TRUE, na.rm = FALSE)
   data.table::setDT(df)
   data.table::setnames(df, c("x","y"), c("longitude","latitude"))
 
   data_cols <- setdiff(names(df), c("longitude","latitude"))
 
-  # melt to long, keeping factor levels to preserve original order
+  # 3) Long df; variable.factor=TRUE preserves original layer order
   df_long <- data.table::melt(
     df,
-    id.vars        = c("latitude","longitude"),
-    measure.vars   = data_cols,
-    variable.name  = "grib_variable_name",
-    value.name     = "value",
-    variable.factor= TRUE
+    id.vars         = c("latitude","longitude"),
+    measure.vars    = data_cols,
+    variable.name   = "grib_variable_name",
+    value.name      = "value",
+    variable.factor = TRUE
   )
 
-# always map time by layer index
-df_long[, time := as.POSIXct(NA)]
-if (!is.null(tvals)) {
-  # create layer index from factor levels (preserves original band order)
-  df_long[, .layer_i := as.integer(grib_variable_name)]
-
-  # compute max index from the COLUMN, not a free symbol
-  max_idx <- max(df_long$.layer_i, na.rm = TRUE)
-
-  if (max_idx <= length(tvals)) {
-    # j-scope reference to the column works fine here
-    df_long[, time := tvals[.layer_i]]
+  # 4) Map time by layer index *without* creating a temp column
+  #    as.integer(grib_variable_name) == layer position 1..n in 'data_cols'
+  df_long[, time := as.POSIXct(NA)]
+  if (!is.null(tvals)) {
+    df_long[, time := {
+      idx <- as.integer(grib_variable_name)
+      # guard if some files have fewer time stamps than layers (rare)
+      if (length(tvals) >= max(idx, na.rm = TRUE)) tvals[idx] else NA
+    }]
   }
 
-  # clean up helper column
-  df_long[, .layer_i := NULL]
-}
-
-  # finish
+  # 5) Add metadata, order columns, and drop NA values
   df_long[, `:=`(
     variable_name = variable_name,
     year          = as.integer(year),
     month         = as.integer(month)
   )]
+
   data.table::setcolorder(
     df_long,
     c("latitude","longitude","time","variable_name","grib_variable_name","value","year","month")
   )
 
-  # drop NAs
   df_long[!is.na(value)]
 }
 
