@@ -16,6 +16,9 @@
 #' @param wind_calm_kmh Numeric. Calm-wind threshold in km/h for MWI logic. Default 6.
 #' @param round_ll Integer. Rounding (decimal places) applied to lon/lat before
 #'   reshaping to wide. Default 3 (≈100–120 m grid at mid-latitudes).
+#' @param verbose Logical. If TRUE, prints progress messages. Default TRUE.
+#' @param attach_to_global Logical. If TRUE, assigns output data.frames to .GlobalEnv
+#'   with names based on the file prefix (e.g., `weather_esp_lvl2_barcelona_daily`). Default FALSE.
 #'
 #' @return (Invisibly) a list with: `daily`, `lags_7d`, `lags_14d`, `lags_30d`,
 #'   `lags_21d_lag7`, `ppt_lags`, and `paths` (written file paths).
@@ -76,10 +79,14 @@ transform_era5_data <- function(
   admin_name,
   out_dir = "data/proc",
   start_date = NULL,
-  end_date = NULL,
+  end_date   = NULL,
   wind_calm_kmh = 6,
-  round_ll = 3
+  round_ll = 3,
+  verbose  = TRUE,
+  attach_to_global = FALSE
 ) {
+  .say <- function(...) if (isTRUE(verbose)) message(sprintf(...))
+
   # ---- deps & args ----
   stopifnot(dir.exists(path.expand(processed_dir)))
   processed_dir <- path.expand(processed_dir)
@@ -102,22 +109,27 @@ transform_era5_data <- function(
 
   files <- list_month_files(processed_dir)
   if (!length(files)) stop("No processed monthly CSVs found under: ", processed_dir)
+  .say("Found %d monthly files.", length(files))
 
   # ---- admin geometry & bbox window ----
+  .say("Loading GADM geometry: %s level %d ...", iso3, admin_level)
   g <- geodata::gadm(country = iso3, level = admin_level, path = file.path(out_dir, "gadm")) |>
     sf::st_as_sf()
 
   if (!is.null(admin_name)) {
     nmcol <- paste0("NAME_", admin_level)
+    .say("Filtering admin unit by name column %s == '%s' ...", nmcol, admin_name)
     g <- g[g[[nmcol]] == admin_name, , drop = FALSE]
     if (nrow(g) == 0) stop("Admin name '", admin_name, "' not found at level ", admin_level, " for ", iso3)
   } else {
+    .say("No admin_name provided; using union of all geometries at level %d.", admin_level)
     g <- sf::st_union(g)
   }
 
   bb <- sf::st_bbox(g)  # xmin, ymin, xmax, ymax
   lon_min <- as.numeric(bb["xmin"]); lon_max <- as.numeric(bb["xmax"])
   lat_min <- as.numeric(bb["ymin"]); lat_max <- as.numeric(bb["ymax"])
+  .say("Bounding box: lon[%.4f, %.4f], lat[%.4f, %.4f].", lon_min, lon_max, lat_min, lat_max)
 
   # ---- read & prefilter by bbox/time/vars ----
   wanted <- c("10m_u_component_of_wind",
@@ -127,51 +139,66 @@ transform_era5_data <- function(
               "surface_pressure",
               "total_precipitation")
 
-    # ---- read (bbox+vars), parse time; no time filtering yet ----
-    DT <- data.table::rbindlist(
-    lapply(files, function(f) {
-        dt <- data.table::fread(f, showProgress = FALSE)
-        dt <- dt[variable_name %in% wanted]
-        dt <- dt[longitude >= lon_min & longitude <= lon_max &
-                latitude  >= lat_min & latitude  <= lat_max]
-        dt[, time := lubridate::ymd_hms(time, tz = "UTC")]
-        dt
+  .say("Reading and prefiltering files (bbox + variables), parsing time ...")
+  pb <- utils::txtProgressBar(min = 0, max = length(files), style = 3)
+  on.exit(try(close(pb), silent = TRUE), add = TRUE)
+
+  DT <- data.table::rbindlist(
+    lapply(seq_along(files), function(i) {
+      f <- files[i]
+      dt <- data.table::fread(f, showProgress = FALSE)
+      dt <- dt[variable_name %in% wanted]
+      dt <- dt[longitude >= lon_min & longitude <= lon_max &
+               latitude  >= lat_min & latitude  <= lat_max]
+      dt[, time := lubridate::ymd_hms(time, tz = "UTC")]
+      utils::setTxtProgressBar(pb, i)
+      dt
     }),
     use.names = TRUE, fill = TRUE
-    )
-    if (!nrow(DT)) stop("No rows after bbox/var filtering. Check inputs.")
+  )
+  if (!nrow(DT)) stop("No rows after bbox/var filtering. Check inputs.")
+  .say("\nAfter bbox/var filter: %,d rows.", nrow(DT))
 
-    # ---- set default dates if missing, then filter once ----
-    if (is.null(start_date)) start_date <- as.Date(min(DT$time, na.rm = TRUE))
-    if (is.null(end_date))   end_date   <- as.Date(max(DT$time, na.rm = TRUE))
+  # ---- set default dates if missing, then filter once ----
+  if (is.null(start_date)) start_date <- as.Date(min(DT$time, na.rm = TRUE))
+  if (is.null(end_date))   end_date   <- as.Date(max(DT$time, na.rm = TRUE))
+  .say("Date window: %s to %s (inclusive).", format(start_date), format(end_date))
 
-    DT <- DT[
+  DT <- DT[
     time >= as.POSIXct(start_date, tz = "UTC") &
     time <  as.POSIXct(end_date + 1, tz = "UTC")
-    ]
-    if (!nrow(DT)) stop("No rows after time filtering. Check date window.")
+  ]
+  if (!nrow(DT)) stop("No rows after time filtering. Check date window.")
+  .say("After time filter: %,d rows.", nrow(DT))
 
   # ---- polygon mask (exact clip) ----
+  .say("Applying exact polygon mask ...")
   poly <- g |> sf::st_make_valid() |> sf::st_union()
   DT_sf <- sf::st_as_sf(DT, coords = c("longitude","latitude"), crs = 4326, remove = FALSE)
   inside_idx <- lengths(sf::st_within(DT_sf, poly, sparse = TRUE)) > 0
+  kept_n <- sum(inside_idx)
   DT_sf <- DT_sf[inside_idx, , drop = FALSE]
   DT <- data.table::as.data.table(sf::st_drop_geometry(DT_sf))
   rm(DT_sf, inside_idx); gc()
   if (!nrow(DT)) stop("No rows inside the polygon. Check admin unit selection.")
+  .say("Points inside polygon: %,d rows kept.", kept_n)
 
   # ---- round lon/lat (stabilize keys for dcast) ----
   data.table::set(DT, j = "lat", value = round(DT$latitude,  round_ll))
   data.table::set(DT, j = "lon", value = round(DT$longitude, round_ll))
+  .say("Rounded lon/lat to %d decimals.", round_ll)
 
   # ---- wide per cell & hour ----
+  .say("Casting to wide per (lon, lat, time) ...")
   wide <- data.table::dcast(
     DT[, .(lon, lat, time, variable_name, value)],
     lon + lat + time ~ variable_name,
     value.var = "value"
   )
+  .say("Wide table: %,d rows, %d columns.", nrow(wide), ncol(wide))
 
   # ---- derived hourly features ----
+  .say("Computing hourly derived features ...")
   wide[, ws10 := sqrt(`10m_u_component_of_wind`^2 + `10m_v_component_of_wind`^2)]
   wide[, `:=`(
     t2m_C = K_to_C(`2m_temperature`),
@@ -180,10 +207,10 @@ transform_era5_data <- function(
   wide[, RH := pmin(pmax(rh_from_T_Td(t2m_C, d2m_C), 0), 100)]
   wide[, ppt_mm := `total_precipitation` * 1000]  # m -> mm
 
-  # keep compact
   wide_small <- wide[, .(lon, lat, time, t2m_C, d2m_C, RH, ws10, ppt_mm)]
 
   # ---- hourly area aggregate ----
+  .say("Aggregating to hourly area means ...")
   hourly <- wide_small[
     ,
     .(
@@ -195,8 +222,10 @@ transform_era5_data <- function(
     by = .(time)
   ]
   hourly[, date := as.Date(time, tz = "UTC")]
+  .say("Hourly table: %,d rows.", nrow(hourly))
 
   # ---- daily summaries ----
+  .say("Aggregating to daily summaries ...")
   daily <- hourly[
     ,
     .(
@@ -216,8 +245,10 @@ transform_era5_data <- function(
     ),
     by = .(date)
   ][order(date)]
+  .say("Daily table: %,d rows.", nrow(daily))
 
   # ---- MWI logic ----
+  .say("Computing MWI indices (calm threshold = %.2f km/h) ...", wind_calm_kmh)
   calm_ms <- wind_calm_kmh / 3.6
   daily <- dplyr::mutate(
     daily,
@@ -258,6 +289,7 @@ transform_era5_data <- function(
   )
 
   # ---- rolling windows helper ----
+  .say("Computing rolling windows (7, 14, 21(+lag7), 30 days) ...")
   mk_roll <- function(dt, n, suffix) {
     long <- dt |>
       tidyr::pivot_longer(cols = -date, names_to = "weather_type", values_to = "val") |>
@@ -320,13 +352,28 @@ transform_era5_data <- function(
   p_lags_21_lag7  <- file.path(out_dir, paste0(prefix, "_lags_21d_lag7.Rds"))
   p_ppt_lags      <- file.path(out_dir, paste0(prefix, "_ppt_lags.Rds"))
 
+  .say("Writing RDS files to %s ...", out_dir)
   readr::write_rds(daily,         p_daily)
   readr::write_rds(lags_7d,       p_lags_7)
   readr::write_rds(lags_14d,      p_lags_14)
   readr::write_rds(lags_30d,      p_lags_30)
   readr::write_rds(lags_21d_lag7, p_lags_21_lag7)
   readr::write_rds(ppt_lags,      p_ppt_lags)
+  .say("Done writing.")
 
+  # ---- optionally attach to .GlobalEnv ----
+  if (isTRUE(attach_to_global)) {
+    .say("Attaching outputs to .GlobalEnv ...")
+    assign(paste0(prefix, "_daily"),          daily,         envir = .GlobalEnv)
+    assign(paste0(prefix, "_lags_7d"),        lags_7d,       envir = .GlobalEnv)
+    assign(paste0(prefix, "_lags_14d"),       lags_14d,      envir = .GlobalEnv)
+    assign(paste0(prefix, "_lags_30d"),       lags_30d,      envir = .GlobalEnv)
+    assign(paste0(prefix, "_lags_21d_lag7"),  lags_21d_lag7, envir = .GlobalEnv)
+    assign(paste0(prefix, "_ppt_lags"),       ppt_lags,      envir = .GlobalEnv)
+    .say("Attached objects with prefix '%s_*'.", prefix)
+  }
+
+  .say("All done ✅")
   invisible(list(
     daily         = daily,
     lags_7d       = lags_7d,
