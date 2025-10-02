@@ -85,7 +85,8 @@ transform_era5_data <- function(
   verbose  = TRUE,
   attach_to_global = FALSE
 ) {
-  .say <- function(...) if (isTRUE(verbose)) message(sprintf(...))
+  .say  <- function(...) if (isTRUE(verbose)) message(sprintf(...))
+  .fmtI <- function(x) format(as.integer(x), big.mark = ",", scientific = FALSE)
 
   # ---- deps & args ----
   stopifnot(dir.exists(path.expand(processed_dir)))
@@ -109,7 +110,8 @@ transform_era5_data <- function(
 
   files <- list_month_files(processed_dir)
   if (!length(files)) stop("No processed monthly CSVs found under: ", processed_dir)
-  .say("Found %d monthly files.", length(files))
+  .say("Found %s monthly files.", .fmtI(length(files)))
+
 
   # ---- admin geometry & bbox window ----
   .say("Loading GADM geometry: %s level %d ...", iso3, admin_level)
@@ -157,7 +159,7 @@ transform_era5_data <- function(
     use.names = TRUE, fill = TRUE
   )
   if (!nrow(DT)) stop("No rows after bbox/var filtering. Check inputs.")
-  .say("\nAfter bbox/var filter: %,d rows.", nrow(DT))
+  .say("\nAfter bbox/var filter: %s rows.", .fmtI(nrow(DT)))
 
   # ---- set default dates if missing, then filter once ----
   if (is.null(start_date)) start_date <- as.Date(min(DT$time, na.rm = TRUE))
@@ -169,7 +171,7 @@ transform_era5_data <- function(
     time <  as.POSIXct(end_date + 1, tz = "UTC")
   ]
   if (!nrow(DT)) stop("No rows after time filtering. Check date window.")
-  .say("After time filter: %,d rows.", nrow(DT))
+  .say("After time filter: %s rows.", .fmtI(nrow(DT)))
 
   # ---- polygon mask (exact clip) ----
   .say("Applying exact polygon mask ...")
@@ -181,7 +183,7 @@ transform_era5_data <- function(
   DT <- data.table::as.data.table(sf::st_drop_geometry(DT_sf))
   rm(DT_sf, inside_idx); gc()
   if (!nrow(DT)) stop("No rows inside the polygon. Check admin unit selection.")
-  .say("Points inside polygon: %,d rows kept.", kept_n)
+  .say("Points inside polygon: %s rows kept.", .fmtI(kept_n))
 
   # ---- round lon/lat (stabilize keys for dcast) ----
   data.table::set(DT, j = "lat", value = round(DT$latitude,  round_ll))
@@ -195,7 +197,7 @@ transform_era5_data <- function(
     lon + lat + time ~ variable_name,
     value.var = "value"
   )
-  .say("Wide table: %,d rows, %d columns.", nrow(wide), ncol(wide))
+  .say("Wide table: %s rows, %d columns.", .fmtI(nrow(wide)), ncol(wide))
 
   # ---- derived hourly features ----
   .say("Computing hourly derived features ...")
