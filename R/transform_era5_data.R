@@ -224,7 +224,7 @@ transform_era5_data <- function(
     by = .(time)
   ]
   hourly[, date := as.Date(time, tz = "UTC")]
-  .say("Hourly table: %,d rows.", nrow(hourly))
+  .say("Hourly table: %s rows.", .fmtI(nrow(hourly)))
 
   # ---- daily summaries ----
   .say("Aggregating to daily summaries ...")
@@ -247,7 +247,7 @@ transform_era5_data <- function(
     ),
     by = .(date)
   ][order(date)]
-  .say("Daily table: %,d rows.", nrow(daily))
+  .say("Daily table: %s rows.", .fmtI(nrow(daily)))
 
   # ---- MWI logic ----
   .say("Computing MWI indices (calm threshold = %.2f km/h) ...", wind_calm_kmh)
