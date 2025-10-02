@@ -44,7 +44,7 @@
 #' # Barcelona province
 #' transform_era5_data(
 #'   iso3 = "ESP",
-#'   admin_lvl = 2,
+#'   admin_level = 2,
 #'   admin_name = "Barcelona",
 #'   processed_dir = "~/data/weather/grib/processed",
 #'   out_dir = "data/proc"
@@ -53,7 +53,7 @@
 #' # Catalonia region (level 1)
 #' transform_era5_data(
 #'   iso3 = "ESP",
-#'   admin_lvl = 1,
+#'   admin_level = 1,
 #'   admin_name = "Cataluña",
 #'   processed_dir = "~/data/weather/grib/processed",
 #'   out_dir = "data/weather_catalonia"
@@ -62,7 +62,7 @@
 #' # Stricter calm wind threshold (4 km/h)
 #' transform_era5_data(
 #'   iso3 = "ESP",
-#'   admin_lvl = 2,
+#'   admin_level = 2,
 #'   admin_name = "Barcelona",
 #'   processed_dir = "~/data/weather/grib/processed",
 #'   out_dir = "data/proc_strict",
@@ -75,8 +75,8 @@ transform_era5_data <- function(
   admin_level,
   admin_name,
   out_dir = "data/proc",
-  start_date,
-  end_date,
+  start_date = NULL,
+  end_date = NULL,
   wind_calm_kmh = 6,
   round_ll = 3
 ) {
@@ -127,21 +127,29 @@ transform_era5_data <- function(
               "surface_pressure",
               "total_precipitation")
 
-  DT <- data.table::rbindlist(
+    # ---- read (bbox+vars), parse time; no time filtering yet ----
+    DT <- data.table::rbindlist(
     lapply(files, function(f) {
-      dt <- data.table::fread(f, showProgress = FALSE)
-      # keep needed vars
-      dt <- dt[variable_name %in% wanted]
-      # bbox crop (fast)
-      dt <- dt[longitude >= lon_min & longitude <= lon_max &
-                 latitude  >= lat_min & latitude  <= lat_max]
-      # time range
-      dt[, time := lubridate::ymd_hms(time, tz = "UTC")]
-      dt[time >= as.POSIXct(start_date) & time < as.POSIXct(end_date + 1)]
+        dt <- data.table::fread(f, showProgress = FALSE)
+        dt <- dt[variable_name %in% wanted]
+        dt <- dt[longitude >= lon_min & longitude <= lon_max &
+                latitude  >= lat_min & latitude  <= lat_max]
+        dt[, time := lubridate::ymd_hms(time, tz = "UTC")]
+        dt
     }),
     use.names = TRUE, fill = TRUE
-  )
-  if (!nrow(DT)) stop("No rows after bbox/time filtering. Check dates, bbox, and inputs.")
+    )
+    if (!nrow(DT)) stop("No rows after bbox/var filtering. Check inputs.")
+
+    # ---- set default dates if missing, then filter once ----
+    if (is.null(start_date)) start_date <- as.Date(min(DT$time, na.rm = TRUE))
+    if (is.null(end_date))   end_date   <- as.Date(max(DT$time, na.rm = TRUE))
+
+    DT <- DT[
+    time >= as.POSIXct(start_date, tz = "UTC") &
+    time <  as.POSIXct(end_date + 1, tz = "UTC")
+    ]
+    if (!nrow(DT)) stop("No rows after time filtering. Check date window.")
 
   # ---- polygon mask (exact clip) ----
   poly <- g |> sf::st_make_valid() |> sf::st_union()
