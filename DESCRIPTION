@@ -30,6 +30,8 @@ Imports:
     lubridate,
     magrittr,
     purrr,
+    RcppRoll,
+    readr,
     rnaturalearth,
     rnaturalearthdata,
     sf,
