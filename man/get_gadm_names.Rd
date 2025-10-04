@@ -7,7 +7,7 @@
 get_gadm_names(
   country = "Spain",
   level = 2,
-  path = "data/",
+  path = "data/gadm",
   view = c("datatable", "table")
 )
 }

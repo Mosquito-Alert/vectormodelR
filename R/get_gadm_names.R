@@ -26,7 +26,7 @@
 #' @importFrom terra as.data.frame
 get_gadm_names <- function(country = "Spain",
                                level = 2,
-                               path = "data/",
+                               path = "data/gadm",
                                view = c("datatable", "table")) {
   view <- match.arg(view)
 
