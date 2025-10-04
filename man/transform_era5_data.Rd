@@ -10,10 +10,12 @@ transform_era5_data(
   admin_level,
   admin_name,
   out_dir = "data/proc",
-  start_date,
-  end_date,
+  start_date = NULL,
+  end_date = NULL,
   wind_calm_kmh = 6,
-  round_ll = 3
+  round_ll = 3,
+  verbose = TRUE,
+  attach_to_global = FALSE
 )
 }
 \arguments{
@@ -36,6 +38,11 @@ If NULL, the whole level geometry is used (unioned).}
 
 \item{round_ll}{Integer. Rounding (decimal places) applied to lon/lat before
 reshaping to wide. Default 3 (≈100–120 m grid at mid-latitudes).}
+
+\item{verbose}{Logical. If TRUE, prints progress messages. Default TRUE.}
+
+\item{attach_to_global}{Logical. If TRUE, assigns output data.frames to .GlobalEnv
+with names based on the file prefix (e.g., \code{weather_esp_lvl2_barcelona_daily}). Default FALSE.}
 }
 \value{
 (Invisibly) a list with: \code{daily}, \code{lags_7d}, \code{lags_14d}, \code{lags_30d},
@@ -63,7 +70,7 @@ per step; wind components in m/s.
 # Barcelona province
 transform_era5_data(
   iso3 = "ESP",
-  admin_lvl = 2,
+  admin_level = 2,
   admin_name = "Barcelona",
   processed_dir = "~/data/weather/grib/processed",
   out_dir = "data/proc"
@@ -72,7 +79,7 @@ transform_era5_data(
 # Catalonia region (level 1)
 transform_era5_data(
   iso3 = "ESP",
-  admin_lvl = 1,
+  admin_level = 1,
   admin_name = "Cataluña",
   processed_dir = "~/data/weather/grib/processed",
   out_dir = "data/weather_catalonia"
@@ -81,7 +88,7 @@ transform_era5_data(
 # Stricter calm wind threshold (4 km/h)
 transform_era5_data(
   iso3 = "ESP",
-  admin_lvl = 2,
+  admin_level = 2,
   admin_name = "Barcelona",
   processed_dir = "~/data/weather/grib/processed",
   out_dir = "data/proc_strict",
