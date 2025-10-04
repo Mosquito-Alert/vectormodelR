@@ -2,88 +2,45 @@
 % Please edit documentation in R/build_tigacell_grid.R
 \name{build_tigacell_grid}
 \alias{build_tigacell_grid}
-\title{Make a TIGA-style global tile grid (e.g., 0.035° ~ 3–4 km)}
+\title{Build a TIGA-like grid over a GADM admin unit}
 \usage{
 build_tigacell_grid(
-  res_deg = 0.035,
-  bbox = NULL,
-  clip = NULL,
-  iso3 = NULL,
+  iso3,
   gadm_level = 0,
-  gadm_name = NULL,
-  add_cols = TRUE,
-  id_from = c("centroid", "lowerleft"),
-  digits = NULL,
-  verbose = TRUE
+  admin_name = NULL,
+  cellsize_deg = 0.035,
+  path = "data/gadm",
+  clip = TRUE,
+  id_precision = 3,
+  as_sp = FALSE,
+  out = NULL,
+  quiet = FALSE
 )
 }
 \arguments{
-\item{res_deg}{Numeric. Grid resolution in degrees. Default \code{0.035}.}
+\item{iso3}{ISO3 country code, e.g. "ESP".}
 
-\item{bbox}{Numeric length-4 \code{c(xmin, ymin, xmax, ymax)} in lon/lat (EPSG:4326).
-If \code{NULL}, it is inferred from \code{clip} (if given) or from the selected country.}
+\item{gadm_level}{GADM level (0=country, 1=region, 2=province, ...).}
 
-\item{clip}{An \code{sf}/\code{sp} polygon to clip against (optional). If \code{NULL} and
-\code{iso3} is supplied, a GADM polygon is fetched instead.}
+\item{admin_name}{Optional. Exact NAME_\if{html}{\out{<level>}} to keep (e.g. "Barcelona"). If NULL, uses the union of all units at that level.}
 
-\item{iso3}{Character ISO3 country code (e.g. \code{"ESP"}). Used only if \code{clip} is \code{NULL}.}
+\item{cellsize_deg}{Grid cell size in degrees (lon/lat). Default 0.035 (~3–4 km).}
 
-\item{gadm_level}{Integer GADM level (0=country, 1=region, 2=province, ...).
-Only used when \code{iso3} is provided. Default \code{0}.}
+\item{path}{Directory to cache GADM downloads.}
 
-\item{gadm_name}{Character or \code{NULL}. If given, filter the GADM polygons by the
-\verb{NAME_<level>} column to a single admin unit. If \code{NULL}, union all polygons at
-that level. Only used when \code{iso3} is provided.}
+\item{clip}{If TRUE (default) intersect cells with the polygon; if FALSE, keep full bbox grid.}
 
-\item{add_cols}{Logical. Add helper columns (\code{lon_center}, \code{lat_center},
-\code{area_km2}). Default \code{TRUE}.}
+\item{id_precision}{Decimal places for the corner coords in TigacellID. Default 3.}
 
-\item{id_from}{Character. Which coordinate to base \code{TigacellID} on:
-\code{"centroid"} (default) or \code{"lowerleft"}. Lower-left gives fully deterministic
-IDs even for oddly shaped cells; centroid is usually fine.}
+\item{as_sp}{If TRUE, return a SpatialPolygonsDataFrame (sp). Otherwise sf (default).}
 
-\item{digits}{Integer. Decimal places for IDs; if \code{NULL}, inferred from \code{res_deg}.}
+\item{out}{Optional path to saveRDS() the result.}
 
-\item{verbose}{Logical. Print progress messages. Default \code{TRUE}.}
+\item{quiet}{Suppress messages.}
 }
 \value{
-An \code{sf} polygon layer (EPSG:4326) with columns:
-\itemize{
-\item \code{TigacellID} (character)
-\item optionally \code{lon_center}, \code{lat_center}, \code{area_km2} if \code{add_cols=TRUE}
-}
+An sf (or sp) polygon grid with column \code{TigacellID}.
 }
 \description{
-Builds a rectangular graticule aligned to the global origin (-180, -90) with a
-chosen resolution (default 0.035 degrees). Optionally clips to a country or
-admin boundary (via GADM) or to a user-provided polygon. Outputs an \code{sf}
-polygon layer with a stable \code{TigacellID} like \code{"1.400_41.200"} (lon_lat of cell
-centroid, rounded to the grid precision).
-}
-\details{
-The grid is aligned to the global origin (-180, -90) and snapped so cell
-edges fall on exact multiples of \code{res_deg}. This ensures reproducibility across
-runs and AOIs. The output CRS is geographic (EPSG:4326); area is computed after
-projecting to an equal-area CRS (EPSG:6933).
-}
-\examples{
-\dontrun{
-# 1) Simple Spain-wide grid at 0.035°
-g1 <- build_tigacell_grid(iso3 = "ESP", gadm_level = 0)
-
-# 2) Barcelona province only (level 2)
-g2 <- build_tigacell_grid(iso3 = "ESP", gadm_level = 2, gadm_name = "Barcelona")
-
-# 3) Custom bbox over Iberia with 0.05°
-iberia_bbox <- c(-10, 35, 4, 44)  # xmin, ymin, xmax, ymax
-g3 <- build_tigacell_grid(res_deg = 0.05, bbox = iberia_bbox)
-
-# 4) Use your own polygon (sf) and finer grid
-# my_poly <- sf::st_read("my_region.geojson")
-# g4 <- build_tigacell_grid(res_deg = 0.025, clip = my_poly)
-
-# Inspect
-# plot(sf::st_geometry(g2), col = NA, border = 'grey')
-# head(g2)
-}
+Build a TIGA-like grid over a GADM admin unit
 }
