@@ -2,22 +2,35 @@
 % Please edit documentation in R/get_malert_data.R
 \name{get_malert_data}
 \alias{get_malert_data}
-\title{Download Mosquito Alert report data from GitHub}
+\title{Download Mosquito Alert report data from GitHub or Zenodo}
 \usage{
-get_malert_data(source = "zenodo", doi = "10.5281/zenodo.597466")
+get_malert_data(
+  source = "zenodo",
+  doi = "10.5281/zenodo.597466",
+  clean = FALSE
+)
 }
 \arguments{
-\item{source}{String. Source to download from. Options are github or zenodo.}
+\item{source}{String. Source to download from. Options are "github" or "zenodo".}
 
-\item{doi}{String. Zenodo doi if downloading from Zenodo. Default is the doi that will always point to the most recent version: 10.5281/zenodo.597466.}
+\item{doi}{String. Zenodo DOI if downloading from Zenodo.
+Default is the DOI that will always point to the most recent version:
+10.5281/zenodo.597466.}
+
+\item{clean}{Logical. If TRUE, the dataset is cleaned and standardized
+(renamed columns, formatted dates, and adds Tigacell fields). If FALSE,
+returns the raw downloaded data as-is. Default: FALSE.}
 }
 \value{
-A tibble.
+A tibble (raw or cleaned, depending on \code{clean}).
 }
 \description{
-Download Mosquito Alert report data from GitHub
+Download Mosquito Alert report data from GitHub or Zenodo
 }
 \examples{
-malert_reports = get_malert_data(source = "github")
-malert_reports
+# Download raw data
+malert_reports <- get_malert_data(source = "github", clean = FALSE)
+
+# Download and clean data
+malert_clean <- get_malert_data(source = "github", clean = TRUE)
 }
