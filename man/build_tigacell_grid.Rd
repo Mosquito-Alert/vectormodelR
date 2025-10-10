@@ -8,12 +8,12 @@ build_tigacell_grid(
   iso3,
   gadm_level = 0,
   admin_name = NULL,
-  cellsize_deg = 0.035,
+  cellsize_deg = 0.025,
   path = "data/gadm",
   clip = TRUE,
   id_precision = 3,
+  rds = TRUE,
   as_sp = FALSE,
-  out = NULL,
   quiet = FALSE
 )
 }
@@ -24,7 +24,7 @@ build_tigacell_grid(
 
 \item{admin_name}{Optional. Exact NAME_\if{html}{\out{<level>}} to keep (e.g. "Barcelona"). If NULL, uses the union of all units at that level.}
 
-\item{cellsize_deg}{Grid cell size in degrees (lon/lat). Default 0.035 (~3–4 km).}
+\item{cellsize_deg}{Grid cell size in degrees (lon/lat). Default 0.025.}
 
 \item{path}{Directory to cache GADM downloads.}
 
@@ -32,9 +32,10 @@ build_tigacell_grid(
 
 \item{id_precision}{Decimal places for the corner coords in TigacellID. Default 3.}
 
-\item{as_sp}{If TRUE, return a SpatialPolygonsDataFrame (sp). Otherwise sf (default).}
+\item{rds}{Logical. If TRUE (default), write the grid to
+\verb{data/proc/map_iso3_level[_admin]_grid.rds}.}
 
-\item{out}{Optional path to saveRDS() the result.}
+\item{as_sp}{If TRUE, return a SpatialPolygonsDataFrame (sp). Otherwise sf (default).}
 
 \item{quiet}{Suppress messages.}
 }

@@ -3,26 +3,28 @@
 #' @param iso3        ISO3 country code, e.g. "ESP".
 #' @param gadm_level  GADM level (0=country, 1=region, 2=province, ...).
 #' @param admin_name  Optional. Exact NAME_<level> to keep (e.g. "Barcelona"). If NULL, uses the union of all units at that level.
-#' @param cellsize_deg Grid cell size in degrees (lon/lat). Default 0.035 (~3–4 km).
+#' @param cellsize_deg Grid cell size in degrees (lon/lat). Default 0.025.
 #' @param path        Directory to cache GADM downloads.
 #' @param clip        If TRUE (default) intersect cells with the polygon; if FALSE, keep full bbox grid.
 #' @param id_precision Decimal places for the corner coords in TigacellID. Default 3.
 #' @param as_sp       If TRUE, return a SpatialPolygonsDataFrame (sp). Otherwise sf (default).
-#' @param out         Optional path to saveRDS() the result.
+#' @param rds         Logical. If TRUE (default), write the grid to
+#'   `data/proc/map_iso3_level[_admin]_grid.rds`.
 #' @param quiet       Suppress messages.
 #'
 #' @return An sf (or sp) polygon grid with column `TigacellID`.
 #' @export
+#' @importFrom readr write_rds
 build_tigacell_grid <- function(
   iso3,
   gadm_level = 0,
   admin_name = NULL,
-  cellsize_deg = 0.035,
+  cellsize_deg = 0.025,
   path = "data/gadm",
   clip = TRUE,
   id_precision = 3,
+  rds = TRUE,
   as_sp = FALSE,
-  out = NULL,
   quiet = FALSE
 ) {
   msg <- function(...) if (!quiet) message(sprintf(...))
@@ -79,9 +81,35 @@ build_tigacell_grid <- function(
   # Keep only the ID in attributes (geometry is in sfc)
   grid <- grid[, "TigacellID"]
 
-  if (!is.null(out)) {
-    saveRDS(grid, out)
-    msg("Saved grid to %s", out)
+  if (isTRUE(rds)) {
+    proc_dir <- file.path("data", "proc")
+    dir.create(proc_dir, recursive = TRUE, showWarnings = FALSE)
+
+    sanitize <- function(x) {
+      x <- gsub("[^A-Za-z0-9]+", "-", tolower(x))
+      x[nzchar(x)]
+    }
+
+    name_suffix <- ""
+    if (!is.null(admin_name) && length(admin_name)) {
+      clean_names <- sanitize(admin_name)
+      if (length(clean_names)) {
+        name_suffix <- paste0("_", paste(clean_names, collapse = "-"))
+      }
+    }
+
+    grid_filename <- paste0(
+      "map_",
+      tolower(iso3),
+      "_",
+      gadm_level,
+      name_suffix,
+      "_grid.rds"
+    )
+    grid_path <- file.path(proc_dir, grid_filename)
+
+    readr::write_rds(grid, grid_path)
+    msg("Saved grid RDS to %s", grid_path)
   }
 
   if (as_sp) {
