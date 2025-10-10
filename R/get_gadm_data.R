@@ -13,6 +13,8 @@
 #'   Default is `"data/gadm"`.
 #' @param rds Logical. If TRUE, save the returned object as an `.rds` file in
 #'   `data/proc`. Default TRUE.
+#' @param perimeter Logical. If TRUE, augment the result with perimeter and area
+#'   metrics via [get_adm_perimeter()]. Default FALSE.
 #' @param verbose Logical. Print progress messages. Default TRUE.
 #'
 #' @return An `sf` polygon layer (EPSG:4326).
@@ -25,8 +27,14 @@
 #' # 2) Barcelona province (level 2)
 #' barca <- get_gadm_data("ESP", level = 2, name = "Barcelona")
 #'
-#' # 3) Multiple provinces without writing an RDS
-#' cat <- get_gadm_data("ESP", level = 2, name = c("Barcelona", "Girona"), rds = FALSE)
+#' # 3) Multiple provinces while also computing perimeter metrics
+#' cat <- get_gadm_data(
+#'   "ESP",
+#'   level = 2,
+#'   name = c("Barcelona", "Girona"),
+#'   rds = FALSE,
+#'   perimeter = TRUE
+#' )
 #' }
 #'
 #' @importFrom geodata gadm
@@ -39,6 +47,7 @@ get_gadm_data <- function(
   name    = NULL,
   path    = "data/gadm",
   rds     = TRUE,
+  perimeter = FALSE,
   verbose = TRUE
 ) {
   stopifnot(is.character(iso3), nchar(iso3) == 3)
@@ -75,22 +84,33 @@ get_gadm_data <- function(
       message(sprintf("Matched %d polygon(s) for %s.", nrow(g), paste(name, collapse = ", ")))
   }
 
+  sanitize <- function(x) {
+    x <- gsub("[^A-Za-z0-9]+", "-", tolower(x))
+    x[nzchar(x)]
+  }
+
+  name_suffix <- ""
+  if (!is.null(name) && length(name)) {
+    clean_names <- sanitize(name)
+    if (length(clean_names)) {
+      name_suffix <- paste0("_", paste(clean_names, collapse = "-"))
+    }
+  }
+
+  if (isTRUE(perimeter)) {
+    perim_filename <- paste0("map_", tolower(iso3), "_", level, name_suffix, "_perimeter.rds")
+    get_adm_perimeter(
+      sf_obj = g,
+      output_filename = perim_filename,
+      rds = TRUE,
+      proc_dir = file.path("data", "proc"),
+      verbose = verbose
+    )
+  }
+
   if (isTRUE(rds)) {
     proc_dir <- file.path("data", "proc")
     dir.create(proc_dir, recursive = TRUE, showWarnings = FALSE)
-
-    sanitize <- function(x) {
-      x <- gsub("[^A-Za-z0-9]+", "-", tolower(x))
-      x[nzchar(x)]
-    }
-
-    name_suffix <- ""
-    if (!is.null(name) && length(name)) {
-      clean_names <- sanitize(name)
-      if (length(clean_names)) {
-        name_suffix <- paste0("_", paste(clean_names, collapse = "-"))
-      }
-    }
 
     file_stem <- paste0("map_", tolower(iso3), "_", level, name_suffix, "_adm.rds")
     output_path <- file.path(proc_dir, file_stem)

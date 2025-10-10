@@ -10,6 +10,7 @@ get_gadm_data(
   name = NULL,
   path = "data/gadm",
   rds = TRUE,
+  perimeter = FALSE,
   verbose = TRUE
 )
 }
@@ -26,6 +27,9 @@ Default is \code{"data/gadm"}.}
 
 \item{rds}{Logical. If TRUE, save the returned object as an \code{.rds} file in
 \code{data/proc}. Default TRUE.}
+
+\item{perimeter}{Logical. If TRUE, augment the result with perimeter and area
+metrics via \code{\link[=get_adm_perimeter]{get_adm_perimeter()}}. Default FALSE.}
 
 \item{verbose}{Logical. Print progress messages. Default TRUE.}
 }
@@ -46,8 +50,14 @@ esp <- get_gadm_data("ESP", level = 0)
 # 2) Barcelona province (level 2)
 barca <- get_gadm_data("ESP", level = 2, name = "Barcelona")
 
-# 3) Multiple provinces without writing an RDS
-cat <- get_gadm_data("ESP", level = 2, name = c("Barcelona", "Girona"), rds = FALSE)
+# 3) Multiple provinces while also computing perimeter metrics
+cat <- get_gadm_data(
+  "ESP",
+  level = 2,
+  name = c("Barcelona", "Girona"),
+  rds = FALSE,
+  perimeter = TRUE
+)
 }
 
 }
