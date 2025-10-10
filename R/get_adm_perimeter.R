@@ -55,7 +55,9 @@ get_adm_perimeter <- function(
   epsg <- ifelse(lat >= 0, 32600 + utm_zone, 32700 + utm_zone)
 
   perimeter <- vapply(seq_along(geom), function(i) {
-    projected <- sf::st_transform(sf::st_sfc(geom[i], crs = sf::st_crs(geom)), epsg[i])
+    feature <- sf::st_sfc(geom[i], crs = sf::st_crs(geom))
+    feature_lines <- sf::st_cast(feature, "MULTILINESTRING", warn = FALSE)
+    projected <- sf::st_transform(feature_lines, epsg[i])
     as.numeric(sf::st_length(projected))
   }, numeric(1))
 
