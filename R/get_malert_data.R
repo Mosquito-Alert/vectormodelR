@@ -12,7 +12,7 @@
 #' @export
 #' @importFrom dplyr bind_rows mutate select
 #' @importFrom tibble as_tibble
-#' @importFrom lubridate year today ymd_hms
+#' @importFrom lubridate year today ymd ymd_hms
 #' @importFrom magrittr %>%
 #' @examples
 #' # Download raw data
@@ -58,6 +58,14 @@ get_malert_data <- function(source = "zenodo",
 
   # --- 3) Optional cleaning pipeline -----------------------------------------
   if (clean) {
+    season_day_0_2014 <- as.POSIXct(
+      strptime(
+        "2014-01-01 00:00:00.000000+0000",
+        format = "%Y-%m-%d %H:%M:%S%OS%z",
+        tz = "GMT"
+      )
+    )
+
     reports <- reports %>%
       dplyr::select(
         creation_time,
@@ -82,6 +90,18 @@ get_malert_data <- function(source = "zenodo",
       dplyr::mutate(
         creation_time = lubridate::ymd_hms(creation_time, tz = "UTC"),
         creation_time = format(creation_time, "%Y-%m-%d %H:%M:%S"),
+        date = lubridate::ymd(date),
+        biweek = as.integer(
+          difftime(
+            as.POSIXct(date, tz = "UTC"),
+            season_day_0_2014,
+            units = "weeks"
+          ) / 2
+        ),
+        reliable_report = as.numeric(
+          (movelab_certainty_category >= 1) |
+            (movelab_certainty_category == 0 & user_tigaprob_cat == 2)
+        ),
         tigacell_lon = round_down(lon, 0.05),
         tigacell_lat = round_down(lat, 0.05),
         TigacellID   = make_samplingcell_ids(lon, lat, 0.05)
