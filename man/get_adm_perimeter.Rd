@@ -27,13 +27,13 @@ get_adm_perimeter(
 \item{verbose}{Logical. Print messages when saving the \code{.rds} file. Defaults to TRUE.}
 }
 \value{
-An \code{sf} object with two columns: \code{perimeter_m} (numeric) and the
+An \code{sf} object with columns: \code{perimeter_m}, \code{area_m2}, and the
 original \code{geometry} transformed back to EPSG:4326.
 }
 \description{
 For each feature in an \code{sf} object, this helper estimates the most
 appropriate UTM zone from the feature's centroid, reprojects the geometry,
-and calculates the perimeter length in metres. Optionally, the resulting
+and calculates both perimeter length and polygon area in metres. Optionally, the resulting
 layer can be written to disk as an \code{.rds} file under \code{data/proc}.
 }
 \examples{

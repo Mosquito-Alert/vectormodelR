@@ -2,7 +2,7 @@
 #'
 #' For each feature in an `sf` object, this helper estimates the most
 #' appropriate UTM zone from the feature's centroid, reprojects the geometry,
-#' and calculates the perimeter length in metres. Optionally, the resulting
+#' and calculates both perimeter length and polygon area in metres. Optionally, the resulting
 #' layer can be written to disk as an `.rds` file under `data/proc`.
 #'
 #' @param sf_obj An `sf` object containing polygon geometries with a defined CRS.
@@ -14,7 +14,7 @@
 #'   `rds = TRUE`. Default is `"data/proc"`.
 #' @param verbose Logical. Print messages when saving the `.rds` file. Defaults to TRUE.
 #'
-#' @return An `sf` object with two columns: `perimeter_m` (numeric) and the
+#' @return An `sf` object with columns: `perimeter_m`, `area_m2`, and the
 #'   original `geometry` transformed back to EPSG:4326.
 #'
 #' @examples
@@ -24,7 +24,7 @@
 #' }
 #'
 #' @export
-#' @importFrom sf st_geometry st_crs st_centroid st_coordinates st_transform st_sfc st_length st_sf
+#' @importFrom sf st_geometry st_crs st_centroid st_coordinates st_transform st_sfc st_length st_area st_sf
 #' @importFrom readr write_rds
 get_adm_perimeter <- function(
   sf_obj,
@@ -54,14 +54,23 @@ get_adm_perimeter <- function(
   utm_zone <- floor((lon + 180) / 6) + 1
   epsg <- ifelse(lat >= 0, 32600 + utm_zone, 32700 + utm_zone)
 
-  perimeter <- vapply(seq_along(geom), function(i) {
+  metrics <- vapply(seq_along(geom), function(i) {
     feature <- sf::st_sfc(geom[i], crs = sf::st_crs(geom))
-    feature_lines <- sf::st_cast(feature, "MULTILINESTRING", warn = FALSE)
-    projected <- sf::st_transform(feature_lines, epsg[i])
-    as.numeric(sf::st_length(projected))
-  }, numeric(1))
+    projected_poly <- sf::st_transform(feature, epsg[i])
+    projected_lines <- sf::st_cast(projected_poly, "MULTILINESTRING", warn = FALSE)
+    perimeter <- as.numeric(sf::st_length(projected_lines))
+    area <- as.numeric(sf::st_area(projected_poly))
+    c(perimeter, area)
+  }, numeric(2))
 
-  result <- sf::st_sf(perimeter_m = perimeter, geometry = geom)
+  perimeter <- metrics[1, ]
+  area <- metrics[2, ]
+
+  result <- sf::st_sf(
+    perimeter_m = perimeter,
+    area_m2 = area,
+    geometry = geom
+  )
 
   if (isTRUE(rds)) {
     dir.create(proc_dir, recursive = TRUE, showWarnings = FALSE)
