@@ -9,7 +9,7 @@ get_gadm_data(
   level,
   name = NULL,
   path = "data/gadm",
-  union = FALSE,
+  rds = TRUE,
   verbose = TRUE
 )
 }
@@ -24,7 +24,8 @@ Matching is case-insensitive and partial (substring).}
 \item{path}{Character. Directory for caching downloaded data.
 Default is \code{"data/gadm"}.}
 
-\item{union}{Logical. If TRUE, merges all matching polygons into one.}
+\item{rds}{Logical. If TRUE, save the returned object as an \code{.rds} file in
+\code{data/proc}. Default TRUE.}
 
 \item{verbose}{Logical. Print progress messages. Default TRUE.}
 }
@@ -45,8 +46,8 @@ esp <- get_gadm_data("ESP", level = 0)
 # 2) Barcelona province (level 2)
 barca <- get_gadm_data("ESP", level = 2, name = "Barcelona")
 
-# 3) Multiple provinces, merged
-cat <- get_gadm_data("ESP", level = 2, name = c("Barcelona", "Girona"), union = TRUE)
+# 3) Multiple provinces without writing an RDS
+cat <- get_gadm_data("ESP", level = 2, name = c("Barcelona", "Girona"), rds = FALSE)
 }
 
 }

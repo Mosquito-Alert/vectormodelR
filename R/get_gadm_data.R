@@ -11,7 +11,8 @@
 #'   Matching is case-insensitive and partial (substring).
 #' @param path Character. Directory for caching downloaded data.
 #'   Default is `"data/gadm"`.
-#' @param union Logical. If TRUE, merges all matching polygons into one.
+#' @param rds Logical. If TRUE, save the returned object as an `.rds` file in
+#'   `data/proc`. Default TRUE.
 #' @param verbose Logical. Print progress messages. Default TRUE.
 #'
 #' @return An `sf` polygon layer (EPSG:4326).
@@ -24,19 +25,20 @@
 #' # 2) Barcelona province (level 2)
 #' barca <- get_gadm_data("ESP", level = 2, name = "Barcelona")
 #'
-#' # 3) Multiple provinces, merged
-#' cat <- get_gadm_data("ESP", level = 2, name = c("Barcelona", "Girona"), union = TRUE)
+#' # 3) Multiple provinces without writing an RDS
+#' cat <- get_gadm_data("ESP", level = 2, name = c("Barcelona", "Girona"), rds = FALSE)
 #' }
 #'
 #' @importFrom geodata gadm
-#' @importFrom sf st_as_sf st_make_valid st_is_empty st_union st_transform
+#' @importFrom sf st_as_sf st_make_valid st_is_empty st_transform
+#' @importFrom readr write_rds
 #' @export
 get_gadm_data <- function(
   iso3,
   level,
   name    = NULL,
   path    = "data/gadm",
-  union   = FALSE,
+  rds     = TRUE,
   verbose = TRUE
 ) {
   stopifnot(is.character(iso3), nchar(iso3) == 3)
@@ -73,11 +75,28 @@ get_gadm_data <- function(
       message(sprintf("Matched %d polygon(s) for %s.", nrow(g), paste(name, collapse = ", ")))
   }
 
-  # Optional union
-  if (isTRUE(union)) {
-    if (verbose) message("Merging polygons...")
-    g <- sf::st_union(g)
-    g <- sf::st_as_sf(g)
+  if (isTRUE(rds)) {
+    proc_dir <- file.path("data", "proc")
+    dir.create(proc_dir, recursive = TRUE, showWarnings = FALSE)
+
+    sanitize <- function(x) {
+      x <- gsub("[^A-Za-z0-9]+", "-", tolower(x))
+      x[nzchar(x)]
+    }
+
+    name_suffix <- ""
+    if (!is.null(name) && length(name)) {
+      clean_names <- sanitize(name)
+      if (length(clean_names)) {
+        name_suffix <- paste0("_", paste(clean_names, collapse = "-"))
+      }
+    }
+
+    file_stem <- paste0("map_", tolower(iso3), "_", level, name_suffix, "_adm.rds")
+    output_path <- file.path(proc_dir, file_stem)
+
+    readr::write_rds(g, output_path)
+    if (verbose) message("Saved RDS to ", output_path)
   }
 
   return(g)
