@@ -98,8 +98,8 @@ get_elevation_data <- function(country,
     )
     output_path <- file.path(proc_dir, file_stem)
 
-    readr::write_rds(list(dem = dem, boundary = sel_sf), output_path)
-    message("Saved DEM RDS to ", output_path)
+  readr::write_rds(dem, output_path)
+  message("Saved DEM RDS to ", output_path)
   }
 
   dem
