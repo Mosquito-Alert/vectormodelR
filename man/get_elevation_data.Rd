@@ -10,7 +10,7 @@ get_elevation_data(
   name_value = NULL,
   z = 11,
   path = "data/gadm",
-  rds = TRUE,
+  write_tif = TRUE,
   proc_dir = "data/proc"
 )
 }
@@ -27,10 +27,10 @@ NAME column). If \code{NULL}, the full level is used.}
 
 \item{path}{Directory to cache GADM files. Default: "data/".}
 
-\item{rds}{Logical. If TRUE (default), write the DEM to
-\verb{data/proc/spatial_<iso3>_<level>[_name]_elevation.rds}.}
+\item{write_tif}{Logical. If TRUE (default), write the DEM to
+\verb{data/proc/spatial_<iso3>_<level>[_name]_elevation.tif} as a GeoTIFF.}
 
-\item{proc_dir}{Directory to store the DEM when \code{rds = TRUE}. Default: "data/proc".}
+\item{proc_dir}{Directory to store the DEM when \code{write_tif = TRUE}. Default: "data/proc".}
 }
 \value{
 A \code{terra::SpatRaster} DEM clipped to the selected admin unit or country.

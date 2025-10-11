@@ -11,16 +11,15 @@
 #'                   NAME column). If \code{NULL}, the full level is used.
 #' @param z Integer zoom for \code{elevatr::get_elev_raster()} (11 ≈ ~30 m). Default: 11.
 #' @param path Directory to cache GADM files. Default: "data/".
-#' @param rds Logical. If TRUE (default), write the DEM to
-#'   `data/proc/spatial_<iso3>_<level>[_name]_elevation.rds`.
-#' @param proc_dir Directory to store the DEM when `rds = TRUE`. Default: "data/proc".
+#' @param write_tif Logical. If TRUE (default), write the DEM to
+#'   `data/proc/spatial_<iso3>_<level>[_name]_elevation.tif` as a GeoTIFF.
+#' @param proc_dir Directory to store the DEM when `write_tif = TRUE`. Default: "data/proc".
 #'
 #' @return A \code{terra::SpatRaster} DEM clipped to the selected admin unit or country.
 #' @importFrom geodata gadm
 #' @importFrom sf st_as_sf st_crs st_transform
 #' @importFrom elevatr get_elev_raster
-#' @importFrom terra rast
-#' @importFrom readr write_rds
+#' @importFrom terra rast writeRaster
 #' @export
 #' @examples
 #' \dontrun{
@@ -34,7 +33,7 @@ get_elevation_data <- function(country,
                                name_value = NULL,
                                z = 11,
                                path = "data/gadm",
-                               rds = TRUE,
+                               write_tif = TRUE,
                                proc_dir = "data/proc") {
   # deps
   if (!requireNamespace("geodata", quietly = TRUE)) stop("Install 'geodata'.")
@@ -72,7 +71,7 @@ get_elevation_data <- function(country,
   dem_r <- elevatr::get_elev_raster(loc = sel_sf, z = z, clip = "locations")
   dem <- terra::rast(dem_r)
 
-  if (isTRUE(rds)) {
+  if (isTRUE(write_tif)) {
     dir.create(proc_dir, recursive = TRUE, showWarnings = FALSE)
 
     sanitize <- function(x) {
@@ -94,12 +93,12 @@ get_elevation_data <- function(country,
       "_",
       level,
       name_suffix,
-      "_elevation.rds"
+      "_elevation.tif"
     )
     output_path <- file.path(proc_dir, file_stem)
 
-  readr::write_rds(dem, output_path)
-  message("Saved DEM RDS to ", output_path)
+    terra::writeRaster(dem, output_path, overwrite = TRUE)
+    message("Saved DEM GeoTIFF to ", output_path)
   }
 
   dem
