@@ -45,7 +45,7 @@
 #' @examples
 #' \dontrun{
 #' # Barcelona province
-#' transform_era5_data(
+#' process_era5_data(
 #'   iso3 = "ESP",
 #'   admin_level = 2,
 #'   admin_name = "Barcelona",
@@ -54,7 +54,7 @@
 #' )
 #'
 #' # Catalonia region (level 1)
-#' transform_era5_data(
+#' process_era5_data(
 #'   iso3 = "ESP",
 #'   admin_level = 1,
 #'   admin_name = "Cataluña",
@@ -63,7 +63,7 @@
 #' )
 #'
 #' # Stricter calm wind threshold (4 km/h)
-#' transform_era5_data(
+#' process_era5_data(
 #'   iso3 = "ESP",
 #'   admin_level = 2,
 #'   admin_name = "Barcelona",
@@ -72,7 +72,7 @@
 #'   wind_calm_kmh = 4
 #' )
 #' }
-transform_era5_data <- function(
+process_era5_data <- function(
   processed_dir,
   iso3,
   admin_level,

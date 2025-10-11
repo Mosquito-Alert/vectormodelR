@@ -33,7 +33,7 @@ build_tigacell_grid(
 \item{id_precision}{Decimal places for the corner coords in TigacellID. Default 3.}
 
 \item{rds}{Logical. If TRUE (default), write the grid to
-\verb{data/proc/map_iso3_level[_admin]_grid.rds}.}
+\verb{data/proc/spatial_iso3_level[_admin]_grid.rds}.}
 
 \item{as_sp}{If TRUE, return a SpatialPolygonsDataFrame (sp). Otherwise sf (default).}
 

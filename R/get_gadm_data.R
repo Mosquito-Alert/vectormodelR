@@ -98,7 +98,7 @@ get_gadm_data <- function(
   }
 
   if (isTRUE(perimeter)) {
-    perim_filename <- paste0("map_", tolower(iso3), "_", level, name_suffix, "_perimeter.rds")
+    perim_filename <- paste0("spatial_", tolower(iso3), "_", level, name_suffix, "_perimeter.rds")
     get_adm_perimeter(
       sf_obj = g,
       output_filename = perim_filename,
@@ -112,7 +112,7 @@ get_gadm_data <- function(
     proc_dir <- file.path("data", "proc")
     dir.create(proc_dir, recursive = TRUE, showWarnings = FALSE)
 
-    file_stem <- paste0("map_", tolower(iso3), "_", level, name_suffix, "_adm.rds")
+    file_stem <- paste0("spatial_", tolower(iso3), "_", level, name_suffix, "_adm.rds")
     output_path <- file.path(proc_dir, file_stem)
 
     readr::write_rds(g, output_path)

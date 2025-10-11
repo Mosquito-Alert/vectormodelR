@@ -9,7 +9,7 @@
 #' @param id_precision Decimal places for the corner coords in TigacellID. Default 3.
 #' @param as_sp       If TRUE, return a SpatialPolygonsDataFrame (sp). Otherwise sf (default).
 #' @param rds         Logical. If TRUE (default), write the grid to
-#'   `data/proc/map_iso3_level[_admin]_grid.rds`.
+#'   `data/proc/spatial_iso3_level[_admin]_grid.rds`.
 #' @param quiet       Suppress messages.
 #'
 #' @return An sf (or sp) polygon grid with column `TigacellID`.
@@ -99,7 +99,7 @@ build_tigacell_grid <- function(
     }
 
     grid_filename <- paste0(
-      "map_",
+      "spatial_",
       tolower(iso3),
       "_",
       gadm_level,
