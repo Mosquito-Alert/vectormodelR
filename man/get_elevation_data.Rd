@@ -9,7 +9,9 @@ get_elevation_data(
   level = 2,
   name_value = NULL,
   z = 11,
-  path = "data/"
+  path = "data/gadm",
+  rds = TRUE,
+  proc_dir = "data/proc"
 )
 }
 \arguments{
@@ -24,6 +26,11 @@ NAME column). If \code{NULL}, the full level is used.}
 \item{z}{Integer zoom for \code{elevatr::get_elev_raster()} (11 ≈ ~30 m). Default: 11.}
 
 \item{path}{Directory to cache GADM files. Default: "data/".}
+
+\item{rds}{Logical. If TRUE (default), write the DEM to
+\verb{data/proc/spatial_<iso3>_<level>[_name]_elevation.rds}.}
+
+\item{proc_dir}{Directory to store the DEM when \code{rds = TRUE}. Default: "data/proc".}
 }
 \value{
 A \code{terra::SpatRaster} DEM clipped to the selected admin unit or country.

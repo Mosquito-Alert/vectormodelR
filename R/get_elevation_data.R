@@ -11,12 +11,16 @@
 #'                   NAME column). If \code{NULL}, the full level is used.
 #' @param z Integer zoom for \code{elevatr::get_elev_raster()} (11 ≈ ~30 m). Default: 11.
 #' @param path Directory to cache GADM files. Default: "data/".
+#' @param rds Logical. If TRUE (default), write the DEM to
+#'   `data/proc/spatial_<iso3>_<level>[_name]_elevation.rds`.
+#' @param proc_dir Directory to store the DEM when `rds = TRUE`. Default: "data/proc".
 #'
 #' @return A \code{terra::SpatRaster} DEM clipped to the selected admin unit or country.
 #' @importFrom geodata gadm
 #' @importFrom sf st_as_sf st_crs st_transform
 #' @importFrom elevatr get_elev_raster
 #' @importFrom terra rast
+#' @importFrom readr write_rds
 #' @export
 #' @examples
 #' \dontrun{
@@ -29,7 +33,9 @@ get_elevation_data <- function(country,
                                level = 2,
                                name_value = NULL,
                                z = 11,
-                               path = "data/") {
+                               path = "data/gadm",
+                               rds = TRUE,
+                               proc_dir = "data/proc") {
   # deps
   if (!requireNamespace("geodata", quietly = TRUE)) stop("Install 'geodata'.")
   if (!requireNamespace("sf",      quietly = TRUE)) stop("Install 'sf'.")
@@ -64,5 +70,37 @@ get_elevation_data <- function(country,
 
   # 3) Fetch DEM
   dem_r <- elevatr::get_elev_raster(loc = sel_sf, z = z, clip = "locations")
-  terra::rast(dem_r)
+  dem <- terra::rast(dem_r)
+
+  if (isTRUE(rds)) {
+    dir.create(proc_dir, recursive = TRUE, showWarnings = FALSE)
+
+    sanitize <- function(x) {
+      x <- gsub("[^A-Za-z0-9]+", "-", tolower(x))
+      x[nzchar(x)]
+    }
+
+    name_suffix <- ""
+    if (!is.null(name_value) && length(name_value)) {
+      clean_names <- sanitize(name_value)
+      if (length(clean_names)) {
+        name_suffix <- paste0("_", paste(clean_names, collapse = "-"))
+      }
+    }
+
+    file_stem <- paste0(
+      "spatial_",
+      tolower(country),
+      "_",
+      level,
+      name_suffix,
+      "_elevation.rds"
+    )
+    output_path <- file.path(proc_dir, file_stem)
+
+    readr::write_rds(list(dem = dem, boundary = sel_sf), output_path)
+    message("Saved DEM RDS to ", output_path)
+  }
+
+  dem
 }
