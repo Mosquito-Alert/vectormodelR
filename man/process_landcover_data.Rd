@@ -7,9 +7,7 @@
 process_landcover_data(
   landcover,
   boundary,
-  dissolve = FALSE,
-  class_lookup = NULL,
-  write_rds = FALSE,
+  write_raster = TRUE,
   output_filename = NULL,
   proc_dir = "data/proc",
   verbose = TRUE
@@ -21,34 +19,26 @@ process_landcover_data(
 \item{boundary}{An \code{sf} polygon layer (e.g., the output of
 \code{\link[=get_gadm_data]{get_gadm_data()}}) defining the target administrative unit.}
 
-\item{dissolve}{Logical. Passed to \code{\link[terra:as.polygons]{terra::as.polygons()}} to control whether
-adjacent pixels of the same class should be merged. Default \code{FALSE} to
-preserve the original pixel grid.}
+\item{write_raster}{Logical. If \code{TRUE}, write the masked raster using
+\code{\link[terra:writeRaster]{terra::writeRaster()}}.}
 
-\item{class_lookup}{Optional named character vector mapping land-cover codes
-(e.g., ESA WorldCover codes) to descriptive labels. When \code{NULL}, a default
-lookup based on ESA WorldCover 2021 is used.}
+\item{output_filename}{Optional file name for the raster output. If \code{NULL}
+and \code{landcover} is supplied as a file path, the base name of the raster is
+reused with \code{"_processed.tif"} appended. Otherwise defaults to
+\code{"landcover_processed.tif"}.}
 
-\item{write_rds}{Logical. If \code{TRUE}, write the processed layer as an RDS file.}
-
-\item{output_filename}{Optional file name for the RDS output. If \code{NULL} and
-\code{landcover} is supplied as a file path, the base name of the raster is
-reused with \code{"_processed.rds"} appended. Otherwise defaults to
-\code{"landcover_processed.rds"}.}
-
-\item{proc_dir}{Directory used when \code{write_rds = TRUE}. Defaults to
+\item{proc_dir}{Directory used when \code{write_raster = TRUE}. Defaults to
 \code{"data/proc"}.}
 
 \item{verbose}{Logical. If \code{TRUE}, prints progress messages.}
 }
 \value{
-An \code{sf} polygon layer with columns \code{class_code} and \code{class_name}
-describing the land-cover class of each polygon.
+A \code{terra::SpatRaster} representing the cropped and masked land-cover
+layer.
 }
 \description{
 This helper loads a land-cover raster (e.g., ESA WorldCover GeoTIFF), crops it
 to the extent of a GADM administrative boundary, masks pixels outside the
-boundary, converts the result to polygons, assigns descriptive land-cover
-labels, and returns an \code{sf} object. Optionally, the processed layer can be
-saved to disk as an RDS file.
+boundary, and returns the masked \code{terra::SpatRaster}. Optionally, the masked
+layer can be written to disk via \code{\link[terra:writeRaster]{terra::writeRaster()}}.
 }
