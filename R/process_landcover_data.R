@@ -2,8 +2,9 @@
 #'
 #' This helper loads a land-cover raster (e.g., ESA WorldCover GeoTIFF), crops it
 #' to the extent of a GADM administrative boundary, masks pixels outside the
-#' boundary, and returns the masked `terra::SpatRaster`. Optionally, the masked
-#' layer can be written to disk via [terra::writeRaster()].
+#' boundary, attaches an ESA WorldCover attribute table, and returns the masked
+#' `terra::SpatRaster`. Optionally, the masked layer can be written to disk via
+#' [terra::writeRaster()].
 #'
 #' @param landcover A `terra::SpatRaster` or path to a land-cover raster file.
 #' @param boundary An `sf` polygon layer (e.g., the output of
@@ -20,8 +21,11 @@
 #'   `"INT1U"`, which preserves the categorical land-cover codes.
 #' @param verbose Logical. If `TRUE`, prints progress messages.
 #'
-#' @return A `terra::SpatRaster` representing the cropped and masked land-cover
-#'   layer.
+#' @return A list containing:
+#'   * `mask`: the cropped/masked `terra::SpatRaster` with an attached attribute
+#'     table mapping class codes to names.
+#'   * `legend`: a tibble with `class_code`, `class_name`, and `color`
+#'     associations for plotting convenience.
 #' @export
 #' @importFrom terra rast crop mask writeRaster
 #' @importFrom sf st_transform
@@ -62,6 +66,22 @@ process_landcover_data <- function(
   if (isTRUE(verbose)) message("Masking raster to boundary ...")
   lc_masked <- terra::mask(lc_crop, boundary_aligned)
 
+  worldcover_codes <- c(10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 100)
+  worldcover_classes <- c(
+    "Tree cover", "Shrubland", "Grassland", "Cropland", "Built-up",
+    "Bare/sparse", "Snow/ice", "Water", "Herbaceous wetland",
+    "Mangroves", "Moss/lichen"
+  )
+  worldcover_colors <- c(
+    "#006400", "#ffbb22", "#ffff4c", "#f096ff", "#fa0000",
+    "#b4b4b4", "#f0f0f0", "#0064c8", "#0096a0", "#00cf75", "#fae6a0"
+  )
+
+  terra::levels(lc_masked) <- data.frame(
+    ID = worldcover_codes,
+    class = worldcover_classes
+  )
+
   if (isTRUE(write_raster)) {
     dir.create(proc_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -87,5 +107,12 @@ process_landcover_data <- function(
     if (isTRUE(verbose)) message("Saved masked land-cover raster to ", output_path)
   }
 
-  lc_masked
+  list(
+    mask = lc_masked,
+    legend = tibble::tibble(
+      class_code = worldcover_codes,
+      class_name = worldcover_classes,
+      color = worldcover_colors
+    )
+  )
 }

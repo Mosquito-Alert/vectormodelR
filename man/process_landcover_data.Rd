@@ -37,12 +37,18 @@ reused with \code{"_processed.tif"} appended. Otherwise defaults to
 \item{verbose}{Logical. If \code{TRUE}, prints progress messages.}
 }
 \value{
-A \code{terra::SpatRaster} representing the cropped and masked land-cover
-layer.
+A list containing:
+\itemize{
+\item \code{mask}: the cropped/masked \code{terra::SpatRaster} with an attached attribute
+table mapping class codes to names.
+\item \code{legend}: a tibble with \code{class_code}, \code{class_name}, and \code{color}
+associations for plotting convenience.
+}
 }
 \description{
 This helper loads a land-cover raster (e.g., ESA WorldCover GeoTIFF), crops it
 to the extent of a GADM administrative boundary, masks pixels outside the
-boundary, and returns the masked \code{terra::SpatRaster}. Optionally, the masked
-layer can be written to disk via \code{\link[terra:writeRaster]{terra::writeRaster()}}.
+boundary, attaches an ESA WorldCover attribute table, and returns the masked
+\code{terra::SpatRaster}. Optionally, the masked layer can be written to disk via
+\code{\link[terra:writeRaster]{terra::writeRaster()}}.
 }
