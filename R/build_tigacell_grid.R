@@ -98,18 +98,23 @@ build_tigacell_grid <- function(
       }
     }
 
-    grid_filename <- paste0(
+    base_filename <- paste0(
       "spatial_",
       tolower(iso3),
       "_",
       gadm_level,
-      name_suffix,
-      "_grid.rds"
+      name_suffix
     )
-    grid_path <- file.path(proc_dir, grid_filename)
 
+    grid_filename <- paste0(base_filename, "_grid.rds")
+    grid_path <- file.path(proc_dir, grid_filename)
     readr::write_rds(grid, grid_path)
     msg("Saved grid RDS to %s", grid_path)
+
+    cells_filename <- paste0(base_filename, "_cells.rds")
+    cells_path <- file.path(proc_dir, cells_filename)
+    readr::write_rds(grid$TigacellID, cells_path)
+    msg("Saved TigacellID vector to %s", cells_path)
   }
 
   if (as_sp) {
