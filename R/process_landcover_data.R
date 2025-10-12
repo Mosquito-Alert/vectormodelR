@@ -21,13 +21,10 @@
 #'   `"INT1U"`, which preserves the categorical land-cover codes.
 #' @param verbose Logical. If `TRUE`, prints progress messages.
 #'
-#' @return A list containing:
-#'   * `mask`: the cropped/masked `terra::SpatRaster` with an attached attribute
-#'     table mapping class codes to names.
-#'   * `legend`: a tibble with `class_code`, `class_name`, and `color`
-#'     associations for plotting convenience.
+#' @return A `terra::SpatRaster` representing the cropped and masked land-cover
+#'   layer with ESA WorldCover class metadata attached via `levels()`.
 #' @export
-#' @importFrom terra rast crop mask writeRaster
+#' @importFrom terra rast crop mask writeRaster set.cats
 #' @importFrom sf st_transform
 process_landcover_data <- function(
   landcover,
@@ -66,21 +63,32 @@ process_landcover_data <- function(
   if (isTRUE(verbose)) message("Masking raster to boundary ...")
   lc_masked <- terra::mask(lc_crop, boundary_aligned)
 
-  worldcover_codes <- c(10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 100)
+  worldcover_codes <- c(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 100)
   worldcover_classes <- c(
-    "Tree cover", "Shrubland", "Grassland", "Cropland", "Built-up",
-    "Bare/sparse", "Snow/ice", "Water", "Herbaceous wetland",
-    "Mangroves", "Moss/lichen"
-  )
-  worldcover_colors <- c(
-    "#006400", "#ffbb22", "#ffff4c", "#f096ff", "#fa0000",
-    "#b4b4b4", "#f0f0f0", "#0064c8", "#0096a0", "#00cf75", "#fae6a0"
+    "No data", "Tree cover", "Shrubland", "Grassland", "Cropland",
+    "Built-up", "Bare/sparse", "Snow/ice", "Water",
+    "Herbaceous wetland", "Mangroves", "Moss/lichen"
   )
 
-  terra::levels(lc_masked) <- data.frame(
-    ID = worldcover_codes,
-    class = worldcover_classes
+  observed <- unique(terra::values(lc_masked))
+  observed <- observed[!is.na(observed)]
+
+  unexpected_codes <- setdiff(observed, worldcover_codes)
+  if (length(unexpected_codes) > 0 && isTRUE(verbose)) {
+    warning(
+      "Land-cover raster contains codes not in WorldCover lookup: ",
+      paste(unexpected_codes, collapse = ", ")
+    )
+  }
+
+  cats_df <- data.frame(
+    ID = worldcover_codes[worldcover_codes %in% observed],
+    class = worldcover_classes[worldcover_codes %in% observed]
   )
+
+  if (nrow(cats_df) > 0) {
+    terra::set.cats(lc_masked, cats_df, layer = 1)
+  }
 
   if (isTRUE(write_raster)) {
     dir.create(proc_dir, recursive = TRUE, showWarnings = FALSE)
@@ -107,12 +115,5 @@ process_landcover_data <- function(
     if (isTRUE(verbose)) message("Saved masked land-cover raster to ", output_path)
   }
 
-  list(
-    mask = lc_masked,
-    legend = tibble::tibble(
-      class_code = worldcover_codes,
-      class_name = worldcover_classes,
-      color = worldcover_colors
-    )
-  )
+  lc_masked
 }

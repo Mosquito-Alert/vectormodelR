@@ -37,13 +37,8 @@ reused with \code{"_processed.tif"} appended. Otherwise defaults to
 \item{verbose}{Logical. If \code{TRUE}, prints progress messages.}
 }
 \value{
-A list containing:
-\itemize{
-\item \code{mask}: the cropped/masked \code{terra::SpatRaster} with an attached attribute
-table mapping class codes to names.
-\item \code{legend}: a tibble with \code{class_code}, \code{class_name}, and \code{color}
-associations for plotting convenience.
-}
+A \code{terra::SpatRaster} representing the cropped and masked land-cover
+layer with ESA WorldCover class metadata attached via \code{levels()}.
 }
 \description{
 This helper loads a land-cover raster (e.g., ESA WorldCover GeoTIFF), crops it
