@@ -16,6 +16,8 @@
 #'   `"landcover_processed.tif"`.
 #' @param proc_dir Directory used when `write_raster = TRUE`. Defaults to
 #'   `"data/proc"`.
+#' @param datatype GDAL datatype passed to [terra::writeRaster()]. Defaults to
+#'   `"INT1U"`, which preserves the categorical land-cover codes.
 #' @param verbose Logical. If `TRUE`, prints progress messages.
 #'
 #' @return A `terra::SpatRaster` representing the cropped and masked land-cover
@@ -29,6 +31,7 @@ process_landcover_data <- function(
   write_raster = TRUE,
   output_filename = NULL,
   proc_dir = "data/proc",
+  datatype = "INT1U",
   verbose = TRUE
 ) {
   if (!inherits(boundary, "sf")) {
@@ -76,7 +79,11 @@ process_landcover_data <- function(
     }
 
     output_path <- file.path(proc_dir, output_filename)
-    terra::writeRaster(lc_masked, output_path, overwrite = TRUE)
+    if (is.null(datatype)) {
+      terra::writeRaster(lc_masked, output_path, overwrite = TRUE)
+    } else {
+      terra::writeRaster(lc_masked, output_path, datatype = datatype, overwrite = TRUE)
+    }
     if (isTRUE(verbose)) message("Saved masked land-cover raster to ", output_path)
   }
 

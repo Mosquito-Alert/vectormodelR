@@ -10,6 +10,7 @@ process_landcover_data(
   write_raster = TRUE,
   output_filename = NULL,
   proc_dir = "data/proc",
+  datatype = "INT1U",
   verbose = TRUE
 )
 }
@@ -29,6 +30,9 @@ reused with \code{"_processed.tif"} appended. Otherwise defaults to
 
 \item{proc_dir}{Directory used when \code{write_raster = TRUE}. Defaults to
 \code{"data/proc"}.}
+
+\item{datatype}{GDAL datatype passed to \code{\link[terra:writeRaster]{terra::writeRaster()}}. Defaults to
+\code{"INT1U"}, which preserves the categorical land-cover codes.}
 
 \item{verbose}{Logical. If \code{TRUE}, prints progress messages.}
 }
