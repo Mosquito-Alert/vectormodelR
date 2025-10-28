@@ -19,9 +19,6 @@
 #' @param verbose Logical. If TRUE, prints progress messages. Default TRUE.
 #' @param attach_to_global Logical. If TRUE, assigns output data.frames to .GlobalEnv
 #'   with names based on the file prefix (e.g., `weather_esp_lvl2_barcelona_daily`). Default FALSE.
-#' @param aggregate_to Character. Either "region" (default) to average across the
-#'   unioned admin geometry or "cell" to keep a separate time series for each
-#'   ERA5 grid cell intersecting the polygon.
 #'
 #' @return (Invisibly) a list with: `daily`, `lags_7d`, `lags_14d`, `lags_30d`,
 #'   `lags_21d_lag7`, `ppt_lags`, and `paths` (written file paths).
@@ -86,13 +83,10 @@ process_era5_data <- function(
   wind_calm_kmh = 6,
   round_ll = 3,
   verbose  = TRUE,
-  attach_to_global = FALSE,
-  aggregate_to = c("region", "cell")
+  attach_to_global = FALSE
 ) {
   .say  <- function(...) if (isTRUE(verbose)) message(sprintf(...))
   .fmtI <- function(x) format(as.integer(x), big.mark = ",", scientific = FALSE)
-
-  aggregate_to <- match.arg(aggregate_to)
 
   # ---- deps & args ----
   stopifnot(dir.exists(path.expand(processed_dir)))
@@ -217,81 +211,45 @@ process_era5_data <- function(
 
   wide_small <- wide[, .(lon, lat, time, t2m_C, d2m_C, RH, ws10, ppt_mm)]
 
-  if (aggregate_to == "region") {
-    # ---- hourly area aggregate ----
-    .say("Aggregating to hourly area means ...")
-    hourly <- wide_small[
-      ,
-      .(
-        TM    = mean(t2m_C, na.rm = TRUE),
-        HRM   = mean(RH,    na.rm = TRUE),
-        VVM10 = mean(ws10,  na.rm = TRUE),
-        PPT   = sum(ppt_mm, na.rm = TRUE)
-      ),
-      by = .(time)
-    ]
-  } else {
-    .say("Keeping hourly values per grid cell ...")
-    hourly <- wide_small[
-      ,
-      .(
-        TM    = t2m_C,
-        HRM   = RH,
-        VVM10 = ws10,
-        PPT   = ppt_mm
-      ),
-      by = .(lon, lat, time)
-    ]
-  }
+  # ---- hourly area aggregate ----
+  .say("Aggregating to hourly area means ...")
+  hourly <- wide_small[
+    ,
+    .(
+      TM    = mean(t2m_C, na.rm = TRUE),
+      HRM   = mean(RH,    na.rm = TRUE),
+      VVM10 = mean(ws10,  na.rm = TRUE),
+      PPT   = sum(ppt_mm, na.rm = TRUE)
+    ),
+    by = .(time)
+  ]
   hourly[, date := as.Date(time, tz = "UTC")]
   .say("Hourly table: %s rows.", .fmtI(nrow(hourly)))
 
   # ---- daily summaries ----
   .say("Aggregating to daily summaries ...")
-  if (aggregate_to == "region") {
-    daily <- hourly[
-      ,
-      .(
-        meanTM    = mean(TM,    na.rm = TRUE),
-        maxTX     = max(TM,     na.rm = TRUE),
-        minTX     = min(TM,     na.rm = TRUE),
+  daily <- hourly[
+    ,
+    .(
+      meanTM    = mean(TM,    na.rm = TRUE),
+      maxTM     = max(TM,     na.rm = TRUE),
+      minTM     = min(TM,     na.rm = TRUE),
+      maxTX     = max(TM,     na.rm = TRUE),
+      minTX     = min(TM,     na.rm = TRUE),
 
-        meanHRM   = mean(HRM,   na.rm = TRUE),
-        maxHRM    = max(HRM,    na.rm = TRUE),
-        minHRM    = min(HRM,    na.rm = TRUE),
+      meanHRM   = mean(HRM,   na.rm = TRUE),
+      maxHRM    = max(HRM,    na.rm = TRUE),
+      minHRM    = min(HRM,    na.rm = TRUE),
 
-        meanVVM10 = mean(VVM10, na.rm = TRUE),
-        maxVVX10  = max(VVM10,  na.rm = TRUE),
-        minVVX10  = min(VVM10,  na.rm = TRUE),
+      meanVVM10 = mean(VVM10, na.rm = TRUE),
+      maxVVX10  = max(VVM10,  na.rm = TRUE),
+      minVVX10  = min(VVM10,  na.rm = TRUE),
 
-        meanPPT24H = sum(PPT,   na.rm = TRUE)
-      ),
-      by = .(date)
-    ][order(date)]
-  } else {
-    daily <- hourly[
-      ,
-      .(
-        meanTM    = mean(TM,    na.rm = TRUE),
-        maxTX     = max(TM,     na.rm = TRUE),
-        minTX     = min(TM,     na.rm = TRUE),
-
-        meanHRM   = mean(HRM,   na.rm = TRUE),
-        maxHRM    = max(HRM,    na.rm = TRUE),
-        minHRM    = min(HRM,    na.rm = TRUE),
-
-        meanVVM10 = mean(VVM10, na.rm = TRUE),
-        maxVVX10  = max(VVM10,  na.rm = TRUE),
-        minVVX10  = min(VVM10,  na.rm = TRUE),
-
-        meanPPT24H = sum(PPT,   na.rm = TRUE)
-      ),
-      by = .(lon, lat, date)
-    ][order(lon, lat, date)]
-  }
+      meanPPT24H = sum(PPT,   na.rm = TRUE)
+    ),
+    by = .(date)
+  ][order(date)]
   .say("Daily table: %s rows.", .fmtI(nrow(daily)))
-
-  group_cols <- if (aggregate_to == "cell") c("lon", "lat") else character(0)
 
   # ---- MWI logic ----
   .say("Computing MWI indices (calm threshold = %.2f km/h) ...", wind_calm_kmh)
@@ -336,27 +294,19 @@ process_era5_data <- function(
 
   # ---- rolling windows helper ----
   .say("Computing rolling windows (7, 14, 21(+lag7), 30 days) ...")
-  mk_roll <- function(dt, n, suffix, group_cols) {
+  mk_roll <- function(dt, n, suffix) {
     long <- dt |>
-      tidyr::pivot_longer(cols = c("meanTM", "meanHRM", "meanVVM10", "meanPPT24H"),
-                          names_to = "weather_type", values_to = "val")
-
-    if (length(group_cols)) {
-      long <- long |>
-        dplyr::group_by(dplyr::across(dplyr::all_of(group_cols)), weather_type)
-    } else {
-      long <- long |>
-        dplyr::group_by(weather_type)
-    }
-
-    long <- long |>
+      tidyr::pivot_longer(cols = -date, names_to = "weather_type", values_to = "val") |>
+      dplyr::group_by(weather_type) |>
       dplyr::arrange(date, .by_group = TRUE) |>
       dplyr::mutate(roll = RcppRoll::roll_mean(val, n = n, align = "right", fill = NA, na.rm = TRUE)) |>
       dplyr::ungroup() |>
+      dplyr::select(date, weather_type, roll) |>
       tidyr::pivot_wider(names_from = weather_type, values_from = roll)
 
-    long <- long |>
-      dplyr::mutate(
+    out <- long |>
+      dplyr::transmute(
+        date,
         FW  = as.integer(meanVVM10 <= calm_ms),
         FH  = dplyr::case_when(
           meanHRM < 40 ~ 0,
@@ -370,66 +320,36 @@ process_era5_data <- function(
           meanTM > 20 & meanTM <= 25 ~ 1,
           meanTM > 25 & meanTM <= 30 ~ -0.2*meanTM + 6
         ),
+        minTM = minTM,
+        maxTM = maxTM,
         mwi = FW*FH*FT,
         PPT = meanPPT24H
       )
 
-    rename_cols <- setdiff(names(long), c(group_cols, "date"))
-    names(long)[match(rename_cols, names(long))] <- paste0(rename_cols, suffix)
-    long
+    names(out)[names(out) != "date"] <- paste0(names(out)[names(out) != "date"], suffix)
+    out
   }
 
-  base_cols <- c(group_cols, "date", "meanTM", "meanHRM", "meanVVM10", "meanPPT24H")
-  sel <- daily[, ..base_cols]
-  lags_7d   <- mk_roll(sel,  7, "7",  group_cols)
-  lags_14d  <- mk_roll(sel, 14, "14", group_cols)
-  lags_30d  <- mk_roll(sel, 30, "30", group_cols)
-  lags_21d_lag7 <- mk_roll(sel, 21, "21", group_cols) |>
+  sel <- dplyr::select(daily, date, meanTM, maxTM, minTM, meanHRM, meanVVM10, meanPPT24H)
+  lags_7d   <- mk_roll(sel,  7, "7")
+  lags_14d  <- mk_roll(sel, 14, "14")
+  lags_30d  <- mk_roll(sel, 30, "30")
+  lags_21d_lag7 <- mk_roll(sel, 21, "21") |>
     dplyr::mutate(date = date + 7)
 
-  ppt_cols <- c(group_cols, "date", "meanPPT24H")
-  ppt_base <- daily[, ..ppt_cols]
-  if (length(group_cols)) {
-    ppt_lags <- ppt_base |>
-      dplyr::group_by(dplyr::across(dplyr::all_of(group_cols))) |>
-      dplyr::arrange(date, .by_group = TRUE) |>
-      dplyr::mutate(
-        PPT = meanPPT24H,
-        PPT_7d          = RcppRoll::roll_sum(PPT, n = 7,  align = "right", fill = NA, na.rm = TRUE),
-        PPT_30d         = RcppRoll::roll_sum(PPT, n = 30, align = "right", fill = NA, na.rm = TRUE),
-        PPT_7d_8daysago = dplyr::lag(PPT_7d, 8)
-      ) |>
-      dplyr::ungroup()
-  } else {
-    ppt_lags <- ppt_base |>
-      dplyr::arrange(date) |>
-      dplyr::mutate(
-        PPT = meanPPT24H,
-        PPT_7d          = RcppRoll::roll_sum(PPT, n = 7,  align = "right", fill = NA, na.rm = TRUE),
-        PPT_30d         = RcppRoll::roll_sum(PPT, n = 30, align = "right", fill = NA, na.rm = TRUE),
-        PPT_7d_8daysago = dplyr::lag(PPT_7d, 8)
-      )
-  }
-  ppt_lags <- ppt_lags |>
-    dplyr::select(-meanPPT24H, -PPT)
+  ppt_lags <- daily |>
+    dplyr::transmute(date, PPT = meanPPT24H) |>
+    dplyr::arrange(date) |>
+    dplyr::mutate(
+      PPT_7d          = RcppRoll::roll_sum(PPT, n = 7,  align = "right", fill = NA, na.rm = TRUE),
+      PPT_30d         = RcppRoll::roll_sum(PPT, n = 30, align = "right", fill = NA, na.rm = TRUE),
+      PPT_7d_8daysago = dplyr::lag(PPT_7d, 8)
+    ) |>
+    dplyr::select(-PPT)
 
   # ---- write outputs with informative names ----
   sanitize <- function(x) gsub("[^A-Za-z0-9]+", "", tolower(x))
-  admin_label <- if (is.null(admin_name)) "all" else admin_name
-  prefix <- paste0(
-    "weather_",
-    tolower(iso3),
-    "_",
-    "lvl",
-    admin_level,
-    "_",
-    sanitize(admin_label),
-    if (aggregate_to == "cell") "_cells" else ""
-  )
-
-  # ---- write outputs with informative names ----
-  sanitize <- function(x) gsub("[^A-Za-z0-9]+", "", tolower(x))
-  prefix <- paste0("weather_", tolower(iso3), "_", "lvl", admin_level, "_", sanitize(admin_name))
+  prefix <- paste0("weather_", tolower(iso3), "_", admin_level, "_", sanitize(admin_name))
 
   p_daily         <- file.path(out_dir, paste0(prefix, "_daily.Rds"))
   p_lags_7        <- file.path(out_dir, paste0(prefix, "_lags_7d.Rds"))
