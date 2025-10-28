@@ -380,14 +380,15 @@ process_era5_data <- function(
   }
 
   base_cols <- c(group_cols, "date", "meanTM", "meanHRM", "meanVVM10", "meanPPT24H")
-  sel <- daily[, base_cols]
+  sel <- daily[, ..base_cols]
   lags_7d   <- mk_roll(sel,  7, "7",  group_cols)
   lags_14d  <- mk_roll(sel, 14, "14", group_cols)
   lags_30d  <- mk_roll(sel, 30, "30", group_cols)
   lags_21d_lag7 <- mk_roll(sel, 21, "21", group_cols) |>
     dplyr::mutate(date = date + 7)
 
-  ppt_base <- daily[, c(group_cols, "date", "meanPPT24H")]
+  ppt_cols <- c(group_cols, "date", "meanPPT24H")
+  ppt_base <- daily[, ..ppt_cols]
   if (length(group_cols)) {
     ppt_lags <- ppt_base |>
       dplyr::group_by(dplyr::across(dplyr::all_of(group_cols))) |>
