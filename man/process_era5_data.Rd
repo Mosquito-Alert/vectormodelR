@@ -15,7 +15,8 @@ process_era5_data(
   wind_calm_kmh = 6,
   round_ll = 3,
   verbose = TRUE,
-  attach_to_global = FALSE
+  attach_to_global = FALSE,
+  aggregate_to = c("region", "cell")
 )
 }
 \arguments{
@@ -43,6 +44,10 @@ reshaping to wide. Default 3 (≈100–120 m grid at mid-latitudes).}
 
 \item{attach_to_global}{Logical. If TRUE, assigns output data.frames to .GlobalEnv
 with names based on the file prefix (e.g., \code{weather_esp_lvl2_barcelona_daily}). Default FALSE.}
+
+\item{aggregate_to}{Character. Either "region" (default) to average across the
+unioned admin geometry or "cell" to keep a separate time series for each
+ERA5 grid cell intersecting the polygon.}
 }
 \value{
 (Invisibly) a list with: \code{daily}, \code{lags_7d}, \code{lags_14d}, \code{lags_30d},
