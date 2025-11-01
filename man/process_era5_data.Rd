@@ -16,7 +16,7 @@ process_era5_data(
   round_ll = 3,
   verbose = TRUE,
   attach_to_global = FALSE,
-  aggregate_to = c("region", "cell")
+  aggregation_unit = c("region", "cell", "hourly")
 )
 }
 \arguments{
@@ -45,13 +45,15 @@ reshaping to wide. Default 3 (≈100–120 m grid at mid-latitudes).}
 \item{attach_to_global}{Logical. If TRUE, assigns output data.frames to .GlobalEnv
 with names based on the file prefix (e.g., \code{weather_esp_lvl2_barcelona_daily}). Default FALSE.}
 
-\item{aggregate_to}{Character. Either "region" (default) to average across the
-unioned admin geometry or "cell" to keep a separate time series for each
-ERA5 grid cell intersecting the polygon.}
+\item{aggregation_unit}{Character. Choose "region" (default) to produce
+polygon-wide means, "cell" for per-ERA5-cell summaries, or "hourly" to return the
+raw per-cell hourly series without further aggregation.}
 }
 \value{
-(Invisibly) a list with: \code{daily}, \code{lags_7d}, \code{lags_14d}, \code{lags_30d},
-\code{lags_21d_lag7}, \code{ppt_lags}, and \code{paths} (written file paths).
+For \code{aggregation_unit = "region"} or \code{"cell"}, (invisibly) a list with:
+\code{daily}, \code{lags_7d}, \code{lags_14d}, \code{lags_30d}, \code{lags_21d_lag7}, \code{ppt_lags}, and
+\code{paths} (written file paths). For \code{aggregation_unit = "hourly"}, returns a list
+with \code{hourly} (raw per-cell series) and \code{paths}.
 }
 \description{
 Reads monthly CSV.GZ files created by your ERA5 compiler (one file per
@@ -78,7 +80,9 @@ process_era5_data(
   admin_level = 2,
   admin_name = "Barcelona",
   processed_dir = "~/data/weather/grib/processed",
-  out_dir = "data/proc"
+  out_dir = "data/proc",
+  attach_to_global = TRUE,
+  aggregation_unit = "hourly"
 )
 
 # Catalonia region (level 1)
@@ -87,7 +91,8 @@ process_era5_data(
   admin_level = 1,
   admin_name = "Cataluña",
   processed_dir = "~/data/weather/grib/processed",
-  out_dir = "data/weather_catalonia"
+  out_dir = "data/weather_catalonia",
+  aggregation_unit = "region"
 )
 
 # Stricter calm wind threshold (4 km/h)
@@ -96,8 +101,9 @@ process_era5_data(
   admin_level = 2,
   admin_name = "Barcelona",
   processed_dir = "~/data/weather/grib/processed",
-  out_dir = "data/proc_strict",
-  wind_calm_kmh = 4
+  out_dir = "data/proc",
+  wind_calm_kmh = 4,
+  aggregation_unit = "cell"
 )
 }
 }
