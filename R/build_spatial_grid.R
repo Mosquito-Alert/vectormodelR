@@ -72,6 +72,12 @@ build_spatial_grid <- function(
     grid <- sf::st_transform(grid, return_crs)
   }
 
+  sf_col <- attr(grid, "sf_column")
+  if (!is.null(sf_col) && sf_col != "geometry") {
+    names(grid)[names(grid) == sf_col] <- "geometry"
+    attr(grid, "sf_column") <- "geometry"
+  }
+
   if (!is.null(out_rds)) {
     dir.create(dirname(out_rds), recursive = TRUE, showWarnings = FALSE)
     readr::write_rds(grid, out_rds)
