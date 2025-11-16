@@ -137,7 +137,7 @@ initialize_ma_dataset <- function(
         season_end = suppressWarnings(max(.data$sea_days, na.rm = TRUE)),
         .groups = "drop"
       )
-    readr::write_rds(season_bounds, paste0(output_stem, "MA_season_bounds.Rds"))
+    readr::write_rds(season_bounds, paste0(output_stem, "season_bounds.Rds"))
 
     season_bounds_yearly <- season_subset %>%
       dplyr::mutate(year = as.factor(.data$year)) %>%
@@ -147,12 +147,12 @@ initialize_ma_dataset <- function(
         season_end = suppressWarnings(max(.data$sea_days, na.rm = TRUE)),
         .groups = "drop"
       )
-    readr::write_rds(season_bounds_yearly, paste0(output_stem, "MA_season_bounds_yearly.Rds"))
+    readr::write_rds(season_bounds_yearly, paste0(output_stem, "season_bounds_yearly.Rds"))
   } else {
     season_bounds <- tibble::tibble(season_start = NA_real_, season_end = NA_real_)
     season_bounds_yearly <- tibble::tibble(year = factor(), season_start = numeric(), season_end = numeric())
-    readr::write_rds(season_bounds, paste0(output_stem, "MA_season_bounds.Rds"))
-    readr::write_rds(season_bounds_yearly, paste0(output_stem, "MA_season_bounds_yearly.Rds"))
+    readr::write_rds(season_bounds, paste0(output_stem, "season_bounds.Rds"))
+    readr::write_rds(season_bounds_yearly, paste0(output_stem, "season_bounds_yearly.Rds"))
   }
 
   # ---- Clip sampling effort to the admin geometry and capture min SE ----
