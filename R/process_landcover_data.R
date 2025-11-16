@@ -7,14 +7,11 @@
 #' [terra::writeRaster()].
 #'
 #' @param landcover A `terra::SpatRaster` or path to a land-cover raster file.
-#' @param boundary An `sf` polygon layer (e.g., the output of
-#'   [get_gadm_data()]) defining the target administrative unit.
+#' @param iso3 Three-letter ISO3 country code used to locate the boundary file.
+#' @param admin_level Administrative level associated with the boundary.
+#' @param admin_name Administrative unit name used in the file naming scheme.
 #' @param write_raster Logical. If `TRUE`, write the masked raster using
 #'   [terra::writeRaster()].
-#' @param output_filename Optional file name for the raster output. If `NULL`
-#'   and `landcover` is supplied as a file path, the base name of the raster is
-#'   reused with `"_processed.tif"` appended. Otherwise defaults to
-#'   `"landcover_processed.tif"`.
 #' @param proc_dir Directory used when `write_raster = TRUE`. Defaults to
 #'   `"data/proc"`.
 #' @param datatype GDAL datatype passed to [terra::writeRaster()]. Defaults to
@@ -25,19 +22,36 @@
 #'   layer with ESA WorldCover class metadata attached via `levels()`.
 #' @export
 #' @importFrom terra rast crop mask writeRaster set.cats
-#' @importFrom sf st_transform
+#' @importFrom sf st_transform st_make_valid
 process_landcover_data <- function(
   landcover,
-  boundary,
+  iso3,
+  admin_level,
+  admin_name,
   write_raster = TRUE,
-  output_filename = NULL,
   proc_dir = "data/proc",
   datatype = "INT1U",
   verbose = TRUE
 ) {
-  if (!inherits(boundary, "sf")) {
-    stop("`boundary` must be an sf object. Did you call get_gadm_data()?" )
+  ids <- build_location_identifiers(iso3, admin_level, admin_name)
+  location_slug <- ids$slug
+
+  boundary_path <- file.path(proc_dir, paste0("spatial_", location_slug, "_adm.Rds"))
+  if (!file.exists(boundary_path)) {
+    stop(
+      "Boundary file not found at ", boundary_path,
+      ". Generate it first with the spatial grid tooling.",
+      call. = FALSE
+    )
   }
+  if (isTRUE(verbose)) message("Loading boundary from ", boundary_path)
+  boundary <- readRDS(boundary_path)
+
+  if (!inherits(boundary, "sf")) {
+    stop("`boundary` must be an sf object. Did you call get_gadm_data()?", call. = FALSE)
+  }
+
+  boundary <- sf::st_make_valid(boundary)
 
   lc <- if (inherits(landcover, "SpatRaster")) {
     landcover
@@ -93,20 +107,7 @@ process_landcover_data <- function(
   if (isTRUE(write_raster)) {
     dir.create(proc_dir, recursive = TRUE, showWarnings = FALSE)
 
-    if (is.null(output_filename)) {
-      if (is.character(landcover) && length(landcover) == 1) {
-        base_name <- tools::file_path_sans_ext(basename(landcover))
-        output_filename <- paste0(base_name, "_processed.tif")
-      } else {
-        output_filename <- "landcover_processed.tif"
-      }
-    }
-
-    if (!nzchar(output_filename)) {
-      stop("`output_filename` must be a non-empty string when provided.")
-    }
-
-    output_path <- file.path(proc_dir, output_filename)
+    output_path <- file.path(proc_dir, paste0("spatial_", location_slug, "_landcover.tif"))
     if (is.null(datatype)) {
       terra::writeRaster(lc_masked, output_path, overwrite = TRUE)
     } else {

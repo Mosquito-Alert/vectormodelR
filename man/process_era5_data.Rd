@@ -16,7 +16,8 @@ process_era5_data(
   round_ll = 3,
   verbose = TRUE,
   attach_to_global = FALSE,
-  aggregation_unit = c("region", "cell", "hourly")
+  aggregation_unit = c("region", "cell", "hourly"),
+  polygon_buffer_km = 10
 )
 }
 \arguments{
@@ -48,6 +49,9 @@ with names based on the file prefix (e.g., \code{weather_esp_lvl2_barcelona_dail
 \item{aggregation_unit}{Character. Choose "region" (default) to produce
 polygon-wide means, "cell" for per-ERA5-cell summaries, or "hourly" to return the
 raw per-cell hourly series without further aggregation.}
+
+\item{polygon_buffer_km}{Numeric. If no ERA5 centroids fall inside the admin
+polygon, expand it by this distance (kilometers) and retry. Default 10.}
 }
 \value{
 For \code{aggregation_unit = "region"} or \code{"cell"}, (invisibly) a list with:

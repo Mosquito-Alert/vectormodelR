@@ -6,9 +6,10 @@
 \usage{
 process_landcover_data(
   landcover,
-  boundary,
+  iso3,
+  admin_level,
+  admin_name,
   write_raster = TRUE,
-  output_filename = NULL,
   proc_dir = "data/proc",
   datatype = "INT1U",
   verbose = TRUE
@@ -17,16 +18,14 @@ process_landcover_data(
 \arguments{
 \item{landcover}{A \code{terra::SpatRaster} or path to a land-cover raster file.}
 
-\item{boundary}{An \code{sf} polygon layer (e.g., the output of
-\code{\link[=get_gadm_data]{get_gadm_data()}}) defining the target administrative unit.}
+\item{iso3}{Three-letter ISO3 country code used to locate the boundary file.}
+
+\item{admin_level}{Administrative level associated with the boundary.}
+
+\item{admin_name}{Administrative unit name used in the file naming scheme.}
 
 \item{write_raster}{Logical. If \code{TRUE}, write the masked raster using
 \code{\link[terra:writeRaster]{terra::writeRaster()}}.}
-
-\item{output_filename}{Optional file name for the raster output. If \code{NULL}
-and \code{landcover} is supplied as a file path, the base name of the raster is
-reused with \code{"_processed.tif"} appended. Otherwise defaults to
-\code{"landcover_processed.tif"}.}
 
 \item{proc_dir}{Directory used when \code{write_raster = TRUE}. Defaults to
 \code{"data/proc"}.}

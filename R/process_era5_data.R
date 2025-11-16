@@ -22,6 +22,8 @@
 #' @param aggregation_unit Character. Choose "region" (default) to produce
 #'   polygon-wide means, "cell" for per-ERA5-cell summaries, or "hourly" to return the
 #'   raw per-cell hourly series without further aggregation.
+#' @param polygon_buffer_km Numeric. If no ERA5 centroids fall inside the admin
+#'   polygon, expand it by this distance (kilometers) and retry. Default 10.
 #'
 #' @return For `aggregation_unit = "region"` or `"cell"`, (invisibly) a list with:
 #'   `daily`, `lags_7d`, `lags_14d`, `lags_30d`, `lags_21d_lag7`, `ppt_lags`, and
@@ -40,7 +42,7 @@
 #' @import data.table
 #' @importFrom lubridate ymd_hms
 #' @importFrom RcppRoll roll_mean roll_sum
-#' @importFrom sf st_as_sf st_make_valid st_union st_within st_drop_geometry st_bbox
+#' @importFrom sf st_as_sf st_make_valid st_union st_within st_drop_geometry st_bbox st_transform st_buffer
 #' @importFrom geodata gadm
 #' @importFrom tidyr pivot_longer pivot_wider
 #' @importFrom dplyr mutate case_when transmute arrange lag select all_of
@@ -93,7 +95,8 @@ process_era5_data <- function(
   round_ll = 3,
   verbose  = TRUE,
   attach_to_global = FALSE,
-  aggregation_unit = c("region", "cell", "hourly")
+  aggregation_unit = c("region", "cell", "hourly"),
+  polygon_buffer_km = 10
 ) {
   .say  <- function(...) if (isTRUE(verbose)) message(sprintf(...))
   .fmtI <- function(x) format(as.integer(x), big.mark = ",", scientific = FALSE)
@@ -189,11 +192,27 @@ process_era5_data <- function(
   poly <- g |> sf::st_make_valid() |> sf::st_union()
   DT_sf <- sf::st_as_sf(DT, coords = c("longitude","latitude"), crs = 4326, remove = FALSE)
   inside_idx <- lengths(sf::st_within(DT_sf, poly, sparse = TRUE)) > 0
+
+  if (!any(inside_idx) && polygon_buffer_km > 0) {
+    .say("No points inside polygon; buffering by %.1f km and retrying ...", polygon_buffer_km)
+    poly_buffer <- poly |>
+      sf::st_transform(3857) |>
+      sf::st_buffer(polygon_buffer_km * 1000) |>
+      sf::st_transform(4326)
+    inside_idx <- lengths(sf::st_within(DT_sf, poly_buffer, sparse = TRUE)) > 0
+    if (any(inside_idx)) {
+      .say("Buffer captured %s rows inside the polygon.", .fmtI(sum(inside_idx)))
+      poly <- poly_buffer
+    } else {
+      .say("Buffering failed to capture any points.")
+    }
+  }
+
   kept_n <- sum(inside_idx)
   DT_sf <- DT_sf[inside_idx, , drop = FALSE]
   DT <- data.table::as.data.table(sf::st_drop_geometry(DT_sf))
   rm(DT_sf, inside_idx); gc()
-  if (!nrow(DT)) stop("No rows inside the polygon. Check admin unit selection.")
+  if (!nrow(DT)) stop("No rows inside the polygon. Consider raising `polygon_buffer_km` or using a coarser admin level.")
   .say("Points inside polygon: %s rows kept.", .fmtI(kept_n))
 
   # ---- round lon/lat (stabilize keys for dcast) ----
