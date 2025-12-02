@@ -100,6 +100,12 @@ get_era5_data <- function(
   }
   area_str <- paste(as.numeric(bounding_box), collapse = "/") # N/W/S/E
 
+  iso_fragment <- if (!is.null(country_iso3)) {
+    tolower(country_iso3)
+  } else {
+    "bbox"
+  }
+
   # ---- auth: env -> optional persist -> ensure key exists ----
   if (is.null(ecmwfr_key)) {
     env_key <- Sys.getenv("CDS_API_KEY", unset = "")
@@ -150,7 +156,7 @@ get_era5_data <- function(
       day_vec <- days_in_month(yy, mm)
 
       for (var in variables) {
-        filename <- sprintf("era5_%d_%s_%s.%s", yy, mm_str, var, ext)
+        filename <- sprintf("era5_%s_%d_%s_%s.%s", iso_fragment, yy, mm_str, var, ext)
         filepath <- file.path(output_dir, filename)
         total <- total + 1L
 
