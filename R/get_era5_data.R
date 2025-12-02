@@ -2,7 +2,8 @@
 #'
 #' @param country_iso3 character. ISO3 country code (e.g., "BGD", "ESP", "USA"). Takes precedence over `bounding_box`.
 #' @param bounding_box numeric(4). c(north, west, south, east) in decimal degrees. Ignored if `country_iso3` is provided.
-#' @param output_dir character. Directory where downloaded files will be saved. Default "data/weather/grib".
+#' @param output_dir character. Directory where downloaded files will be saved. Default NULL uses
+#'   "data/weather/grib/<iso3>" when `country_iso3` supplied.
 #' @param dataset character. One of "reanalysis-era5-single-levels" or "reanalysis-era5-land".
 #' @param variables character(). ERA5 variable short names. Default common surface vars.
 #' @param start_year integer. Starting year. Default = current year.
@@ -33,7 +34,7 @@
 get_era5_data <- function(
   country_iso3 = NULL,
   bounding_box = NULL,
-  output_dir = "data/weather/grib",
+  output_dir = NULL,
   dataset = "reanalysis-era5-single-levels",
   variables = c("2m_dewpoint_temperature","2m_temperature",
                 "10m_u_component_of_wind","10m_v_component_of_wind",
@@ -129,10 +130,15 @@ get_era5_data <- function(
   }
 
   # ---- paths & helpers ----
+  if (is.null(output_dir) || !nzchar(output_dir)) {
+    if (is.null(country_iso3)) {
+      output_dir <- file.path("data/weather/grib", iso_fragment)
+    } else {
+      output_dir <- file.path("data/weather/grib", tolower(country_iso3))
+    }
+  }
   output_dir <- path.expand(output_dir)
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-  iso_dir <- file.path(output_dir, iso_fragment)
-  dir.create(iso_dir, recursive = TRUE, showWarnings = FALSE)
   size_threshold <- skip_if_exists_mb * 1024 * 1024
   requires_product_type <- identical(dataset, "reanalysis-era5-single-levels")
 
@@ -159,7 +165,7 @@ get_era5_data <- function(
 
       for (var in variables) {
         filename <- sprintf("era5_%s_%d_%s_%s.%s", iso_fragment, yy, mm_str, var, ext)
-        filepath <- file.path(iso_dir, filename)
+        filepath <- file.path(output_dir, filename)
         total <- total + 1L
 
         if (file.exists(filepath) && file.size(filepath) > size_threshold) {
@@ -237,7 +243,7 @@ get_era5_data <- function(
     files_downloaded     = downloaded,
     files_failed         = failed,
     success_rate         = if (total > 0) (existed + downloaded) / total * 100 else NA_real_,
-    output_directory     = iso_dir
+    output_directory     = output_dir
   )
 
   list(summary = summary, files = files_df)
