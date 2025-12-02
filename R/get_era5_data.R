@@ -2,7 +2,7 @@
 #'
 #' @param country_iso3 character. ISO3 country code (e.g., "BGD", "ESP", "USA"). Takes precedence over `bounding_box`.
 #' @param bounding_box numeric(4). c(north, west, south, east) in decimal degrees. Ignored if `country_iso3` is provided.
-#' @param output_dir character. Directory where downloaded files will be saved. Default "data/output".
+#' @param output_dir character. Directory where downloaded files will be saved. Default "data/weather/grib".
 #' @param dataset character. One of "reanalysis-era5-single-levels" or "reanalysis-era5-land".
 #' @param variables character(). ERA5 variable short names. Default common surface vars.
 #' @param start_year integer. Starting year. Default = current year.
