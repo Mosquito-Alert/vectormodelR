@@ -7,7 +7,7 @@
 get_era5_data(
   country_iso3 = NULL,
   bounding_box = NULL,
-  output_dir = "data/output",
+  output_dir = "data/weather/grib",
   dataset = "reanalysis-era5-single-levels",
   variables = c("2m_dewpoint_temperature", "2m_temperature", "10m_u_component_of_wind",
     "10m_v_component_of_wind", "surface_pressure", "total_precipitation"),
@@ -29,7 +29,7 @@ get_era5_data(
 
 \item{bounding_box}{numeric(4). c(north, west, south, east) in decimal degrees. Ignored if \code{country_iso3} is provided.}
 
-\item{output_dir}{character. Directory where downloaded files will be saved. Default "data/output".}
+\item{output_dir}{character. Directory where downloaded files will be saved. Default "data/weather/grib".}
 
 \item{dataset}{character. One of "reanalysis-era5-single-levels" or "reanalysis-era5-land".}
 
