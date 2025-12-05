@@ -1,11 +1,12 @@
 #' Build daily & lagged weather features from processed ERA5 CSVs
 #'
 #' Reads monthly CSV.GZ files created by your ERA5 compiler (one file per
-#' month with multiple variables), clips by a GADM admin polygon, aggregates
+#' month with multiple variables named like `era5_<iso3>_YYYY_MM_all_variables.csv.gz`), clips by a GADM admin polygon, aggregates
 #' to hourly area means, derives daily summaries and rolling-window features,
 #' and saves RDS outputs with informative names.
 #'
-#' @param processed_dir Character. Root dir containing `processed/YYYY/era5_YYYY_MM_all_variables.csv.gz`.
+#' @param processed_dir Character. Root dir containing `processed/YYYY/era5_<iso3>_YYYY_MM_all_variables.csv.gz`.
+#'   If NULL, defaults to `file.path("data/weather/grib", tolower(iso3), "processed")`.
 #' @param iso3 Character. ISO3 code for the country (e.g., "ESP").
 #' @param admin_level Integer. GADM administrative level (0=country, 1=region, 2=province, ...).
 #' @param admin_name Character or NULL. Exact `NAME_<level>` to match (e.g., "Barcelona").
@@ -56,7 +57,7 @@
 #'   iso3 = "ESP",
 #'   admin_level = 2,
 #'   admin_name = "Barcelona",
-#'   processed_dir = "~/data/weather/grib/processed",
+#'   processed_dir = "~/data/weather/grib/esp/processed",
 #'   out_dir = "data/proc",
 #'   attach_to_global = TRUE,
 #'   aggregation_unit = "hourly"
@@ -67,7 +68,7 @@
 #'   iso3 = "ESP",
 #'   admin_level = 1,
 #'   admin_name = "Cataluña",
-#'   processed_dir = "~/data/weather/grib/processed",
+#'   processed_dir = "~/data/weather/grib/esp/processed",
 #'   out_dir = "data/weather_catalonia",
 #'   aggregation_unit = "region"
 #' )
@@ -77,14 +78,14 @@
 #'   iso3 = "ESP",
 #'   admin_level = 2,
 #'   admin_name = "Barcelona",
-#'   processed_dir = "~/data/weather/grib/processed",
+#'   processed_dir = "~/data/weather/grib/esp/processed",
 #'   out_dir = "data/proc",
 #'   wind_calm_kmh = 4,
 #'   aggregation_unit = "cell"
 #' )
 #' }
 process_era5_data <- function(
-  processed_dir,
+  processed_dir = NULL,
   iso3,
   admin_level,
   admin_name,
@@ -103,15 +104,26 @@ process_era5_data <- function(
   aggregation_unit <- match.arg(aggregation_unit)
 
   # ---- deps & args ----
-  stopifnot(dir.exists(path.expand(processed_dir)))
+  if (!is.character(iso3) || length(iso3) != 1L || !nzchar(iso3)) {
+    stop("`iso3` must be a non-empty character scalar.")
+  }
+  iso3_upper   <- toupper(iso3)
+  iso_fragment <- tolower(iso3_upper)
+
+  if (is.null(processed_dir) || !nzchar(processed_dir)) {
+    processed_dir <- file.path("data/weather/grib", iso_fragment, "processed")
+  }
   processed_dir <- path.expand(processed_dir)
+  if (!dir.exists(processed_dir)) {
+    stop("Processed directory not found: ", processed_dir)
+  }
   out_dir       <- path.expand(out_dir)
   dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
   # helper: list monthlies
-  list_month_files <- function(dir) {
-    list.files(dir, pattern = "^era5_\\d{4}_\\d{2}_all_variables\\.csv\\.gz$",
-               full.names = TRUE, recursive = TRUE)
+  list_month_files <- function(dir, iso_slug) {
+    pat <- sprintf("^era5_%s_\\d{4}_\\d{2}_all_variables\\.csv\\.gz$", iso_slug)
+    list.files(dir, pattern = pat, full.names = TRUE, recursive = TRUE, ignore.case = FALSE)
   }
 
   # Kelvin -> Celsius
@@ -122,21 +134,21 @@ process_era5_data <- function(
     100 * exp((a*TDc/(b + TDc)) - (a*Tc/(b + Tc)))
   }
 
-  files <- list_month_files(processed_dir)
-  if (!length(files)) stop("No processed monthly CSVs found under: ", processed_dir)
+  files <- list_month_files(processed_dir, iso_fragment)
+  if (!length(files)) stop("No processed monthly CSVs found for ISO '", iso_fragment, "' under: ", processed_dir)
   .say("Found %s monthly files.", .fmtI(length(files)))
 
 
   # ---- admin geometry & bbox window ----
-  .say("Loading GADM geometry: %s level %d ...", iso3, admin_level)
-  g <- geodata::gadm(country = iso3, level = admin_level, path = file.path(out_dir, "gadm")) |>
+  .say("Loading GADM geometry: %s level %d ...", iso3_upper, admin_level)
+  g <- geodata::gadm(country = iso3_upper, level = admin_level, path = file.path(out_dir, "gadm")) |>
     sf::st_as_sf()
 
   if (!is.null(admin_name)) {
     nmcol <- paste0("NAME_", admin_level)
     .say("Filtering admin unit by name column %s == '%s' ...", nmcol, admin_name)
     g <- g[g[[nmcol]] == admin_name, , drop = FALSE]
-    if (nrow(g) == 0) stop("Admin name '", admin_name, "' not found at level ", admin_level, " for ", iso3)
+    if (nrow(g) == 0) stop("Admin name '", admin_name, "' not found at level ", admin_level, " for ", iso3_upper)
   } else {
     .say("No admin_name provided; using union of all geometries at level %d.", admin_level)
     g <- sf::st_union(g)
@@ -466,7 +478,7 @@ process_era5_data <- function(
       if (is.null(x) || is.na(x) || identical(x, "")) return("all")
       gsub("[^A-Za-z0-9]+", "", tolower(x))
     }
-    base_prefix <- paste0("weather_", tolower(iso3), "_", admin_level, "_", sanitize(admin_name))
+    base_prefix <- paste0("weather_", iso_fragment, "_", admin_level, "_", sanitize(admin_name))
     prefix <- if (identical(aggregation_unit, "cell")) paste0(base_prefix, "_cell") else paste0(base_prefix, "_region")
 
     p_daily         <- file.path(out_dir, paste0(prefix, "_daily.Rds"))
@@ -517,7 +529,7 @@ process_era5_data <- function(
       if (is.null(x) || is.na(x) || identical(x, "")) return("all")
       gsub("[^A-Za-z0-9]+", "", tolower(x))
     }
-    base_prefix <- paste0("weather_", tolower(iso3), "_", admin_level, "_", sanitize(admin_name))
+    base_prefix <- paste0("weather_", iso_fragment, "_", admin_level, "_", sanitize(admin_name))
     prefix <- paste0(base_prefix, "_hourly")
     p_hourly <- file.path(out_dir, paste0(prefix, ".Rds"))
 

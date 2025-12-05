@@ -5,7 +5,7 @@
 \title{Build daily & lagged weather features from processed ERA5 CSVs}
 \usage{
 process_era5_data(
-  processed_dir,
+  processed_dir = NULL,
   iso3,
   admin_level,
   admin_name,
@@ -21,7 +21,8 @@ process_era5_data(
 )
 }
 \arguments{
-\item{processed_dir}{Character. Root dir containing \code{processed/YYYY/era5_YYYY_MM_all_variables.csv.gz}.}
+\item{processed_dir}{Character. Root dir containing \verb{processed/YYYY/era5_<iso3>_YYYY_MM_all_variables.csv.gz}.
+If NULL, defaults to \code{file.path("data/weather/grib", tolower(iso3), "processed")}.}
 
 \item{iso3}{Character. ISO3 code for the country (e.g., "ESP").}
 
@@ -61,7 +62,7 @@ with \code{hourly} (raw per-cell series) and \code{paths}.
 }
 \description{
 Reads monthly CSV.GZ files created by your ERA5 compiler (one file per
-month with multiple variables), clips by a GADM admin polygon, aggregates
+month with multiple variables named like \verb{era5_<iso3>_YYYY_MM_all_variables.csv.gz}), clips by a GADM admin polygon, aggregates
 to hourly area means, derives daily summaries and rolling-window features,
 and saves RDS outputs with informative names.
 }
@@ -83,7 +84,7 @@ process_era5_data(
   iso3 = "ESP",
   admin_level = 2,
   admin_name = "Barcelona",
-  processed_dir = "~/data/weather/grib/processed",
+  processed_dir = "~/data/weather/grib/esp/processed",
   out_dir = "data/proc",
   attach_to_global = TRUE,
   aggregation_unit = "hourly"
@@ -94,7 +95,7 @@ process_era5_data(
   iso3 = "ESP",
   admin_level = 1,
   admin_name = "Cataluña",
-  processed_dir = "~/data/weather/grib/processed",
+  processed_dir = "~/data/weather/grib/esp/processed",
   out_dir = "data/weather_catalonia",
   aggregation_unit = "region"
 )
@@ -104,7 +105,7 @@ process_era5_data(
   iso3 = "ESP",
   admin_level = 2,
   admin_name = "Barcelona",
-  processed_dir = "~/data/weather/grib/processed",
+  processed_dir = "~/data/weather/grib/esp/processed",
   out_dir = "data/proc",
   wind_calm_kmh = 4,
   aggregation_unit = "cell"

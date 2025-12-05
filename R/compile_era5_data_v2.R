@@ -1,11 +1,14 @@
 #' Compile ERA5 monthly CSVs from GRIB files (terra-only)
 #'
-#' Scans `input_dir` for files named `era5_YYYY_MM_<var>.grib`, converts each
+#' Scans `input_dir` for files named `era5_<iso3>_YYYY_MM_<var>.grib`, converts each
 #' month into a single long-format CSV.GZ under `processed/YYYY/`, and writes a
 #' recent N-month summary in `input_dir`.
 #'
-#' @param input_dir Directory containing per-variable GRIB files.
-#' @param processed_dir Output dir for monthly CSVs (default: file.path(input_dir, "processed")).
+#' @param input_dir Directory containing per-variable GRIB files. If NULL/empty and `iso3`
+#'   supplied, defaults to `file.path("data/weather/grib", tolower(iso3))`.
+#' @param processed_dir Output dir for monthly CSVs. Defaults to `<input_dir>/processed`.
+#' @param iso3 Optional ISO3 code (character). Used to resolve `input_dir` (when missing)
+#'   and to build output filenames.
 #' @param recent_n Number of most recent monthly CSVs to merge into a summary (default 3).
 #' @param verbose Print progress.
 #'
@@ -16,20 +19,48 @@
 #' @importFrom withr local_options
 #' @export
 compile_era5_data_v2 <- function(
-  input_dir,
-  processed_dir = file.path(input_dir, "processed"),
+  input_dir = NULL,
+  processed_dir = NULL,
+  iso3 = NULL,
   recent_n  = 3,
   verbose   = TRUE
 ) {
-  stopifnot(dir.exists(path.expand(input_dir)))
   if (!requireNamespace("terra", quietly = TRUE))
     stop("Package 'terra' is required.")
 
+  iso_fragment <- if (!is.null(iso3)) {
+    if (!is.character(iso3) || length(iso3) != 1L || !nzchar(iso3)) {
+      stop("`iso3` must be a non-empty character scalar when provided.")
+    }
+    tolower(iso3)
+  } else {
+    NULL
+  }
+
+  if (is.null(input_dir) || !nzchar(input_dir)) {
+    if (is.null(iso_fragment)) {
+      stop("Provide `iso3` when `input_dir` is missing or empty.")
+    }
+    input_dir <- file.path("data/weather/grib", iso_fragment)
+  }
+
   # ---- paths & metadata ----
   input_dir     <- path.expand(input_dir)
+  if (!dir.exists(input_dir)) {
+    stop(sprintf("Input directory does not exist: %s", input_dir))
+  }
+  if (is.null(iso_fragment)) {
+    maybe_iso <- tolower(basename(input_dir))
+    if (nchar(maybe_iso) == 3L && grepl("^[a-z]{3}$", maybe_iso)) {
+      iso_fragment <- maybe_iso
+    }
+  }
+  if (is.null(processed_dir) || !nzchar(processed_dir)) {
+    processed_dir <- file.path(input_dir, "processed")
+  }
   processed_dir <- path.expand(processed_dir)
   dir.create(processed_dir, recursive = TRUE, showWarnings = FALSE)
-  metadata_file <- file.path(input_dir, "processing_metadata.json")
+  metadata_file <- file.path(input_dir, sprintf("processed_%s_metadata.json", iso_fragment %||% "general"))
 
   .load_metadata <- function() {
     if (file.exists(metadata_file)) {
@@ -94,7 +125,11 @@ compile_era5_data_v2 <- function(
       cat(sprintf("Run time: %s\n", format(Sys.time(), "%Y-%m-%d %H:%M:%S")))
       cat("🔍 Scanning directory for GRIB files...\n")
     }
-    patt  <- "^era5_\\d{4}_\\d{2}_.+\\.grib$"
+    patt  <- if (!is.null(iso_fragment)) {
+      sprintf("^era5_%s_\\d{4}_\\d{2}_.+\\.grib$", iso_fragment)
+    } else {
+      "^era5_[a-z]{3}_\\d{4}_\\d{2}_.+\\.grib$"
+    }
     files <- list.files(input_dir, pattern = patt, full.names = TRUE, ignore.case = TRUE)
     if (!length(files)) return(list())
 
@@ -103,13 +138,15 @@ compile_era5_data_v2 <- function(
       fn <- basename(fp)
       stem <- sub("\\.grib$", "", fn, ignore.case = TRUE)
       parts <- strsplit(stem, "_", fixed = TRUE)[[1]]
-      if (length(parts) >= 4 && parts[1] == "era5") {
-        yy <- suppressWarnings(as.integer(parts[2]))
-        mm <- suppressWarnings(as.integer(parts[3]))
+      if (length(parts) >= 5 && parts[1] == "era5") {
+        iso_part <- tolower(parts[2])
+        if (!is.null(iso_fragment) && !identical(iso_part, iso_fragment)) next
+        yy <- suppressWarnings(as.integer(parts[3]))
+        mm <- suppressWarnings(as.integer(parts[4]))
         if (!is.na(yy) && !is.na(mm) && yy >= 1900 && mm >= 1 && mm <= 12) {
-          variable <- paste(parts[-(1:3)], collapse = "_")
-          key <- sprintf("%04d_%02d", yy, mm)
-          if (is.null(by_month[[key]])) by_month[[key]] <- list(year = yy, month = mm, variables = list())
+          variable <- paste(parts[-(1:4)], collapse = "_")
+          key <- sprintf("%s_%04d_%02d", iso_part, yy, mm)
+          if (is.null(by_month[[key]])) by_month[[key]] <- list(iso = iso_part, year = yy, month = mm, variables = list())
           by_month[[key]]$variables[[variable]] <- fp
           count <- count + 1L
         }
@@ -120,14 +157,22 @@ compile_era5_data_v2 <- function(
   }
 
   # ---- month processor ----
-  .process_month <- function(year, month, var_list) {
-    key <- sprintf("%04d_%02d", year, month)
+  .process_month <- function(iso_code, year, month, var_list) {
+    iso_local <- if (!is.null(iso_code) && nzchar(iso_code)) {
+      tolower(iso_code)
+    } else if (!is.null(iso_fragment)) {
+      iso_fragment
+    } else {
+      "iso"
+    }
+    key <- sprintf("%s_%04d_%02d", iso_local, year, month)
+    display_key <- sprintf("%s %04d-%02d", toupper(iso_local), year, month)
     if (verbose) {
-      cat("\n📅 Processing ", gsub("_","-", key), "\n", strrep("-", 40), "\n", sep = "")
+      cat("\n📅 Processing ", display_key, "\n", strrep("-", 40), "\n", sep = "")
     }
     year_dir <- file.path(processed_dir, sprintf("%04d", year))
     dir.create(year_dir, recursive = TRUE, showWarnings = FALSE)
-    out_file <- file.path(year_dir, sprintf("era5_%04d_%02d_all_variables.csv.gz", year, month))
+    out_file <- file.path(year_dir, sprintf("era5_%s_%04d_%02d_all_variables.csv.gz", iso_local, year, month))
 
     if (file.exists(out_file) && file.info(out_file)$size > 1024) {
       if (verbose) cat(sprintf("✓ Already processed: %s (%.1f MB)\n",
@@ -146,7 +191,7 @@ compile_era5_data_v2 <- function(
     }
 
     if (k == 0L) {
-      if (verbose) cat(sprintf("  ✗ No data processed for %s\n", gsub("_","-", key)))
+      if (verbose) cat(sprintf("  ✗ No data processed for %s\n", display_key))
       return(list(success = FALSE, key = key, files_processed = 0L))
     }
 
@@ -174,15 +219,20 @@ compile_era5_data_v2 <- function(
     if (!length(year_dirs)) { if (verbose) cat("  ⚠ No year directories found.\n"); return(invisible()) }
 
     recent_files <- character(0)
+    file_patt <- if (!is.null(iso_fragment)) {
+      sprintf("^era5_%s_.*_all_variables\\.csv\\.gz$", iso_fragment)
+    } else {
+      "^era5_[a-z]{3}_.*_all_variables\\.csv\\.gz$"
+    }
     for (yd in rev(sort(year_dirs))) {
-      mfiles <- list.files(yd, pattern = "^era5_.*_all_variables\\.csv\\.gz$", full.names = TRUE)
+      mfiles <- list.files(yd, pattern = file_patt, full.names = TRUE)
       if (length(mfiles)) recent_files <- c(recent_files, rev(sort(mfiles)))
       if (length(recent_files) >= n) break
     }
     recent_files <- head(recent_files, n)
     if (!length(recent_files)) { if (verbose) cat("  ⚠ No recent monthly files found.\n"); return(invisible()) }
 
-    combined_file <- file.path(input_dir, sprintf("era5_recent_%dmonths.csv.gz", n))
+    combined_file <- file.path(input_dir, sprintf("era5_%s_recent_%dmonths.csv.gz", iso_fragment %||% "all", n))
     if (verbose) cat(sprintf("  📊 Combining %d files...\n", length(recent_files)))
     lst <- lapply(recent_files, function(f) data.table::fread(f, showProgress = FALSE, data.table = FALSE))
     df  <- data.table::rbindlist(lst, use.names = TRUE, fill = TRUE)
@@ -197,6 +247,11 @@ compile_era5_data_v2 <- function(
   # ---- driver ----
   meta <- .load_metadata()
   processed <- unique(as.character(meta$processed_months %||% character()))
+  processed <- tolower(processed)
+  if (!is.null(iso_fragment) && length(processed)) {
+    needs_prefix <- !grepl("^[a-z]{3}_\\d{4}_\\d{2}$", processed)
+    processed[needs_prefix] <- sprintf("%s_%s", iso_fragment, processed[needs_prefix])
+  }
   by_month <- .discover()
   if (!length(by_month)) {
     if (verbose) cat("✗ No valid ERA5 GRIB files found.\n")
@@ -211,7 +266,7 @@ compile_era5_data_v2 <- function(
   for (key in sort(names(by_month))) {
     if (key %in% processed) { if (verbose) cat(sprintf("⏭ Skipping %s (already processed)\n", key)); next }
     mi  <- by_month[[key]]
-    res <- .process_month(mi$year, mi$month, mi$variables)
+    res <- .process_month(mi$iso, mi$year, mi$month, mi$variables)
     if (isTRUE(res$success)) {
       processed     <- unique(c(processed, res$key))
       total_months  <- total_months + 1L
