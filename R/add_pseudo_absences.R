@@ -5,40 +5,67 @@
 #' geometry directly. It does *not* depend on the hex grid; you can attach
 #' hex `grid_id` and other spatial attributes in a later step.
 #'
-#' @param iso3 Three-letter ISO3 country code used in the slug.
-#' @param admin_level Administrative level used in the slug.
-#' @param admin_name Administrative unit name used in the slug.
-#' @param data_dir Directory holding processed datasets. Defaults to `"data/proc"`.
+#' @param dataset Either the in-memory NDVI-enriched dataset (output of
+#'   [add_ndvi_features()]) or a path to the corresponding RDS file. When a data
+#'   object is supplied it must carry an `output_path` attribute naming the most
+#'   recently saved file; the pseudoabsence dataset is written to `data_dir`
+#'   with `_se.Rds` appended to that stem when `write_output` is `TRUE`.
+#' @param data_dir Directory holding processed datasets (for TRS files, etc.)
+#'   and where the pseudoabsence dataset will be written. Defaults to "data/proc".
 #' @param sampling_factor Number of pseudoabsences per presence (default 10).
 #' @param date_col Name of date column in `D` and `trs_daily` (default `"date"`).
 #' @param se_col Name of sampling-effort column in `trs_daily`
 #'   (e.g. `"SE_expected"` or `"SE"`).
+#' @param write_output Logical flag; when `TRUE` (default) the combined presence
+#'   and pseudoabsence dataset is written to disk. Set to `FALSE` to skip
+#'   writing while still returning the augmented object and updating metadata.
 #'
-#' @return An sf object combining presences (`presence = TRUE`) and
-#'   pseudoabsences (`presence = FALSE`). The dataset is also written to
-#'         `model_prep_<slug>_wx_lc_ndvi_se.Rds`.
+#' @return A tibble/data frame combining presences (`presence = TRUE`) and
+#'   pseudoabsences (`presence = FALSE`) with numeric `lon`/`lat` columns. The
+#'   dataset is also written to `model_prep_<slug>_wx_lc_ndvi_se.Rds`.
 #' @export
 add_pseudoabsences_se <- function(
-  iso3,
-  admin_level,
-  admin_name,
+  dataset,
   data_dir        = "data/proc",
   sampling_factor = 10,
   date_col        = "date",
-  se_col          = "SE_expected"
+  se_col          = "SE_expected",
+  write_output    = TRUE
 ) {
-  location      <- build_location_identifiers(iso3, admin_level, admin_name)
-  location_slug <- location$slug
+  infer_slug <- function(path) {
+    fname <- basename(path)
+    matches <- regexec("^model_prep_(.+?)_base", fname)
+    parts <- regmatches(fname, matches)[[1]]
+    if (length(parts) >= 2) parts[2] else NA_character_
+  }
 
   # ---- 1. Presence dataset (already weather + landcover + NDVI) ----
-  model_path <- file.path(
-    data_dir,
-    paste0("model_prep_", location_slug, "_wx_lc_ndvi.Rds")
-  )
-  if (!file.exists(model_path)) {
-    stop("Model dataset not found at ", model_path, call. = FALSE)
+  dataset_is_path <- is.character(dataset) && length(dataset) == 1L
+  if (dataset_is_path) {
+    dataset_path <- dataset
+    if (!file.exists(dataset_path)) {
+      stop("Model dataset not found at ", dataset_path, call. = FALSE)
+    }
+    D <- readRDS(dataset_path)
+  } else {
+    D <- dataset
+    dataset_path <- attr(D, "output_path", exact = TRUE)
+    if (is.null(dataset_path) || !nzchar(dataset_path)) {
+      stop(
+        "Input dataset must carry an `output_path` attribute or be provided as a file path.",
+        call. = FALSE
+      )
+    }
   }
-  D <- readRDS(model_path)
+
+  location_slug <- attr(D, "location_slug", exact = TRUE)
+  if (is.null(location_slug) || !nzchar(location_slug)) {
+    location_slug <- infer_slug(dataset_path)
+  }
+  if (is.na(location_slug) || !nzchar(location_slug)) {
+    stop("Could not determine location slug from dataset; ensure it carries a `location_slug` attribute.", call. = FALSE)
+  }
+  attr(D, "location_slug") <- location_slug
 
   if (!all(c("lon", "lat") %in% names(D))) {
     stop("Model dataset must contain `lon` and `lat` columns.", call. = FALSE)
@@ -159,6 +186,11 @@ add_pseudoabsences_se <- function(
   abs_sf <- do.call(rbind, abs_list)
   abs_sf <- sf::st_transform(abs_sf, sf::st_crs(D_sf))
 
+  # Extract lon/lat from geometry to keep downstream helpers compatible
+  abs_coords <- sf::st_coordinates(abs_sf)
+  abs_sf$lon <- abs_coords[, 1]
+  abs_sf$lat <- abs_coords[, 2]
+
   for (col in se_cols) {
     if (!col %in% names(D_sf)) {
       D_sf[[col]] <- NA_real_
@@ -166,16 +198,27 @@ add_pseudoabsences_se <- function(
   }
 
   # ---- 5. Combine with presences ----
-  combined <- dplyr::bind_rows(
-    D_sf |> dplyr::mutate(presence = TRUE),
-    abs_sf
-  )
+  pres_df <- sf::st_drop_geometry(D_sf) |> dplyr::mutate(presence = TRUE)
+  abs_df  <- sf::st_drop_geometry(abs_sf)
+
+  combined <- dplyr::bind_rows(pres_df, abs_df)
 
   # Save combined dataset (still sf; you can drop geometry / add grid later)
-  output_filename <- paste0("model_prep_", location_slug, "_wx_lc_ndvi_se.Rds")
+  base_attrs <- attributes(D)
+  stem <- tools::file_path_sans_ext(basename(dataset_path))
+  output_filename <- paste0(stem, "_se.Rds")
   output_path     <- file.path(data_dir, output_filename)
-  dir.create(dirname(output_path), recursive = TRUE, showWarnings = FALSE)
-  saveRDS(combined, output_path)
+  preserve <- base_attrs[setdiff(names(base_attrs), c("names", "row.names", "class"))]
+  for (nm in names(preserve)) {
+    attr(combined, nm) <- preserve[[nm]]
+  }
+  attr(combined, "output_path") <- output_path
+  attr(combined, "location_slug") <- location_slug
+
+  if (isTRUE(write_output)) {
+    dir.create(dirname(output_path), recursive = TRUE, showWarnings = FALSE)
+    saveRDS(combined, output_path)
+  }
 
   combined
 }

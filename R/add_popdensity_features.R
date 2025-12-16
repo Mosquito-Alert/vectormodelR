@@ -9,12 +9,18 @@
 #' The population density raster is expected at
 #' `file.path(data_dir, paste0("spatial_", slug, "_popdensity.tif"))`.
 #'
-#' @param iso3 Three-letter ISO3 country code.
-#' @param admin_level Administrative level used when sourcing the inputs.
-#' @param admin_name Administrative unit name used in the file naming scheme.
-#' @param data_dir Directory holding the processed datasets. Defaults to
-#'   `"data/proc"`.
+#' @param dataset Either the in-memory elevation-enriched dataset (output of
+#'   [add_elevation_features()]) or a path to the corresponding RDS file. When a
+#'   data object is supplied it must carry an `output_path` attribute naming the
+#'   most recently saved file; the population-density enriched dataset is
+#'   written to `data_dir` with `_pd.Rds` appended to that stem when
+#'   `write_output` is `TRUE`.
+#' @param data_dir Directory holding the population density raster and where the
+#'   enriched dataset will be written. Defaults to `"data/proc"`.
 #' @param verbose Logical; if `TRUE`, prints status messages while processing.
+#' @param write_output Logical flag; when `TRUE` (default) the enriched dataset
+#'   is written to disk. Set to `FALSE` to skip writing while still returning the
+#'   augmented object and updating its metadata.
 #'
 #' @return A tibble/data frame containing the augmented dataset. Attributes
 #'   from the input object are preserved, and two additional attributes are set:
@@ -23,25 +29,47 @@
 #' @importFrom terra rast crs extract vect
 #' @importFrom sf st_as_sf st_transform st_make_valid
 add_popdensity_features <- function(
-	iso3,
-	admin_level,
-	admin_name,
+	dataset,
 	data_dir = "data/proc",
-	verbose  = TRUE
+	verbose  = TRUE,
+	write_output = TRUE
 ) {
-	ids <- build_location_identifiers(iso3, admin_level, admin_name)
-	location_slug <- ids$slug
-
-	# ---- Input (elevation-enriched dataset) ----
-	dataset_filename <- paste0("model_prep_", location_slug, "_wx_lc_ndvi_elev.Rds")
-	dataset_path     <- file.path(data_dir, dataset_filename)
-	if (!file.exists(dataset_path)) {
-		stop("Elevation-enriched dataset not found at ", dataset_path, call. = FALSE)
+	infer_slug <- function(path) {
+		fname <- basename(path)
+		matches <- regexec("^model_prep_(.+?)_base", fname)
+		parts <- regmatches(fname, matches)[[1]]
+		if (length(parts) >= 2) parts[2] else NA_character_
 	}
 
-	if (isTRUE(verbose)) message("Reading elevation-enriched dataset from ", dataset_path)
-	enriched <- readRDS(dataset_path)
+	# ---- Input (elevation-enriched dataset) ----
+	dataset_is_path <- is.character(dataset) && length(dataset) == 1L
+	if (dataset_is_path) {
+		dataset_path <- dataset
+		if (!file.exists(dataset_path)) {
+			stop("Elevation-enriched dataset not found at ", dataset_path, call. = FALSE)
+		}
+		if (isTRUE(verbose)) message("Reading elevation-enriched dataset from ", dataset_path)
+		enriched <- readRDS(dataset_path)
+	} else {
+		enriched <- dataset
+		dataset_path <- attr(enriched, "output_path", exact = TRUE)
+		if (is.null(dataset_path) || !nzchar(dataset_path)) {
+			stop(
+				"Input dataset must carry an `output_path` attribute or be provided as a file path.",
+				call. = FALSE
+			)
+		}
+		if (isTRUE(verbose)) message("Using elevation-enriched dataset from ", dataset_path)
+	}
 	base_attrs <- attributes(enriched)
+	location_slug <- attr(enriched, "location_slug", exact = TRUE)
+	if (is.null(location_slug) || !nzchar(location_slug)) {
+		location_slug <- infer_slug(dataset_path)
+	}
+	if (is.na(location_slug) || !nzchar(location_slug)) {
+		stop("Could not determine location slug from dataset; ensure it carries a `location_slug` attribute.", call. = FALSE)
+	}
+	attr(enriched, "location_slug") <- location_slug
 
 	if (!all(c("lon", "lat") %in% names(enriched))) {
 		stop("Input dataset must contain `lon` and `lat` columns.", call. = FALSE)
@@ -90,9 +118,9 @@ add_popdensity_features <- function(
 	# ---- Attach and save ----
 	enriched$popdensity_km2 <- pd_full
 
-	output_filename <- paste0("model_prep_", location_slug, "_wx_lc_ndvi_elev_pd.Rds")
+	stem <- tools::file_path_sans_ext(basename(dataset_path))
+	output_filename <- paste0(stem, "_pd.Rds")
 	output_path     <- file.path(data_dir, output_filename)
-	dir.create(dirname(output_path), recursive = TRUE, showWarnings = FALSE)
 
 	# restore non-structural attributes
 	preserve <- base_attrs[setdiff(names(base_attrs), c("names", "row.names", "class"))]
@@ -102,11 +130,17 @@ add_popdensity_features <- function(
 
 	attr(enriched, "popdensity_source") <- pd_path
 	attr(enriched, "output_path")      <- output_path
+  attr(enriched, "location_slug")    <- location_slug
 
-	if (isTRUE(verbose)) {
-		message("Saving population-density-enriched dataset to ", output_path)
+	if (isTRUE(write_output)) {
+		if (isTRUE(verbose)) {
+			message("Saving population-density-enriched dataset to ", output_path)
+		}
+		dir.create(dirname(output_path), recursive = TRUE, showWarnings = FALSE)
+		saveRDS(enriched, output_path)
+	} else if (isTRUE(verbose)) {
+		message("Population density features added (not written to disk).")
 	}
-	saveRDS(enriched, output_path)
 
 	enriched
 }

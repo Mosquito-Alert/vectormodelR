@@ -177,8 +177,9 @@ process_era5_data <- function(
       dt <- data.table::fread(f, showProgress = FALSE)
       dt <- dt[variable_name %in% wanted]
       dt <- dt[longitude >= lon_min & longitude <= lon_max &
-               latitude  >= lat_min & latitude  <= lat_max]
-      dt[, time := lubridate::ymd_hms(time, tz = "UTC")]
+           latitude  >= lat_min & latitude  <= lat_max]
+      # Some ERA5 exports append " UTC"; strip it before parsing to avoid warnings.
+      dt[, time := lubridate::ymd_hms(gsub(" UTC$", "", time), tz = "UTC", quiet = TRUE)]
       utils::setTxtProgressBar(pb, i)
       dt
     }),

@@ -5,11 +5,13 @@
 #' supplied threshold, and measures each report's distance to the nearest
 #' qualifying cell. Results are saved as `model_prep_*_wx_lc_ndvi.Rds`.
 #'
-#' @param iso3 Three-letter ISO3 country code.
-#' @param admin_level Administrative level used to build the dataset slug.
-#' @param admin_name Administrative unit name used in the file naming scheme.
-#' @param data_dir Directory containing processed datasets. Defaults to
-#'   `"data/proc"`.
+#' @param dataset Either the in-memory land-cover enriched dataset (output of
+#'   [add_landcover_features()]) or a path to the corresponding RDS file. When a
+#'   data object is supplied it must carry an `output_path` attribute naming the
+#'   most recently saved file; the NDVI-enriched output is written to `data_dir`
+#'   with `_ndvi.Rds` appended to that stem when `write_output` is `TRUE`.
+#' @param data_dir Directory containing processed rasters and where the output
+#'   dataset will be written. Defaults to `"data/proc"`.
 #' @param ndvi_threshold Numeric cutoff applied to the NDVI raster. Defaults to
 #'   `0.3`.
 #' @param decay_alpha Optional exponential decay coefficient used when
@@ -17,6 +19,9 @@
 #' @param decay_beta Exponent applied to the distance term in the decay
 #'   function. Ignored when `decay_alpha` is `NULL`. Defaults to `1`.
 #' @param verbose Logical; if `TRUE`, prints progress messages.
+#' @param write_output Logical flag; when `TRUE` (default) the enriched dataset
+#'   is written to disk. Set to `FALSE` to skip writing while still returning the
+#'   augmented object and updating its metadata.
 #'
 #' @return A tibble/data frame with the augmented variables. Attributes from
 #'   the source dataset are preserved and augmented with `ndvi_source`,
@@ -27,30 +32,54 @@
 #' @importFrom terra rast ifel as.points
 #' @importFrom sf st_as_sf st_nearest_feature st_distance
 add_ndvi_features <- function(
-  iso3,
-  admin_level,
-  admin_name,
+  dataset,
   data_dir = "data/proc",
   ndvi_threshold = 0.3,
   decay_alpha = 0.01,
   decay_beta = 1,
-  verbose = TRUE
+  verbose = TRUE,
+  write_output = TRUE
 ) {
-  ids <- build_location_identifiers(iso3, admin_level, admin_name)
-  location_slug <- ids$slug
-
-  dataset_path <- file.path(data_dir, paste0("model_prep_", location_slug, "_wx_lc.Rds"))
-  if (!file.exists(dataset_path)) {
-    stop("Land-cover enriched dataset not found at ", dataset_path, call. = FALSE)
+  infer_slug <- function(path) {
+    fname <- basename(path)
+    matches <- regexec("^model_prep_(.+?)_base", fname)
+    parts <- regmatches(fname, matches)[[1]]
+    if (length(parts) >= 2) parts[2] else NA_character_
   }
+
+  dataset_is_path <- is.character(dataset) && length(dataset) == 1L
+  if (dataset_is_path) {
+    dataset_path <- dataset
+    if (!file.exists(dataset_path)) {
+      stop("Land-cover enriched dataset not found at ", dataset_path, call. = FALSE)
+    }
+    enriched <- readRDS(dataset_path)
+  } else {
+    enriched <- dataset
+    dataset_path <- attr(enriched, "output_path", exact = TRUE)
+    if (is.null(dataset_path) || !nzchar(dataset_path)) {
+      stop(
+        "Input dataset must carry an `output_path` attribute or be provided as a file path.",
+        call. = FALSE
+      )
+    }
+  }
+
+  location_slug <- attr(enriched, "location_slug", exact = TRUE)
+  if (is.null(location_slug) || !nzchar(location_slug)) {
+    location_slug <- infer_slug(dataset_path)
+  }
+  if (is.na(location_slug) || !nzchar(location_slug)) {
+    stop("Could not determine location slug from dataset; ensure it carries a `location_slug` attribute.", call. = FALSE)
+  }
+  attr(enriched, "location_slug") <- location_slug
 
   ndvi_path <- file.path(data_dir, paste0("spatial_", location_slug, "_ndvi.tif"))
   if (!file.exists(ndvi_path)) {
     stop("NDVI raster not found at ", ndvi_path, call. = FALSE)
   }
 
-  if (isTRUE(verbose)) message("Reading land-cover dataset from ", dataset_path)
-  enriched <- readRDS(dataset_path)
+  if (isTRUE(verbose)) message("Using land-cover dataset from ", dataset_path)
   base_attrs <- attributes(enriched)
 
   if (!is.null(decay_alpha)) {
@@ -114,9 +143,9 @@ add_ndvi_features <- function(
 
   enriched_out <- enriched
 
-  output_filename <- paste0("model_prep_", location_slug, "_wx_lc_ndvi.Rds")
+  stem <- tools::file_path_sans_ext(basename(dataset_path))
+  output_filename <- paste0(stem, "_ndvi.Rds")
   output_path <- file.path(data_dir, output_filename)
-  dir.create(dirname(output_path), recursive = TRUE, showWarnings = FALSE)
 
   preserve <- base_attrs[setdiff(names(base_attrs), c("names", "row.names", "class"))]
   for (nm in names(preserve)) {
@@ -126,9 +155,15 @@ add_ndvi_features <- function(
   attr(enriched_out, "ndvi_source") <- ndvi_path
   attr(enriched_out, "ndvi_threshold") <- ndvi_threshold
   attr(enriched_out, "output_path") <- output_path
+  attr(enriched_out, "location_slug") <- location_slug
 
-  if (isTRUE(verbose)) message("Saving NDVI-enriched dataset to ", output_path)
-  saveRDS(enriched_out, output_path)
+  if (isTRUE(write_output)) {
+    if (isTRUE(verbose)) message("Saving NDVI-enriched dataset to ", output_path)
+    dir.create(dirname(output_path), recursive = TRUE, showWarnings = FALSE)
+    saveRDS(enriched_out, output_path)
+  } else if (isTRUE(verbose)) {
+    message("NDVI features added (not written to disk).")
+  }
 
   enriched_out
 }

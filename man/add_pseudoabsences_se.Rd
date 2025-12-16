@@ -5,23 +5,23 @@
 \title{Generate pseudoabsences using sampling effort only (TRS-based, Option 2)}
 \usage{
 add_pseudoabsences_se(
-  iso3,
-  admin_level,
-  admin_name,
+  dataset,
   data_dir = "data/proc",
   sampling_factor = 10,
   date_col = "date",
-  se_col = "SE_expected"
+  se_col = "SE_expected",
+  write_output = TRUE
 )
 }
 \arguments{
-\item{iso3}{Three-letter ISO3 country code used in the slug.}
+\item{dataset}{Either the in-memory NDVI-enriched dataset (output of
+\code{\link[=add_ndvi_features]{add_ndvi_features()}}) or a path to the corresponding RDS file. When a data
+object is supplied it must carry an \code{output_path} attribute naming the most
+recently saved file; the pseudoabsence dataset is written to \code{data_dir}
+with \verb{_se.Rds} appended to that stem when \code{write_output} is \code{TRUE}.}
 
-\item{admin_level}{Administrative level used in the slug.}
-
-\item{admin_name}{Administrative unit name used in the slug.}
-
-\item{data_dir}{Directory holding processed datasets. Defaults to \code{"data/proc"}.}
+\item{data_dir}{Directory holding processed datasets (for TRS files, etc.)
+and where the pseudoabsence dataset will be written. Defaults to "data/proc".}
 
 \item{sampling_factor}{Number of pseudoabsences per presence (default 10).}
 
@@ -29,11 +29,15 @@ add_pseudoabsences_se(
 
 \item{se_col}{Name of sampling-effort column in \code{trs_daily}
 (e.g. \code{"SE_expected"} or \code{"SE"}).}
+
+\item{write_output}{Logical flag; when \code{TRUE} (default) the combined presence
+and pseudoabsence dataset is written to disk. Set to \code{FALSE} to skip
+writing while still returning the augmented object and updating metadata.}
 }
 \value{
-An sf object combining presences (\code{presence = TRUE}) and
-pseudoabsences (\code{presence = FALSE}). The dataset is also written to
-\verb{model_prep_<slug>_wx_lc_ndvi_se.Rds}.
+A tibble/data frame combining presences (\code{presence = TRUE}) and
+pseudoabsences (\code{presence = FALSE}) with numeric \code{lon}/\code{lat} columns. The
+dataset is also written to \verb{model_prep_<slug>_wx_lc_ndvi_se.Rds}.
 }
 \description{
 This version treats \code{trs_daily} as the "true" sampling grid (Tigacell),

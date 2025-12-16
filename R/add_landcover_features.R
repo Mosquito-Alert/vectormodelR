@@ -5,12 +5,18 @@
 #' raster, and writes a new `model_prep_*_wx_lc.Rds` file that appends both the
 #' numeric code and descriptive class.
 #'
-#' @param iso3 Three-letter ISO3 country code.
-#' @param admin_level Administrative level used when sourcing the inputs.
-#' @param admin_name Administrative unit name used in the file naming scheme.
-#' @param data_dir Directory holding the processed datasets. Defaults to
-#'   `"data/proc"`.
+#' @param dataset Either the in-memory weather-enriched dataset (output of
+#'   [add_weather_features()]) or a path to the corresponding RDS file. When a
+#'   data object is provided it must carry an `output_path` attribute naming the
+#'   most recently saved file; the land-cover enriched output is written to
+#'   `data_dir` with `_lc.Rds` appended to that stem when `write_output` is
+#'   `TRUE`.
+#' @param data_dir Directory holding the processed rasters and where the output
+#'   dataset will be written. Defaults to `"data/proc"`.
 #' @param verbose Logical; if `TRUE`, prints status messages while processing.
+#' @param write_output Logical flag; when `TRUE` (default) the enriched dataset
+#'   is written to disk. Set to `FALSE` to skip writing while still returning the
+#'   augmented object and updating its metadata.
 #'
 #' @return A tibble/data frame containing the augmented dataset. Attributes
 #'   from the input object are preserved, and two additional attributes are set:
@@ -19,20 +25,44 @@
 #' @importFrom terra rast crs extract vect cats
 #' @importFrom sf st_as_sf st_transform st_make_valid
 add_landcover_features <- function(
-  iso3,
-  admin_level,
-  admin_name,
+  dataset,
   data_dir = "data/proc",
-  verbose = TRUE
+  verbose = TRUE,
+  write_output = TRUE
 ) {
-  ids <- build_location_identifiers(iso3, admin_level, admin_name)
-  location_slug <- ids$slug
-
-  weather_filename <- paste0("model_prep_", location_slug, "_wx.Rds")
-  weather_path <- file.path(data_dir, weather_filename)
-  if (!file.exists(weather_path)) {
-    stop("Weather dataset not found at ", weather_path, call. = FALSE)
+  infer_slug <- function(path) {
+    fname <- basename(path)
+    matches <- regexec("^model_prep_(.+?)_base", fname)
+    parts <- regmatches(fname, matches)[[1]]
+    if (length(parts) >= 2) parts[2] else NA_character_
   }
+
+  dataset_is_path <- is.character(dataset) && length(dataset) == 1L
+  if (dataset_is_path) {
+    dataset_path <- dataset
+    if (!file.exists(dataset_path)) {
+      stop("Input dataset not found at ", dataset_path, call. = FALSE)
+    }
+    enriched <- readRDS(dataset_path)
+  } else {
+    enriched <- dataset
+    dataset_path <- attr(enriched, "output_path", exact = TRUE)
+    if (is.null(dataset_path) || !nzchar(dataset_path)) {
+      stop(
+        "Input dataset must carry an `output_path` attribute or be provided as a file path.",
+        call. = FALSE
+      )
+    }
+  }
+
+  location_slug <- attr(enriched, "location_slug", exact = TRUE)
+  if (is.null(location_slug) || !nzchar(location_slug)) {
+    location_slug <- infer_slug(dataset_path)
+  }
+  if (is.na(location_slug) || !nzchar(location_slug)) {
+    stop("Could not determine location slug from dataset; ensure it carries a `location_slug` attribute.", call. = FALSE)
+  }
+  attr(enriched, "location_slug") <- location_slug
 
   landcover_filename <- paste0("spatial_", location_slug, "_landcover.tif")
   landcover_path <- file.path(data_dir, landcover_filename)
@@ -40,8 +70,10 @@ add_landcover_features <- function(
     stop("Land-cover raster not found at ", landcover_path, call. = FALSE)
   }
 
-  if (isTRUE(verbose)) message("Reading weather dataset from ", weather_path)
-  enriched <- readRDS(weather_path)
+  if (isTRUE(verbose)) {
+    message("Using weather dataset from ", dataset_path)
+  }
+  base_attrs <- attributes(enriched)
   if (!all(c("lon", "lat") %in% names(enriched))) {
     stop("Weather dataset must contain `lon` and `lat` columns.", call. = FALSE)
   }
@@ -92,11 +124,10 @@ add_landcover_features <- function(
   enriched$presence <- FALSE
   enriched$presence[valid_points] <- TRUE
 
-  output_filename <- paste0("model_prep_", location_slug, "_wx_lc.Rds")
+  stem <- tools::file_path_sans_ext(basename(dataset_path))
+  output_filename <- paste0(stem, "_lc.Rds")
   output_path <- file.path(data_dir, output_filename)
-  dir.create(dirname(output_path), recursive = TRUE, showWarnings = FALSE)
 
-  base_attrs <- attributes(enriched)
   preserve <- base_attrs[setdiff(names(base_attrs), c("names", "row.names", "class"))]
   for (nm in names(preserve)) {
     attr(enriched, nm) <- preserve[[nm]]
@@ -104,9 +135,15 @@ add_landcover_features <- function(
 
   attr(enriched, "landcover_source") <- landcover_path
   attr(enriched, "output_path") <- output_path
+  attr(enriched, "location_slug") <- location_slug
 
-  if (isTRUE(verbose)) message("Saving land-cover enriched dataset to ", output_path)
-  saveRDS(enriched, output_path)
+  if (isTRUE(write_output)) {
+    if (isTRUE(verbose)) message("Saving land-cover enriched dataset to ", output_path)
+    dir.create(dirname(output_path), recursive = TRUE, showWarnings = FALSE)
+    saveRDS(enriched, output_path)
+  } else if (isTRUE(verbose)) {
+    message("Land-cover features added (not written to disk).")
+  }
 
   enriched
 }

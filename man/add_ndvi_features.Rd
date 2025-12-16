@@ -5,25 +5,24 @@
 \title{Add high-NDVI proximity metrics to Mosquito Alert model inputs}
 \usage{
 add_ndvi_features(
-  iso3,
-  admin_level,
-  admin_name,
+  dataset,
   data_dir = "data/proc",
   ndvi_threshold = 0.3,
   decay_alpha = 0.01,
   decay_beta = 1,
-  verbose = TRUE
+  verbose = TRUE,
+  write_output = TRUE
 )
 }
 \arguments{
-\item{iso3}{Three-letter ISO3 country code.}
+\item{dataset}{Either the in-memory land-cover enriched dataset (output of
+\code{\link[=add_landcover_features]{add_landcover_features()}}) or a path to the corresponding RDS file. When a
+data object is supplied it must carry an \code{output_path} attribute naming the
+most recently saved file; the NDVI-enriched output is written to \code{data_dir}
+with \verb{_ndvi.Rds} appended to that stem when \code{write_output} is \code{TRUE}.}
 
-\item{admin_level}{Administrative level used to build the dataset slug.}
-
-\item{admin_name}{Administrative unit name used in the file naming scheme.}
-
-\item{data_dir}{Directory containing processed datasets. Defaults to
-\code{"data/proc"}.}
+\item{data_dir}{Directory containing processed rasters and where the output
+dataset will be written. Defaults to \code{"data/proc"}.}
 
 \item{ndvi_threshold}{Numeric cutoff applied to the NDVI raster. Defaults to
 \code{0.3}.}
@@ -35,6 +34,10 @@ deriving proximity; set to \code{NULL} to skip. Defaults to \code{0.01}.}
 function. Ignored when \code{decay_alpha} is \code{NULL}. Defaults to \code{1}.}
 
 \item{verbose}{Logical; if \code{TRUE}, prints progress messages.}
+
+\item{write_output}{Logical flag; when \code{TRUE} (default) the enriched dataset
+is written to disk. Set to \code{FALSE} to skip writing while still returning the
+augmented object and updating its metadata.}
 }
 \value{
 A tibble/data frame with the augmented variables. Attributes from

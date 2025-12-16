@@ -5,30 +5,28 @@
 \title{Add ERA5 weather features to Mosquito Alert model inputs}
 \usage{
 add_weather_features(
-  iso3,
-  admin_level,
-  admin_name,
+  dataset,
   data_dir = "data/proc",
-  base_variant = "base",
-  output_variant = "wx"
+  write_output = TRUE,
+  verbose = TRUE
 )
 }
 \arguments{
-\item{iso3}{Three-letter ISO3 country code.}
+\item{dataset}{Either the in-memory base model-prep dataset (as returned by
+\code{\link[=initialize_ma_dataset]{initialize_ma_dataset()}} or subsequent enrichment helpers) or a path to
+the corresponding RDS file. When a data object is supplied it must carry an
+\code{output_path} attribute naming the last saved file; the enriched dataset is
+written to \code{data_dir} with \verb{_wx.Rds} appended to that stem when
+\code{write_output} is \code{TRUE}.}
 
-\item{admin_level}{Administrative level used when sourcing the weather and
-base model-prep files.}
+\item{data_dir}{Directory that holds the weather RDS files and where the
+weather-enriched dataset will be written. Defaults to \code{"data/proc"}.}
 
-\item{admin_name}{Administrative unit name used in the file naming scheme.}
+\item{write_output}{Logical flag; when \code{TRUE} (default) the enriched dataset
+is written to disk. Set to \code{FALSE} to skip writing while still returning the
+augmented object and updating its metadata.}
 
-\item{data_dir}{Directory that holds the \verb{model_prep_*} and
-\verb{weather_*} RDS files. Defaults to \code{"data/proc"}.}
-
-\item{base_variant}{Suffix of the base model-prep file to read. Defaults to
-\code{"base"} (looks for \verb{model_prep_<slug>_base.Rds}).}
-
-\item{output_variant}{Suffix used for the weather-enriched output file.
-Defaults to \code{"wx"} (writes \verb{model_prep_<slug>_wx.Rds}).}
+\item{verbose}{Logical; if \code{TRUE}, prints status messages.}
 }
 \value{
 A tibble containing the enriched dataset. Attributes from the base
@@ -43,9 +41,11 @@ new \verb{model_prep_*_wx.Rds} file alongside the existing outputs.
 \examples{
 \dontrun{
 add_weather_features(
-  iso3 = "ESP",
-  admin_level = 4,
-  admin_name = "Barcelona"
+  dataset = initialize_ma_dataset(
+    iso3 = "ESP",
+    admin_level = 4,
+    admin_name = "Barcelona"
+  )
 )
 }
 }

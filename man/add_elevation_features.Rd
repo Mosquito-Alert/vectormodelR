@@ -5,24 +5,27 @@
 \title{Add elevation to Mosquito Alert model inputs}
 \usage{
 add_elevation_features(
-  iso3,
-  admin_level,
-  admin_name,
+  dataset,
   data_dir = "data/proc",
-  verbose = TRUE
+  verbose = TRUE,
+  write_output = TRUE
 )
 }
 \arguments{
-\item{iso3}{Three-letter ISO3 country code.}
+\item{dataset}{Either the in-memory model-preparation dataset or a path to
+the corresponding RDS file. When a data object is provided it must carry an
+\code{output_path} attribute naming the most recently saved file; the
+elevation-enriched dataset is written to \code{data_dir} with \verb{_el.Rds}
+appended to that stem when \code{write_output} is \code{TRUE}.}
 
-\item{admin_level}{Administrative level used when sourcing the inputs.}
-
-\item{admin_name}{Administrative unit name used in the file naming scheme.}
-
-\item{data_dir}{Directory holding the processed datasets. Defaults to
-\code{"data/proc"}.}
+\item{data_dir}{Directory that houses the processed rasters and where the
+elevation-enriched dataset will be written. Defaults to \code{"data/proc"}.}
 
 \item{verbose}{Logical; if \code{TRUE}, prints status messages while processing.}
+
+\item{write_output}{Logical flag; when \code{TRUE} (default) the enriched dataset
+is written to disk. Set to \code{FALSE} to skip writing while still returning the
+augmented object and updating its metadata.}
 }
 \value{
 A tibble/data frame containing the augmented dataset. Attributes
@@ -30,10 +33,9 @@ from the input object are preserved, and two additional attributes are set:
 \code{elevation_source} (the raster path) and \code{output_path} (the saved file).
 }
 \description{
-Loads the NDVI-enriched model-preparation dataset produced by
-\code{\link[=add_ndvi_features]{add_ndvi_features()}}, extracts elevation values from a corresponding raster,
-and writes a new \verb{model_prep_*_wx_lc_ndvi_elev.Rds} file with an
-\code{elevation_m} column.
+Takes a model-preparation dataset, extracts elevation values from a
+corresponding raster, and writes a new RDS file with an \code{elevation_m} column
+and \verb{_el} appended to the original filename when output is enabled.
 }
 \details{
 The elevation raster is expected at
