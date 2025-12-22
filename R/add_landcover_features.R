@@ -121,8 +121,8 @@ add_landcover_features <- function(
 
   enriched$landcover_code <- landcover_codes
   enriched$landcover_class <- landcover_classes
-  enriched$presence <- FALSE
-  enriched$presence[valid_points] <- TRUE
+  #enriched$presence <- FALSE
+  #enriched$presence[valid_points] <- TRUE
 
   stem <- tools::file_path_sans_ext(basename(dataset_path))
   output_filename <- paste0(stem, "_lc.Rds")
