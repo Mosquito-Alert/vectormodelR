@@ -2,9 +2,17 @@
 % Please edit documentation in R/build_grid_adjacency.R
 \name{build_grid_adjacency}
 \alias{build_grid_adjacency}
-\title{Build adjacency matrix for a grid}
+\title{Build adjacency matrix for a grid (global-safe)}
 \usage{
-build_grid_adjacency(iso3, admin_level, admin_name, data_dir = "data/proc")
+build_grid_adjacency(
+  iso3,
+  admin_level,
+  admin_name,
+  data_dir = "data/proc",
+  target_crs = NULL,
+  sparse = TRUE,
+  model
+)
 }
 \arguments{
 \item{iso3}{Three-letter ISO3 country code used in the slug.}
@@ -14,13 +22,23 @@ build_grid_adjacency(iso3, admin_level, admin_name, data_dir = "data/proc")
 \item{admin_name}{Administrative unit name used in the file naming scheme.}
 
 \item{data_dir}{Directory holding processed outputs. Defaults to \code{"data/proc"}.}
+
+\item{target_crs}{Optional. EPSG code or \code{sf::st_crs()} object. If \code{NULL},
+a suitable CRS is chosen automatically (UTM if input is lon/lat).}
+
+\item{sparse}{Logical. If TRUE (default), return a sparse Matrix.}
+
+\item{model}{Either the in-memory model dataset or a path to a prepared
+\verb{model_prep_*} RDS file. This must be supplied; the function no longer
+derives the model path automatically.}
 }
 \value{
-A binary adjacency matrix suitable for \code{brms::car()}.
+An adjacency matrix (dense base matrix if \code{sparse = FALSE},
+otherwise a \code{Matrix::dgCMatrix}) with row/col names = \code{grid_id}.
 }
 \description{
-Uses slug-based file naming to read the hex grid (\verb{spatial_*_hex_grid.Rds})
-and the prepared model dataset (\verb{model_prep_*_wx_lc_ndvi.Rds}), keeps only
-grid cells present in the model data, and returns a binary adjacency matrix
-using queen contiguity.
+Reads a polygon grid (\verb{spatial_*_hex_grid.Rds}) and prepared model data
+(\verb{model_prep_*_wx_lc_ndvi_elev.Rds}), keeps only cells present in model data,
+reprojects (only if needed) to a locally appropriate projected CRS, and
+returns a binary queen-contiguity adjacency matrix suitable for \code{brms::car()}.
 }

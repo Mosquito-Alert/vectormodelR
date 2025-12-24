@@ -21,7 +21,7 @@ add_features(
 \item{admin_name}{Administrative unit name used in the file naming scheme.}
 
 \item{features}{Character vector (or comma-separated string) indicating which
-feature steps to run. Accepted values: \code{"wx"}/\code{"weather"},
+feature steps to run. Accepted values: \code{"hex"}, \code{"wx"}/\code{"weather"},
 \code{"lc"}/\code{"landcover"}, \code{"ndvi"}, \code{"el"}/\code{"elevation"},
 \code{"pd"}/\code{"popdensity"}, \code{"se"}/\code{"pseudoabsence"}.}
 
@@ -37,8 +37,9 @@ that helper.
 }
 \description{
 Convenience wrapper that locates the base \verb{model_prep_*_base.Rds} file for a
-given location and applies one or more enrichment helpers (weather, landcover,
-NDVI, elevation, population density, pseudoabsences) in the order supplied.
+given location and applies one or more enrichment helpers (hex-grid IDs,
+weather, landcover, NDVI, elevation, population density, pseudoabsences) in
+the order supplied.
 Only the final helper in the sequence writes to disk; earlier steps run
 in-memory while still updating the dataset metadata (notably the
 \code{output_path} attribute) so suffixes accumulate as expected.

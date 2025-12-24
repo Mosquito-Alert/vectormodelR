@@ -7,18 +7,18 @@
 #'   created. The name is normalised (lowercase, non-alphanumerics replaced with
 #'   underscores) before constructing the file path.
 #' @param reports_path Path to the cleaned Mosquito Alert reports RDS file.
-#' @param hex_grid_dir Directory containing pre-computed hex grid RDS files.
 #' @param sampling_effort_url Optional URL pointing to the sampling effort CSV
 #'   resource. Set to `NULL` to skip downloading.
 #' @param android_start_date Optional date (character or `Date`) used to filter
 #'   reports collected before the Android application launch.
-#' @param output_dir Directory where the prepared dataset should be written.
-#'   Defaults to `hex_grid_dir`.
+#' @param output_dir Directory where the prepared dataset should be written and
+#'   where supporting boundary artefacts are expected. Defaults to
+#'   `"data/proc"`.
 #' @param dataset_variant Optional suffix inserted into the saved filename (for
 #'   example "base" or "extended").
 #'
-#' @return A tibble of filtered reports. The object includes attributes
-#'   `sampling_effort`, `hex_grid`, and `output_path` for downstream reuse.
+#' @return A tibble of filtered reports. The object includes attributes such as
+#'   `sampling_effort` and `output_path` for downstream reuse.
 #' @export
 #' @importFrom rlang .data
 #' @examples
@@ -34,26 +34,12 @@ initialize_ma_dataset <- function(
     admin_level,
     admin_name,
     reports_path = "data/proc/mosquito_alert_cleaned_reports.Rds",
-    hex_grid_dir = "data/proc",
     sampling_effort_url = "https://github.com/Mosquito-Alert/sampling_effort_data/raw/main/sampling_effort_daily_cellres_025.csv.gz",
     android_start_date = NULL,
-    output_dir = NULL,
+  output_dir = "data/proc",
     dataset_variant = "base") {
   ids <- build_location_identifiers(iso3, admin_level, admin_name)
   message("Preparing Mosquito Alert dataset for ", ids$slug, " …")
-
-  grid_filename <- paste0("spatial_", ids$slug, "_hex_grid.rds")
-
-  grid_path <- file.path(hex_grid_dir, grid_filename)
-  if (!file.exists(grid_path)) {
-    stop("Hex grid not found at ", grid_path, call. = FALSE)
-  }
-
-  message("• Loading hex grid: ", grid_path)
-  hex_grid <- readr::read_rds(grid_path)
-  if (!"grid_id" %in% names(hex_grid)) {
-    stop("`grid_id` column not found in hex grid at ", grid_path, call. = FALSE)
-  }
 
   sampling_effort <- NULL
   if (!is.null(sampling_effort_url)) {
@@ -74,12 +60,30 @@ initialize_ma_dataset <- function(
     ) %>%
     dplyr::filter(!is.na(.data$lon), !is.na(.data$lat))
 
+  perimeter_filename <- paste0("spatial_", ids$slug, "_perimeter.rds")
+  perimeter_path <- file.path(output_dir, perimeter_filename)
+  perimeter_sf <- NULL
+  if (file.exists(perimeter_path)) {
+    message("• Clipping reports to administrative perimeter: ", perimeter_path)
+    perimeter_sf <- readRDS(perimeter_path)
+    if (!inherits(perimeter_sf, "sf")) {
+      stop("Perimeter file must be an sf object: ", perimeter_path, call. = FALSE)
+    }
+  }
+
   datasets <- reports %>%
     dplyr::mutate(
       year = lubridate::year(.data$date),
       sea_days = lubridate::yday(.data$date),
       TigacellID_small = make_samplingcell_ids(.data$lon, .data$lat, 0.025)
     )
+
+  if (!is.null(perimeter_sf)) {
+    datasets <- datasets %>%
+      sf::st_as_sf(coords = c("lon", "lat"), crs = 4326, remove = FALSE) %>%
+      dplyr::filter(lengths(sf::st_within(., perimeter_sf)) > 0) %>%
+      sf::st_drop_geometry()
+  }
 
   if (!is.null(android_start_date)) {
     datasets <- datasets %>%
@@ -102,14 +106,10 @@ initialize_ma_dataset <- function(
            (.data$mean_score > 0))
     ) %>%
     dplyr::filter(.data$reliable_report) %>%
-    dplyr::select(-"reliable_report") %>%
-    sf::st_as_sf(coords = c("lon", "lat"), crs = 4326, remove = FALSE) %>%
-    sf::st_join(hex_grid["grid_id"], join = sf::st_within) %>%
-    dplyr::filter(!is.na(.data$grid_id)) %>%
-    sf::st_drop_geometry()
+    dplyr::select(-"reliable_report")
 
   message("• Writing primary dataset to RDS")
-  destination_dir <- if (is.null(output_dir)) hex_grid_dir else output_dir
+  destination_dir <- output_dir
   variant_slug <- tolower(dataset_variant)
   variant_slug <- gsub("[^a-z0-9]+", "_", variant_slug)
   variant_slug <- gsub("^_+|_+$", "", variant_slug)
@@ -175,7 +175,7 @@ initialize_ma_dataset <- function(
 
     if (!is.null(sampling_effort_sf)) {
       candidate_maps <- file.path(
-        hex_grid_dir,
+        output_dir,
         c(
           paste0("spatial_", ids$slug, "_adm.Rds"),
           paste0("map_", ids$slug, "_adm.Rds")
@@ -224,7 +224,6 @@ initialize_ma_dataset <- function(
   attr(datasets, "sampling_effort_joined") <- d_se
 
   attr(datasets, "sampling_effort") <- sampling_effort
-  attr(datasets, "hex_grid") <- hex_grid
   attr(datasets, "output_path") <- output_path
 
   message("Finished preparing dataset: ", output_path)

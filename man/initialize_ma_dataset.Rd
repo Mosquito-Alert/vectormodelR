@@ -9,11 +9,10 @@ initialize_ma_dataset(
   admin_level,
   admin_name,
   reports_path = "data/proc/mosquito_alert_cleaned_reports.Rds",
-  hex_grid_dir = "data/proc",
   sampling_effort_url =
     "https://github.com/Mosquito-Alert/sampling_effort_data/raw/main/sampling_effort_daily_cellres_025.csv.gz",
   android_start_date = NULL,
-  output_dir = NULL,
+  output_dir = "data/proc",
   dataset_variant = "base"
 )
 }
@@ -29,23 +28,22 @@ underscores) before constructing the file path.}
 
 \item{reports_path}{Path to the cleaned Mosquito Alert reports RDS file.}
 
-\item{hex_grid_dir}{Directory containing pre-computed hex grid RDS files.}
-
 \item{sampling_effort_url}{Optional URL pointing to the sampling effort CSV
 resource. Set to \code{NULL} to skip downloading.}
 
 \item{android_start_date}{Optional date (character or \code{Date}) used to filter
 reports collected before the Android application launch.}
 
-\item{output_dir}{Directory where the prepared dataset should be written.
-Defaults to \code{hex_grid_dir}.}
+\item{output_dir}{Directory where the prepared dataset should be written and
+where supporting boundary artefacts are expected. Defaults to
+\code{"data/proc"}.}
 
 \item{dataset_variant}{Optional suffix inserted into the saved filename (for
 example "base" or "extended").}
 }
 \value{
-A tibble of filtered reports. The object includes attributes
-\code{sampling_effort}, \code{hex_grid}, and \code{output_path} for downstream reuse.
+A tibble of filtered reports. The object includes attributes such as
+\code{sampling_effort} and \code{output_path} for downstream reuse.
 }
 \description{
 Prepare Mosquito Alert reports for modelling
