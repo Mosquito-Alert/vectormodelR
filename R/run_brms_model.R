@@ -42,7 +42,7 @@ run_brms_model <- function(
   max_treedepth = 12,
   backend = c("cmdstanr", "rstan"),
   write_output = TRUE,
-  output_path = NULL,
+  output_path = "data/proc",
   verbose = TRUE
 ) {
   backend <- match.arg(backend)
@@ -129,9 +129,11 @@ run_brms_model <- function(
     )
   }
 
+  s <- brms::s
+
   model_fit <- brms::brm(
-    presence ~ brms::s(sea_days, bs = "cc", k = 12) +
-      brms::s(maxTM_z, k = 6) +
+    presence ~ s(sea_days, bs = "cc", k = 12) +
+      s(maxTM_z, k = 6) +
       ppt_z + ndvi_z + elev_z + pop_z +
       (1 | year) + (1 | landcover_code),
     data = model_data,
