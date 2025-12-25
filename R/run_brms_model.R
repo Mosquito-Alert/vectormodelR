@@ -20,12 +20,22 @@
 #' @param max_treedepth Maximum tree depth for the NUTS sampler. Defaults to 12.
 #' @param backend Sampling backend passed to `brms::brm()`. Defaults to
 #'   `"cmdstanr"` but `"rstan"` is supported as well.
+#' @param iso3 Optional ISO3 country code used to derive the output filename
+#'   via `build_location_identifiers()`. Must be supplied alongside
+#'   `admin_level` and `admin_name` when provided.
+#' @param admin_level Administrative level corresponding to the modelling
+#'   dataset. Used for output naming when paired with `iso3` and `admin_name`.
+#' @param admin_name Administrative unit name corresponding to the modelling
+#'   dataset. Used for output naming when paired with `iso3` and `admin_level`.
 #' @param write_output Logical; when `TRUE` the fitted model is saved to disk
-#'   using the same directory and stem as `dataset_path` with a
-#'   `_brms_model.Rds` suffix. Defaults to `TRUE`.
-#' @param output_path Optional path where the fitted model should be written. If
-#'   `NULL` (default) and `write_output` is `TRUE`, the path is auto-derived from
-#'   `dataset_path`.
+#'   using either the supplied `output_path` (treated as a directory when it
+#'   exists or lacks an extension) or the directory inferred from `dataset`,
+#'   with filenames of the form `model_<slug>_brms.Rds` where possible. Defaults
+#'   to `TRUE`.
+#' @param output_path Optional location where the fitted model should be
+#'   written. Supply either a directory or a full file path. If `NULL` (default)
+#'   and `write_output` is `TRUE`, the path is auto-derived from `dataset` when
+#'   supplied as a file path.
 #' @param verbose Logical; if `TRUE`, progress messages are emitted. Defaults to
 #'   `TRUE`.
 #'
@@ -41,6 +51,9 @@ run_brms_model <- function(
   adapt_delta = 0.99,
   max_treedepth = 12,
   backend = c("cmdstanr", "rstan"),
+  iso3 = NULL,
+  admin_level = NULL,
+  admin_name = NULL,
   write_output = TRUE,
   output_path = "data/proc",
   verbose = TRUE
@@ -88,6 +101,23 @@ run_brms_model <- function(
   if (!is.data.frame(dataset)) {
     stop("`dataset` must be a data frame or a path to an RDS file containing one.",
          call. = FALSE)
+  }
+
+  explicit_slug <- NULL
+  if (!all(vapply(list(iso3, admin_level, admin_name), is.null, logical(1)))) {
+    if (any(vapply(list(iso3, admin_level, admin_name), is.null, logical(1)))) {
+      stop("`iso3`, `admin_level`, and `admin_name` must be supplied together.", call. = FALSE)
+    }
+    ids <- build_location_identifiers(iso3, admin_level, admin_name)
+    explicit_slug <- ids$slug
+  }
+
+  location_slug <- attr(dataset, "location_slug", exact = TRUE)
+  if (is.null(location_slug) || !nzchar(location_slug)) {
+    location_slug <- explicit_slug
+  }
+  if (!is.null(location_slug) && nzchar(location_slug)) {
+    attr(dataset, "location_slug") <- location_slug
   }
 
   required_cols <- c(
@@ -150,21 +180,54 @@ run_brms_model <- function(
   if (!is.null(dataset_path)) {
     attr(model_fit, "source_dataset") <- dataset_path
   }
+  if (!is.null(location_slug) && nzchar(location_slug)) {
+    attr(model_fit, "location_slug") <- location_slug
+  }
 
   if (isTRUE(write_output)) {
-    if (is.null(output_path) || !nzchar(output_path)) {
-      if (is.null(dataset_path)) {
-        stop("`write_output = TRUE` requires `dataset` to be a file path or `output_path` to be supplied.",
+    final_output_path <- output_path
+    if (is.null(final_output_path) || !nzchar(final_output_path)) {
+      if (!is.null(dataset_path)) {
+        final_output_path <- dirname(dataset_path)
+      } else {
+        stop("`write_output = TRUE` requires `dataset` be a path or `output_path` be supplied.",
              call. = FALSE)
       }
-      stem <- tools::file_path_sans_ext(basename(dataset_path))
-      output_path <- file.path(dirname(dataset_path), paste0(stem, "_brms_model.Rds"))
     }
-    dir.create(dirname(output_path), recursive = TRUE, showWarnings = FALSE)
-    saveRDS(model_fit, output_path)
-    attr(model_fit, "output_path") <- output_path
+
+    path_ext <- tools::file_ext(final_output_path)
+    is_dir_target <- dir.exists(final_output_path) ||
+      identical(path_ext, "") ||
+      grepl("[\\/]+$", final_output_path)
+
+    if (!is_dir_target) {
+      parent_dir <- dirname(final_output_path)
+      if (!dir.exists(parent_dir)) {
+        dir.create(parent_dir, recursive = TRUE, showWarnings = FALSE)
+      }
+    } else if (!dir.exists(final_output_path)) {
+      dir.create(final_output_path, recursive = TRUE, showWarnings = FALSE)
+    }
+
+    stem_base <- if (!is.null(location_slug) && nzchar(location_slug)) {
+      paste0("model_", location_slug, "_brms")
+    } else if (!is.null(dataset_path)) {
+      paste0(tools::file_path_sans_ext(basename(dataset_path)), "_brms")
+    } else {
+      paste0("brms_model_", format(Sys.time(), "%Y%m%d%H%M%S"))
+    }
+
+    if (is_dir_target) {
+      final_output_path <- file.path(final_output_path, paste0(stem_base, ".Rds"))
+    } else if (!grepl("\\.rds$", final_output_path, ignore.case = TRUE)) {
+      final_output_path <- paste0(final_output_path, ".Rds")
+    }
+
+    dir.create(dirname(final_output_path), recursive = TRUE, showWarnings = FALSE)
+    saveRDS(model_fit, final_output_path)
+    attr(model_fit, "output_path") <- final_output_path
     if (isTRUE(verbose)) {
-      message("brms model saved to ", output_path)
+      message("brms model saved to ", final_output_path)
     }
   } else if (!is.null(output_path)) {
     warning("`output_path` was supplied but `write_output` is FALSE; nothing was written.",
