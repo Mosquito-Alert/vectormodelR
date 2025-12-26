@@ -12,8 +12,11 @@ run_brms_model(
   adapt_delta = 0.99,
   max_treedepth = 12,
   backend = c("cmdstanr", "rstan"),
+  iso3 = NULL,
+  admin_level = NULL,
+  admin_name = NULL,
   write_output = TRUE,
-  output_path = NULL,
+  output_path = "data/proc",
   verbose = TRUE
 )
 }
@@ -37,13 +40,26 @@ Defaults to \code{NULL}, which uses the brms defaults.}
 \item{backend}{Sampling backend passed to \code{brms::brm()}. Defaults to
 \code{"cmdstanr"} but \code{"rstan"} is supported as well.}
 
-\item{write_output}{Logical; when \code{TRUE} the fitted model is saved to disk
-using the same directory and stem as \code{dataset_path} with a
-\verb{_brms_model.Rds} suffix. Defaults to \code{TRUE}.}
+\item{iso3}{Optional ISO3 country code used to derive the output filename
+via \code{build_location_identifiers()}. Must be supplied alongside
+\code{admin_level} and \code{admin_name} when provided.}
 
-\item{output_path}{Optional path where the fitted model should be written. If
-\code{NULL} (default) and \code{write_output} is \code{TRUE}, the path is auto-derived from
-\code{dataset_path}.}
+\item{admin_level}{Administrative level corresponding to the modelling
+dataset. Used for output naming when paired with \code{iso3} and \code{admin_name}.}
+
+\item{admin_name}{Administrative unit name corresponding to the modelling
+dataset. Used for output naming when paired with \code{iso3} and \code{admin_level}.}
+
+\item{write_output}{Logical; when \code{TRUE} the fitted model is saved to disk
+using either the supplied \code{output_path} (treated as a directory when it
+exists or lacks an extension) or the directory inferred from \code{dataset},
+with filenames of the form \verb{model_<slug>_brms.Rds} where possible. Defaults
+to \code{TRUE}.}
+
+\item{output_path}{Optional location where the fitted model should be
+written. Supply either a directory or a full file path. If \code{NULL} (default)
+and \code{write_output} is \code{TRUE}, the path is auto-derived from \code{dataset} when
+supplied as a file path.}
 
 \item{verbose}{Logical; if \code{TRUE}, progress messages are emitted. Defaults to
 \code{TRUE}.}
