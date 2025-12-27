@@ -11,6 +11,8 @@ get_gadm_data(
   path = "data/gadm",
   rds = TRUE,
   perimeter = FALSE,
+  union = FALSE,
+  match_type = c("exact", "contains"),
   verbose = TRUE
 )
 }
@@ -20,7 +22,8 @@ get_gadm_data(
 \item{level}{Integer. GADM administrative level (0 = country, 1 = region, 2 = province, ...).}
 
 \item{name}{Character or NULL. Optional name or vector of names to filter by.
-Matching is case-insensitive and partial (substring).}
+Matching defaults to case-insensitive substring search but can be changed
+via \code{match_type}.}
 
 \item{path}{Character. Directory for caching downloaded data.
 Default is \code{"data/gadm"}.}
@@ -31,6 +34,12 @@ Default is \code{"data/gadm"}.}
 \item{perimeter}{Logical. If TRUE, augment the result with perimeter and area
 metrics via \code{\link[=get_adm_perimeter]{get_adm_perimeter()}}. Default FALSE.}
 
+\item{union}{Logical. If TRUE, union matched polygons into a single
+multipolygon (useful for masking rasters). Default FALSE.}
+
+\item{match_type}{Character. Matching mode for \code{name}. Use "exact" for
+case-insensitive equality or "contains" (default) for substring matches.}
+
 \item{verbose}{Logical. Print progress messages. Default TRUE.}
 }
 \value{
@@ -40,7 +49,8 @@ An \code{sf} polygon layer (EPSG:4326).
 Fetches administrative polygons for a given country and level using
 \pkg{geodata}. Optionally filters by a specific admin name
 (e.g., "Barcelona" at level 2) and can return either all polygons or a single
-unioned region.
+unioned region. Matching behaviour can be toggled between substring search
+and exact name matching.
 }
 \examples{
 \dontrun{
