@@ -108,12 +108,13 @@ interpret_brms_model <- function(
   model_summary <- summary(model_fit)
   family_name <- model_summary$family
   links <- model_summary$links
-  formula_chr <- paste(deparse(stats::formula(model_fit)), collapse = " ")
   chains <- model_summary$chains
   iter <- model_summary$iter
   warmup <- model_summary$warmup
   total_draws <- chains * (iter - warmup)
   n_obs <- model_summary$nobs
+  family_is_logistic <- identical(family_name, "bernoulli") ||
+    grepl("logit", paste(links, collapse = " "), ignore.case = TRUE)
   
   collect_tables <- function(summ_obj) {
     tabs <- list(
@@ -178,6 +179,57 @@ interpret_brms_model <- function(
     nr > 0
   }
   
+  format_value <- function(value, logistic = FALSE) {
+    if (is.na(value)) return("NA")
+    if (isTRUE(logistic)) {
+      return(sprintf("%.1f%%", round(value * 100, 1)))
+    }
+    sprintf("%.2f", value)
+  }
+  
+  format_ci <- function(lower, upper, logistic = FALSE) {
+    if (is.na(lower) || is.na(upper)) return("")
+    sprintf("(95%% CI %s to %s)", format_value(lower, logistic), format_value(upper, logistic))
+  }
+  
+  conditional_specs <- list(
+    pop_z = list(
+      effect = "pop_z",
+      label = "Population density (scaled)",
+      axis_label = "population density (z score)"
+    ),
+    ppt_z = list(
+      effect = "ppt_z",
+      label = "Rainfall in the last day (scaled)",
+      axis_label = "rainfall (log1p z score)"
+    ),
+    ndvi_z = list(
+      effect = "ndvi_z",
+      label = "Green-space proximity (NDVI)",
+      axis_label = "NDVI proximity (z score)"
+    ),
+    elev_z = list(
+      effect = "elev_z",
+      label = "Elevation (scaled)",
+      axis_label = "elevation (z score)"
+    ),
+    sea_days = list(
+      effect = "sea_days",
+      label = "Day of the year",
+      axis_label = "Days per biweek"
+    ),
+    maxTM_z = list(
+      effect = "maxTM_z",
+      label = "Maximum temperature (scaled)",
+      axis_label = "maximum temperature (z score)"
+    )
+  )
+  
+  conditional_plot_specs <- list()
+  conditional_text_lines <- character()
+  landcover_df <- tibble::tibble()
+  landcover_text_lines <- character()
+  
   interpretation_lines <- character()
   if (has_rows(model_summary$fixed)) {
     fixed_df <- as.data.frame(model_summary$fixed)
@@ -188,8 +240,6 @@ interpret_brms_model <- function(
       param <- gsub("\\(Intercept\\)", "Intercept", param, fixed = FALSE)
       gsub("_", " ", param)
     }
-    
-    family_is_logistic <- identical(family_name, "bernoulli") || grepl("logit", paste(links, collapse = " "), ignore.case = TRUE)
     
     for (i in seq_len(nrow(fixed_df))) {
       row <- fixed_df[i, ]
@@ -207,6 +257,15 @@ interpret_brms_model <- function(
         "indicating a negative association"
       } else {
         "with the credible interval spanning zero, suggesting no clear direction"
+      }
+      is_intercept <- identical(param_label, "Intercept")
+      if (is_intercept) {
+        line <- sprintf(
+          "Intercept: posterior mean %.2f (95%% CI %s). Baseline log-odds of presence at mean covariate values (and average group effects).",
+          est, ci_text
+        )
+        interpretation_lines <- c(interpretation_lines, line)
+        next
       }
       
       if (family_is_logistic) {
@@ -228,6 +287,201 @@ interpret_brms_model <- function(
       interpretation_lines <- c(interpretation_lines, line)
     }
   }
+  
+  for (nm in names(conditional_specs)) {
+    spec <- conditional_specs[[nm]]
+    ce_obj <- tryCatch(
+      brms::conditional_effects(model_fit, effects = spec$effect, re_formula = NA),
+      error = function(e) NULL
+    )
+    ce_data <- NULL
+    if (!is.null(ce_obj) && length(ce_obj)) {
+      ce_data <- tryCatch(as.data.frame(ce_obj[[1]]), error = function(e) NULL)
+    }
+    if (!is.null(ce_data) && spec$effect %in% names(ce_data) && "estimate__" %in% names(ce_data)) {
+      plot_data <- ce_data[, c(spec$effect, "estimate__", "lower__", "upper__"), drop = FALSE]
+      plot_path <- tempfile(pattern = paste0("brms_conditional_plot_", spec$effect, "_"), fileext = ".Rds")
+      saveRDS(plot_data, plot_path)
+      resp_label <- attr(ce_obj[[1]], "resp")
+      if (is.null(resp_label) || !nzchar(resp_label)) {
+        resp_label <- attr(ce_obj[[1]], "response")
+      }
+      if (is.null(resp_label) || !nzchar(resp_label)) {
+        resp_label <- if (family_is_logistic) "Detection probability" else "Fitted mean"
+      }
+      conditional_plot_specs[[length(conditional_plot_specs) + 1L]] <- list(
+        effect = spec$effect,
+        label = spec$label,
+        axis_label = spec$axis_label,
+        x_label = spec$effect,
+        data_path = plot_path,
+        y_label = resp_label
+      )
+      predictor <- ce_data[[spec$effect]]
+      if (!is.numeric(predictor)) {
+        suppressWarnings(predictor <- as.numeric(predictor))
+      }
+      idx_min <- which.min(predictor)
+      idx_max <- which.max(predictor)
+      if (length(idx_min) && length(idx_max)) {
+        min_val <- predictor[idx_min[1]]
+        max_val <- predictor[idx_max[1]]
+        min_est <- ce_data$estimate__[idx_min[1]]
+        max_est <- ce_data$estimate__[idx_max[1]]
+        min_lower <- if ("lower__" %in% names(ce_data)) ce_data$lower__[idx_min[1]] else NA_real_
+        min_upper <- if ("upper__" %in% names(ce_data)) ce_data$upper__[idx_min[1]] else NA_real_
+        max_lower <- if ("lower__" %in% names(ce_data)) ce_data$lower__[idx_max[1]] else NA_real_
+        max_upper <- if ("upper__" %in% names(ce_data)) ce_data$upper__[idx_max[1]] else NA_real_
+        min_descr <- format_value(min_est, family_is_logistic)
+        max_descr <- format_value(max_est, family_is_logistic)
+        min_ci <- format_ci(min_lower, min_upper, family_is_logistic)
+        max_ci <- format_ci(max_lower, max_upper, family_is_logistic)
+        if (nzchar(min_ci)) min_descr <- paste(min_descr, min_ci)
+        if (nzchar(max_ci)) max_descr <- paste(max_descr, max_ci)
+        delta <- max_est - min_est
+        change_clause <- ""
+        if (!is.na(delta)) {
+          if (family_is_logistic) {
+            change_clause <- sprintf(
+              "Approximate change of %.1f percentage points across the observed range.",
+              abs(delta * 100)
+            )
+          } else {
+            change_clause <- sprintf(
+              "Approximate change of %.2f on the response scale across the observed range.",
+              abs(delta)
+            )
+          }
+        }
+        direction_clause <- ""
+        if (!is.na(delta)) {
+          assoc_term <- if (family_is_logistic) "detection probability" else "the response"
+          direction_clause <- if (delta > 0) {
+            sprintf("indicating a positive association with %s across the observed range.", assoc_term)
+          } else if (delta < 0) {
+            sprintf("indicating a negative association with %s across the observed range.", assoc_term)
+          } else {
+            "suggesting little variation across the observed range."
+          }
+        }
+        line <- sprintf(
+          "%s: fitted %s shifts from %s to %s as %s ranges from %.2f to %.2f.",
+          spec$label,
+          if (family_is_logistic) "detection probability" else "outcome mean",
+          min_descr,
+          max_descr,
+          spec$axis_label,
+          min_val,
+          max_val
+        )
+        line <- gsub("\\s+", " ", trimws(paste(line, change_clause, direction_clause)))
+        conditional_text_lines <- c(conditional_text_lines, line)
+      }
+    }
+  }
+  
+  if (length(conditional_text_lines)) {
+    interpretation_lines <- c(interpretation_lines, conditional_text_lines)
+  }
+  
+  lc_ranef <- tryCatch(brms::ranef(model_fit)$landcover_code, error = function(e) NULL)
+  if (!is.null(lc_ranef) && length(dim(lc_ranef)) == 3L) {
+    dn <- dimnames(lc_ranef)
+    stat_labels <- c("Estimate", "Est.Error", "Q2.5", "Q97.5")
+    stat_axis <- which(vapply(dn, function(nms) {
+      if (is.null(nms)) return(FALSE)
+      sum(nms %in% stat_labels) >= 3
+    }, logical(1)))
+    stat_axis <- if (length(stat_axis)) stat_axis[1] else 3L
+    if (stat_axis > length(dim(lc_ranef))) {
+      stat_axis <- length(dim(lc_ranef))
+    }
+    term_axes <- setdiff(seq_len(length(dim(lc_ranef))), c(1L, stat_axis))
+    term_axis <- if (length(term_axes)) term_axes[1] else 2L
+    perm <- c(1L, term_axis, stat_axis)
+    lc_aligned <- aperm(lc_ranef, perm = perm)
+    if (length(dim(lc_aligned)) >= 3) {
+      aligned_dn <- dimnames(lc_aligned)
+      groups <- aligned_dn[[1]]
+      terms <- aligned_dn[[2]]
+      stats <- aligned_dn[[3]]
+      if (is.null(groups) || !length(groups)) {
+        groups <- as.character(seq_len(dim(lc_aligned)[1]))
+      }
+      if (is.null(terms) || !length(terms)) {
+        terms <- paste0("term", seq_len(dim(lc_aligned)[2]))
+      }
+      if (is.null(stats) || !length(stats)) {
+        stats <- stat_labels[seq_len(dim(lc_aligned)[3])]
+      }
+      rows <- vector("list", length(groups) * length(terms))
+      idx <- 1L
+      for (g_idx in seq_along(groups)) {
+        for (t_idx in seq_along(terms)) {
+          slice <- tryCatch(lc_aligned[g_idx, t_idx, , drop = TRUE], error = function(e) NULL)
+          if (is.null(slice)) next
+          names(slice) <- if (!is.null(names(slice))) names(slice) else stats
+          get_stat <- function(name) {
+            if (name %in% names(slice)) return(unname(slice[[name]]))
+            NA_real_
+          }
+          group_label <- as.character(groups[g_idx])
+          term_label <- as.character(terms[t_idx])
+          rows[[idx]] <- tibble::tibble(
+            landcover = group_label,
+            term = term_label,
+            estimate = get_stat("Estimate"),
+            est_error = get_stat("Est.Error"),
+            lower = get_stat("Q2.5"),
+            upper = get_stat("Q97.5")
+          )
+          idx <- idx + 1L
+        }
+      }
+      rows <- rows[!vapply(rows, is.null, logical(1))]
+      if (length(rows)) {
+        landcover_df <- dplyr::bind_rows(rows)
+      }
+    }
+  }
+  
+  if (nrow(landcover_df)) {
+    landcover_df <- dplyr::mutate(landcover_df, term = gsub("^b_", "", .data$term))
+    landcover_df <- dplyr::arrange(landcover_df, dplyr::desc(.data$estimate))
+    landcover_orderable <- dplyr::filter(landcover_df, is.finite(.data$estimate))
+    
+    if (nrow(landcover_orderable)) {
+      top_row <- landcover_orderable[1, ]
+      bottom_row <- landcover_orderable[nrow(landcover_orderable), ]
+      top_ci <- format_ci(top_row$lower, top_row$upper, FALSE)
+      bottom_ci <- format_ci(bottom_row$lower, bottom_row$upper, FALSE)
+      pos_line <- sprintf(
+        "Land-cover '%s' shows a higher baseline log-odds (estimate %.2f %s), suggesting more reports than the average cell.",
+        top_row$landcover,
+        top_row$estimate,
+        top_ci
+      )
+      landcover_text_lines <- c(landcover_text_lines, gsub("\\s+", " ", trimws(pos_line)))
+      if (nrow(landcover_orderable) > 1) {
+        neg_line <- sprintf(
+          "Land-cover '%s' sits lower on the log-odds scale (estimate %.2f %s), pointing to fewer reports than the baseline class.",
+          bottom_row$landcover,
+          bottom_row$estimate,
+          bottom_ci
+        )
+        landcover_text_lines <- c(landcover_text_lines, gsub("\\s+", " ", trimws(neg_line)))
+        range_line <- sprintf(
+          "Land-cover random effects span %.2f to %.2f on the log-odds scale.",
+          min(landcover_orderable$estimate, na.rm = TRUE),
+          max(landcover_orderable$estimate, na.rm = TRUE)
+        )
+        landcover_text_lines <- c(landcover_text_lines, range_line)
+      }
+    }
+  }
+  
+  landcover_path <- tempfile(pattern = "brms_landcover_", fileext = ".Rds")
+  saveRDS(landcover_df, landcover_path)
   
   if (has_rows(model_summary$spec_pars)) {
     smooth_terms <- rownames(model_summary$spec_pars)
@@ -256,6 +510,10 @@ interpret_brms_model <- function(
         paste(random_groups, collapse = ", ")
       )
     )
+  }
+  
+  if (length(landcover_text_lines)) {
+    interpretation_lines <- c(interpretation_lines, landcover_text_lines)
   }
   
   interpretation_path <- tempfile(pattern = "brms_interp_", fileext = ".Rds")
@@ -373,7 +631,7 @@ interpret_brms_model <- function(
     "```{r}",
     sprintf("cat('**Family:** %s  \\n')", family_name),
     sprintf("cat('**Links:** %s  \\n')", paste(names(links), links, sep = ' = ', collapse = ', ')),
-    sprintf("cat('**Formula:** %s  \\n')", formula_chr),
+    "cat('**Formula:** ', paste(deparse(formula(m)), collapse = ' '), '  \\n', sep = '')",
     sprintf("cat('**Observations:** %s  \\n')", n_obs),
     sprintf("cat('**Chains / Iter / Warmup:** %s / %s / %s  \\n')", chains, iter, warmup),
     sprintf("cat('**Post-warmup draws:** %s  \\n')", total_draws),
@@ -416,8 +674,58 @@ interpret_brms_model <- function(
     "",
     "```{r}",
     "if (!is.null(s$spec_pars)) knitr::kable(as.data.frame(s$spec_pars), digits = 2) else cat('No smooth terms table available.\n')",
-    "```",
+    "```"
+  )
+  
+  if (length(conditional_plot_specs)) {
+    conditional_section <- c("## Conditional effects", "")
+    for (spec in conditional_plot_specs) {
+      conditional_section <- c(
+        conditional_section,
+        sprintf("### %s", spec$label),
+        "",
+        "```{r}",
+        sprintf("ce_df <- tryCatch(readRDS('%s'), error = function(e) NULL)", spec$data_path),
+        "if (!is.null(ce_df) && nrow(ce_df)) {",
+        sprintf("  gg <- ggplot(ce_df, aes(x = %s, y = estimate__)) +\n    geom_ribbon(aes(ymin = lower__, ymax = upper__), fill = 'grey80', alpha = 0.6) +\n    geom_line(color = '#1b6ec2', size = 0.9) +\n    labs(x = '%s', y = '%s') +\n    theme_minimal()",
+                spec$effect,
+                gsub("'", "\\'", spec$x_label),
+                gsub("'", "\\'", spec$y_label)),
+        "  print(gg)",
+        "} else {",
+        "  cat('Conditional effect unavailable.\\n')",
+        "}",
+        "```",
+        ""
+      )
+    }
+  } else {
+    conditional_section <- c(
+      "## Conditional effects",
+      "",
+      "No conditional effects available.",
+      ""
+    )
+  }
+  
+  landcover_section <- c(
+    "## Land-cover random effects",
     "",
+    "```{r}",
+    sprintf("landcover_df <- readRDS('%s')", landcover_path),
+    "if (nrow(landcover_df)) {",
+    "  knitr::kable(landcover_df, digits = 2)",
+    "} else {",
+    "  cat('No land-cover random effects available.\\n')",
+    "}",
+    "```",
+    ""
+  )
+  
+  rmd_lines <- c(
+    rmd_lines,
+    conditional_section,
+    landcover_section,
     "## Posterior predictive check",
     "",
     "```{r}",
@@ -429,7 +737,7 @@ interpret_brms_model <- function(
     "```{r, results='asis'}",
     sprintf("interp_lines <- readRDS('%s')", interpretation_path),
     "if (length(interp_lines)) {",
-    "  cat(paste0('* ', interp_lines, collapse = '\n'))",
+    "  cat(paste0('* ', interp_lines, collapse = '\\n'))",
     "} else {",
     "  cat('No interpretive summary available.\\n')",
     "}",

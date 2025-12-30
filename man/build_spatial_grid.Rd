@@ -5,16 +5,20 @@
 \title{Build a regular grid for a supplied polygon}
 \usage{
 build_spatial_grid(
-  map,
+  map = NULL,
   cellsize_m = 400,
   clip = TRUE,
   return_crs = 4326,
   shape = c("hex", "square"),
-  out_rds = NULL
+  write = TRUE,
+  iso3 = NULL,
+  admin_level = NULL,
+  admin_name = NULL,
+  data_dir = "data/proc"
 )
 }
 \arguments{
-\item{map}{An \code{sf} object describing the polygon(s) to cover.}
+\item{map}{Optional \code{sf} object describing the polygon(s) to cover.}
 
 \item{cellsize_m}{Numeric. Grid cell size in meters (default 400).}
 
@@ -25,8 +29,20 @@ outline.}
 
 \item{shape}{Character. "hex" (default) for hexagons or "square" for squares.}
 
-\item{out_rds}{Optional path to write the grid as an RDS file. If NULL,
-nothing is written.}
+\item{write}{Logical. If TRUE, saves the generated grid to \code{data_dir}
+using the slug-based filename.}
+
+\item{iso3}{Optional three-letter ISO3 code used with \code{admin_level} and
+\code{admin_name} to locate boundary files when \code{map} is not supplied.}
+
+\item{admin_level}{Optional administrative level corresponding to the
+boundary file when \code{map} is not supplied.}
+
+\item{admin_name}{Optional administrative unit name corresponding to the
+boundary file when \code{map} is not supplied.}
+
+\item{data_dir}{Directory where boundary inputs and grid outputs are stored.
+Defaults to \code{"data/proc"}.}
 }
 \value{
 An \code{sf} object with polygons and a \code{grid_id} column.
@@ -54,7 +70,15 @@ sq_grid <- build_spatial_grid(
   map = bcn_poly,
   cellsize_m = 1000,
   shape = "square",
-  out_rds = "data/proc/bcn_square_grid.rds"
+  write = FALSE
+)
+
+# Using stored administrative boundaries (requires matching RDS file)
+hex_grid <- build_spatial_grid(
+  iso3 = "ESP",
+  admin_level = 2,
+  admin_name = "Barcelona",
+  write = TRUE
 )
 }
 }
