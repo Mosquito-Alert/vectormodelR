@@ -40,7 +40,7 @@ Convenience wrapper that locates the base \verb{model_prep_*_base.Rds} file for 
 given location and applies one or more enrichment helpers (hex-grid IDs,
 weather, landcover, NDVI, elevation, population density, pseudoabsences) in
 the order supplied.
-Only the final helper in the sequence writes to disk; earlier steps run
-in-memory while still updating the dataset metadata (notably the
-\code{output_path} attribute) so suffixes accumulate as expected.
+Helpers run sequentially, with the last step persisting the enriched
+dataset alongside the base inputs. Intermediate helpers update metadata
+(notably the \code{output_path} attribute) so suffixes accumulate as expected.
 }

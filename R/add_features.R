@@ -4,9 +4,9 @@
 #' given location and applies one or more enrichment helpers (hex-grid IDs,
 #' weather, landcover, NDVI, elevation, population density, pseudoabsences) in
 #' the order supplied.
-#' Only the final helper in the sequence writes to disk; earlier steps run
-#' in-memory while still updating the dataset metadata (notably the
-#' `output_path` attribute) so suffixes accumulate as expected.
+#' Helpers run sequentially, with the last step persisting the enriched
+#' dataset alongside the base inputs. Intermediate helpers update metadata
+#' (notably the `output_path` attribute) so suffixes accumulate as expected.
 #'
 #' @param iso3 Three-letter ISO3 country code.
 #' @param admin_level Administrative level used when preparing the inputs.
@@ -169,17 +169,6 @@ add_features <- function(
     )
   }
 
-  if (isTRUE(verbose)) {
-    final_path <- attr(current, "output_path", exact = TRUE)
-    if (!is.null(final_path) && nzchar(final_path)) {
-      exists_flag <- file.exists(final_path)
-      message("Finished feature enrichment. Latest dataset ",
-              if (exists_flag) "written to " else "located at ", final_path)
-    } else {
-      message("Finished feature enrichment.")
-    }
-  }
-
   if (!"sea_days" %in% names(current) || anyNA(current$sea_days)) {
     if (!"date" %in% names(current)) {
       warning("Final dataset lacks `date`; cannot recompute `sea_days`.", call. = FALSE)
@@ -200,6 +189,17 @@ add_features <- function(
         message("`sea_days` values recomputed from `date` before return where missing.")
       }
     }
+  }
+
+  final_path <- attr(current, "output_path", exact = TRUE)
+  if (!is.null(final_path) && nzchar(final_path)) {
+    dir.create(dirname(final_path), recursive = TRUE, showWarnings = FALSE)
+    saveRDS(current, final_path)
+    if (isTRUE(verbose)) {
+      message("Finished feature enrichment. Saved dataset to ", final_path)
+    }
+  } else if (isTRUE(verbose)) {
+    message("Finished feature enrichment (no output path available to save).")
   }
 
   current
