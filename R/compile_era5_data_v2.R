@@ -13,7 +13,6 @@
 #' @param verbose Print progress.
 #'
 #' @return (invisibly) a list with summary info.
-#' @import data.table
 #' @importFrom terra rast time nlyr
 #' @importFrom jsonlite fromJSON toJSON
 #' @importFrom withr local_options

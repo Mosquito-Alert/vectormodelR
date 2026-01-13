@@ -6,9 +6,6 @@
 #' @param file_layer Integer. The layer of the geopackage to access. Defaults to the last available layer if not specified.
 #' @returns A spatial data frame containing the mosquito alert reports joined with geopackage data.
 #' @import sf
-#' @import dplyr
-#' @import stringr
-#' @import httr
 #' @export
 #' @examples
 #' # Retrieve data for mosquito alerts in Spain for 2014-2024

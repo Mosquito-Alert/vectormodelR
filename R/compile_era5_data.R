@@ -12,7 +12,6 @@
 #' @param verbose    Logical; print progress.
 #'
 #' @return (Invisibly) a list with summary info.
-#' @import data.table
 #' @importFrom stars read_stars
 #' @importFrom jsonlite fromJSON toJSON
 #' @importFrom withr local_options

@@ -7,8 +7,6 @@
 #' @import sf
 #' @import rnaturalearth
 #' @import rnaturalearthdata
-#' @import dplyr
-#' @import purrr
 #' @export
 #' @examples
 #' # Get all country bounding boxes

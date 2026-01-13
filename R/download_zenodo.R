@@ -29,8 +29,6 @@
 #' is.flag
 #' noNA
 #'
-#' @import jsonlite
-#' @import curl
 #' @import tools
 #' @export
 #' @family functions regarding file management for N2KHAB projects
@@ -164,7 +162,7 @@ download_zenodo <- function(doi,
 #' @keywords internal
 #' @importFrom assertthat
 #' assert_that
-#' @importFrom dplyr
+#' @importFrom magrittr
 #' %>%
 human_filesize <- function(x) {
   assert_that(is.numeric(x))

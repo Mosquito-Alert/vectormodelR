@@ -40,7 +40,6 @@
 #' Units assumed (ERA5 defaults): temperature in Kelvin, precipitation in meters
 #' per step; wind components in m/s.
 #'
-#' @import data.table
 #' @importFrom lubridate ymd_hms
 #' @importFrom RcppRoll roll_mean roll_sum
 #' @importFrom sf st_as_sf st_make_valid st_union st_within st_drop_geometry st_bbox st_transform st_buffer

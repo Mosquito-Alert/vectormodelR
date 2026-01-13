@@ -4,9 +4,6 @@
 #' @param file_layer Integer. The layer of the geopackage to access. Defaults to last available layer.
 #' @returns The geopackage for the specified country and layer.
 #' @import sf
-#' @import dplyr
-#' @import stringr
-#' @import httr
 #' @export
 #' @examples
 #' # Retrieve geopackage data for Spain (ESP) and layer 4

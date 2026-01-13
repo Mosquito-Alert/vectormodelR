@@ -7,9 +7,6 @@
 #' @param file_layer Integer. The layer of the shapefile/geopackage to access (for city aggregation).
 #' @returns A data frame containing the aggregated mosquito alert report counts.
 #' @import sf
-#' @import dplyr
-#' @import stringr
-#' @import httr
 #' @export
 #' @examples
 #' # Aggregate mosquito reports by country for 2015, 2016 and 2018
