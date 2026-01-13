@@ -1,9 +1,9 @@
 #' Attach hex-grid identifiers to Mosquito Alert model inputs
 #'
 #' Reads the precomputed hex grid for a given location, assigns each report to
-#' its containing cell, and writes a new dataset with a `grid_id` column. When
-#' the input is provided as an in-memory object it must carry an `output_path`
-#' attribute so the new filename can be derived.
+#' its containing cell, and writes a new dataset with size-specific grid
+#' identifiers. When the input is provided as an in-memory object it must carry
+#' an `output_path` attribute so the new filename can be derived.
 #'
 #' @param dataset Either the in-memory model-preparation dataset or a path to
 #'   the corresponding RDS file.
@@ -11,14 +11,21 @@
 #' @param admin_level Administrative level used when generating the hex grid.
 #' @param admin_name Administrative unit name used in the file naming scheme.
 #' @param grid_dir Directory containing the precomputed hex grids. Defaults to
-#'   "data/proc".
+#'   "data/proc". The function searches for files following the
+#'   `spatial_<slug>_hex_grid_<cellsize>.rds` naming convention, with fallbacks
+#'   to legacy filenames when necessary.
+#' @param cellsize_m Numeric cell size (meters) used when the grid was
+#'   generated. Defaults to 400 to match the package's standard grid.
 #' @param verbose Logical; if `TRUE`, prints status updates. Defaults to `TRUE`.
 #' @param write_output Logical flag; when `TRUE` (default) the enriched dataset
-#'   is written to disk with `_hex.Rds` appended to the filename stem.
+#'   is written to disk with `_hex<cellsize>.Rds` appended to the filename stem
+#'   (for example `_hex400.Rds`).
 #'
 #' @return A tibble/data frame containing the augmented dataset. Attributes from
 #'   the input object are preserved and supplemented with `hex_grid_source`,
-#'   `location_slug`, and an updated `output_path`.
+#'   `location_slug`, and an updated `output_path`. A new `grid_id_<cellsize>`
+#'   column is added alongside the existing `grid_id` field, and the
+#'   `hex_grid_id_column` attribute records available grid identifiers.
 #' @export
 #' @importFrom sf st_as_sf st_join st_within st_drop_geometry
 add_hex_grid <- function(
@@ -27,17 +34,29 @@ add_hex_grid <- function(
   admin_level,
   admin_name,
   grid_dir = "data/proc",
+  cellsize_m = 400,
   verbose = TRUE,
   write_output = TRUE
 ) {
   ids <- build_location_identifiers(iso3, admin_level, admin_name)
   location_slug <- ids$slug
 
-  grid_filename <- paste0("spatial_", location_slug, "_hex_grid.rds")
-  grid_path <- file.path(grid_dir, grid_filename)
-  if (!file.exists(grid_path)) {
-    stop("Hex grid not found at ", grid_path, call. = FALSE)
+  cellsize_token <- gsub("\\.", "_", format(cellsize_m, trim = TRUE, scientific = FALSE))
+  candidate_paths <- c(
+    file.path(grid_dir, sprintf("spatial_%s_hex_grid_%s.Rds", location_slug, cellsize_token)),
+    file.path(grid_dir, sprintf("spatial_%s_hex_grid_%s.rds", location_slug, cellsize_token)),
+    file.path(grid_dir, sprintf("spatial_%s_hex_grid.Rds", location_slug)),
+    file.path(grid_dir, sprintf("spatial_%s_hex_grid.rds", location_slug))
+  )
+  existing <- candidate_paths[file.exists(candidate_paths)]
+  if (!length(existing)) {
+    stop(
+      "Hex grid not found. Looked for: ",
+      paste(candidate_paths, collapse = "; "),
+      call. = FALSE
+    )
   }
+  grid_path <- existing[[1]]
   if (isTRUE(verbose)) {
     message("Loading hex grid from ", grid_path)
   }
@@ -87,7 +106,7 @@ add_hex_grid <- function(
   enriched_out <- sf::st_drop_geometry(enriched_sf)
 
   stem <- tools::file_path_sans_ext(basename(dataset_path))
-  output_filename <- paste0(stem, "_hex.Rds")
+  output_filename <- paste0(stem, "_hex", cellsize_token, ".Rds")
   output_path <- file.path(dirname(dataset_path), output_filename)
 
   preserve <- base_attrs[setdiff(names(base_attrs), c("names", "row.names", "class"))]
@@ -95,8 +114,15 @@ add_hex_grid <- function(
     attr(enriched_out, nm) <- preserve[[nm]]
   }
 
+  grid_id_suffix <- paste0("grid_id_", cellsize_token)
+  if (!grid_id_suffix %in% names(enriched_out)) {
+    enriched_out[[grid_id_suffix]] <- enriched_out$grid_id
+  }
+
   attr(enriched_out, "hex_grid_source") <- grid_path
   attr(enriched_out, "location_slug") <- location_slug
+  existing_hex_cols <- attr(enriched_out, "hex_grid_id_column", exact = TRUE)
+  attr(enriched_out, "hex_grid_id_column") <- unique(c(existing_hex_cols, grid_id_suffix))
   attr(enriched_out, "output_path") <- output_path
 
   if (isTRUE(write_output)) {

@@ -10,6 +10,7 @@ add_hex_grid(
   admin_level,
   admin_name,
   grid_dir = "data/proc",
+  cellsize_m = 400,
   verbose = TRUE,
   write_output = TRUE
 )
@@ -25,21 +26,29 @@ the corresponding RDS file.}
 \item{admin_name}{Administrative unit name used in the file naming scheme.}
 
 \item{grid_dir}{Directory containing the precomputed hex grids. Defaults to
-"data/proc".}
+"data/proc". The function searches for files following the
+\verb{spatial_<slug>_hex_grid_<cellsize>.rds} naming convention, with fallbacks
+to legacy filenames when necessary.}
+
+\item{cellsize_m}{Numeric cell size (meters) used when the grid was
+generated. Defaults to 400 to match the package's standard grid.}
 
 \item{verbose}{Logical; if \code{TRUE}, prints status updates. Defaults to \code{TRUE}.}
 
 \item{write_output}{Logical flag; when \code{TRUE} (default) the enriched dataset
-is written to disk with \verb{_hex.Rds} appended to the filename stem.}
+is written to disk with \verb{_hex<cellsize>.Rds} appended to the filename stem
+(for example \verb{_hex400.Rds}).}
 }
 \value{
 A tibble/data frame containing the augmented dataset. Attributes from
 the input object are preserved and supplemented with \code{hex_grid_source},
-\code{location_slug}, and an updated \code{output_path}.
+\code{location_slug}, and an updated \code{output_path}. A new \verb{grid_id_<cellsize>}
+column is added alongside the existing \code{grid_id} field, and the
+\code{hex_grid_id_column} attribute records available grid identifiers.
 }
 \description{
 Reads the precomputed hex grid for a given location, assigns each report to
-its containing cell, and writes a new dataset with a \code{grid_id} column. When
-the input is provided as an in-memory object it must carry an \code{output_path}
-attribute so the new filename can be derived.
+its containing cell, and writes a new dataset with size-specific grid
+identifiers. When the input is provided as an in-memory object it must carry
+an \code{output_path} attribute so the new filename can be derived.
 }

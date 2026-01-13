@@ -11,7 +11,8 @@
 #' @param return_crs Coordinate reference system for the output (default 4326).
 #' @param shape Character. "hex" (default) for hexagons or "square" for squares.
 #' @param write Logical. If TRUE, saves the generated grid to `data_dir`
-#'   using the slug-based filename.
+#'   using the slug-based filename (for example
+#'   `spatial_<slug>_hex_grid_400.Rds`).
 #' @param iso3 Optional three-letter ISO3 code used with `admin_level` and
 #'   `admin_name` to locate boundary files when `map` is not supplied.
 #' @param admin_level Optional administrative level corresponding to the
@@ -21,7 +22,9 @@
 #' @param data_dir Directory where boundary inputs and grid outputs are stored.
 #'   Defaults to `"data/proc"`.
 #'
-#' @return An `sf` object with polygons and a `grid_id` column.
+#' @return An `sf` object with polygons and a `grid_id` column. A
+#'   size-specific `grid_id_<cellsize>` column is also added to support storing
+#'   multiple grid resolutions side-by-side.
 #' @examples
 #' \dontrun{
 #' library(sf)
@@ -121,13 +124,27 @@ build_spatial_grid <- function(
     attr(grid, "sf_column") <- "geometry"
   }
 
+  cellsize_token <- gsub("\\.", "_", format(cellsize_m, trim = TRUE, scientific = FALSE))
+  size_col <- paste0("grid_id_", cellsize_token)
+  if (!size_col %in% names(grid)) {
+    grid[[size_col]] <- grid$grid_id
+  }
+
   if (isTRUE(write)) {
     if (is.null(ids)) {
       stop("Automatic output naming requires `iso3`, `admin_level`, and `admin_name`.",
         call. = FALSE)
     }
     grid_suffix <- if (identical(shape, "hex")) "hex" else "square"
-    out_path <- file.path(data_dir, sprintf("spatial_%s_%s_grid.Rds", ids$slug, grid_suffix))
+    out_path <- file.path(
+      data_dir,
+      sprintf(
+        "spatial_%s_%s_grid_%s.Rds",
+        ids$slug,
+        grid_suffix,
+        cellsize_token
+      )
+    )
     readr::write_rds(grid, out_path)
   }
 

@@ -7,7 +7,10 @@
 get_malert_data(
   source = "zenodo",
   doi = "10.5281/zenodo.597466",
-  clean = FALSE
+  iso3 = NULL,
+  admin_level = NULL,
+  admin_name = NULL,
+  desired_cols = NULL
 )
 }
 \arguments{
@@ -17,20 +20,33 @@ get_malert_data(
 Default is the DOI that will always point to the most recent version:
 10.5281/zenodo.597466.}
 
-\item{clean}{Logical. If TRUE, the dataset is cleaned and standardized
-(renamed columns, formatted dates, and adds Tigacell fields). If FALSE,
-returns the raw downloaded data as-is. Default: FALSE.}
+\item{iso3}{Optional three-letter ISO code used to locate a perimeter file for
+spatial filtering.}
+
+\item{admin_level}{Optional administrative level associated with the
+perimeter file.}
+
+\item{admin_name}{Optional administrative unit name associated with the
+perimeter file.}
+
+\item{desired_cols}{Optional character vector (or list) of column names to
+retain after spatial filtering. When \code{NULL}, all available columns are kept.
+
+The function always writes the raw combined download to
+\code{data/vector/vector_global_malert.Rds}. When a perimeter is supplied, the
+filtered output (after column selection) is persisted to
+\verb{data/proc/vector_<iso3>_<admin_level>_<admin_name>_malert.Rds}.
+When spatial filtering is applied, records are further restricted to
+\code{type == "adult"} when that column is available.}
 }
 \value{
-A tibble (raw or cleaned, depending on \code{clean}).
+A tibble of Mosquito Alert reports (filtered and column-selected if
+the optional perimeter inputs are supplied).
 }
 \description{
 Download Mosquito Alert report data from GitHub or Zenodo
 }
 \examples{
-# Download raw data
-malert_reports <- get_malert_data(source = "github", clean = FALSE)
-
-# Download and clean data
-malert_clean <- get_malert_data(source = "github", clean = TRUE)
+# Download raw data without filtering
+malert_reports <- get_malert_data(source = "github")
 }

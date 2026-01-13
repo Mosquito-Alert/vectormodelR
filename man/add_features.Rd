@@ -21,7 +21,8 @@ add_features(
 \item{admin_name}{Administrative unit name used in the file naming scheme.}
 
 \item{features}{Character vector (or comma-separated string) indicating which
-feature steps to run. Accepted values: \code{"hex"}, \code{"wx"}/\code{"weather"},
+feature steps to run. Accepted values: \code{"hex"},
+\code{"hex_<cellsize>"} (for example \code{hex_800}), \code{"wx"}/\code{"weather"},
 \code{"lc"}/\code{"landcover"}, \code{"ndvi"}, \code{"el"}/\code{"elevation"},
 \code{"pd"}/\code{"popdensity"}, \code{"se"}/\code{"pseudoabsence"}.}
 
@@ -29,6 +30,9 @@ feature steps to run. Accepted values: \code{"hex"}, \code{"wx"}/\code{"weather"
 derived artefacts. Defaults to \code{"data/proc"}.}
 
 \item{verbose}{Logical; if \code{TRUE}, prints progress messages while processing.}
+
+\item{grid_cellsize_m}{Numeric cell size (meters) corresponding to the stored
+hex grid. Defaults to 400.}
 }
 \value{
 The enriched dataset returned by the final helper that ran. The

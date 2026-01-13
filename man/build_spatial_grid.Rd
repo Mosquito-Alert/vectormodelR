@@ -30,7 +30,8 @@ outline.}
 \item{shape}{Character. "hex" (default) for hexagons or "square" for squares.}
 
 \item{write}{Logical. If TRUE, saves the generated grid to \code{data_dir}
-using the slug-based filename.}
+using the slug-based filename (for example
+\verb{spatial_<slug>_hex_grid_400.Rds}).}
 
 \item{iso3}{Optional three-letter ISO3 code used with \code{admin_level} and
 \code{admin_name} to locate boundary files when \code{map} is not supplied.}
@@ -45,7 +46,9 @@ boundary file when \code{map} is not supplied.}
 Defaults to \code{"data/proc"}.}
 }
 \value{
-An \code{sf} object with polygons and a \code{grid_id} column.
+An \code{sf} object with polygons and a \code{grid_id} column. A
+size-specific \verb{grid_id_<cellsize>} column is also added to support storing
+multiple grid resolutions side-by-side.
 }
 \description{
 Creates a tessellation (hexagonal or square) at a given cell size (meters),

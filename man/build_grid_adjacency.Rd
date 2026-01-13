@@ -9,6 +9,7 @@ build_grid_adjacency(
   admin_level,
   admin_name,
   data_dir = "data/proc",
+  cellsize_m = 400,
   target_crs = NULL,
   sparse = TRUE,
   model
@@ -22,6 +23,10 @@ build_grid_adjacency(
 \item{admin_name}{Administrative unit name used in the file naming scheme.}
 
 \item{data_dir}{Directory holding processed outputs. Defaults to \code{"data/proc"}.}
+
+\item{cellsize_m}{Numeric cell size (meters) for the hex grid file name.
+Defaults to 400. Use values matching the \code{build_spatial_grid()} output
+(for example, \code{hex_800} corresponds to \code{cellsize_m = 800}).}
 
 \item{target_crs}{Optional. EPSG code or \code{sf::st_crs()} object. If \code{NULL},
 a suitable CRS is chosen automatically (UTM if input is lon/lat).}
@@ -37,8 +42,10 @@ An adjacency matrix (dense base matrix if \code{sparse = FALSE},
 otherwise a \code{Matrix::dgCMatrix}) with row/col names = \code{grid_id}.
 }
 \description{
-Reads a polygon grid (\verb{spatial_*_hex_grid.Rds}) and prepared model data
-(\verb{model_prep_*_wx_lc_ndvi_elev.Rds}), keeps only cells present in model data,
-reprojects (only if needed) to a locally appropriate projected CRS, and
-returns a binary queen-contiguity adjacency matrix suitable for \code{brms::car()}.
+Reads a polygon grid (\verb{spatial_*_hex_grid_<cellsize>.Rds}) and prepared model
+data (\verb{model_prep_*_wx_lc_ndvi_elev.Rds}), keeps only cells present in model
+data, reprojects (only if needed) to a locally appropriate projected CRS, and
+returns a binary queen-contiguity adjacency matrix suitable for
+\code{brms::car()}. The function first searches for size-specific grid filenames
+and falls back to legacy names without the \verb{<cellsize>} token.
 }

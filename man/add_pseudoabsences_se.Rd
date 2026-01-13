@@ -2,46 +2,72 @@
 % Please edit documentation in R/add_pseudo_absences.R
 \name{add_pseudoabsences_se}
 \alias{add_pseudoabsences_se}
-\title{Generate pseudoabsences using sampling effort only (TRS-based, Option 2)}
+\title{Generate pseudoabsences using TRS effort (Mosquito Alert) and TGB (GBIF)}
 \usage{
 add_pseudoabsences_se(
   dataset,
   data_dir = "data/proc",
-  sampling_factor = 10,
+  sampling_factor_ma = 10,
+  sampling_factor_gbif = 10,
   date_col = "date",
+  lon_col = "longitude",
+  lat_col = "latitude",
+  source_col = "source",
   se_col = "SE_expected",
+  tgb_col = "tgb_w",
+  ma_source = "malert",
+  gbif_source = "gbif",
   write_output = TRUE
 )
 }
 \arguments{
-\item{dataset}{Either the in-memory NDVI-enriched dataset (output of
-\code{\link[=add_ndvi_features]{add_ndvi_features()}}) or a path to the corresponding RDS file. When a data
-object is supplied it must carry an \code{output_path} attribute naming the most
-recently saved file; the pseudoabsence dataset is written to \code{data_dir}
-with \verb{_se.Rds} appended to that stem when \code{write_output} is \code{TRUE}.}
+\item{dataset}{Either the in-memory modelling dataset or a path to the
+corresponding RDS file.}
 
-\item{data_dir}{Directory holding processed datasets (for TRS files, etc.)
-and where the pseudoabsence dataset will be written. Defaults to "data/proc".}
+\item{data_dir}{Directory holding processed datasets (TRS/TGB artefacts) and
+where the pseudoabsence dataset will be written. Defaults to "data/proc".}
 
-\item{sampling_factor}{Number of pseudoabsences per presence (default 10).}
+\item{sampling_factor_ma}{Mosquito Alert pseudoabsences per MA presence
+(default 10).}
 
-\item{date_col}{Name of date column in \code{D} and \code{trs_daily} (default \code{"date"}).}
+\item{sampling_factor_gbif}{GBIF pseudoabsences per GBIF presence (default 10).}
 
-\item{se_col}{Name of sampling-effort column in \code{trs_daily}
-(e.g. \code{"SE_expected"} or \code{"SE"}).}
+\item{date_col}{Name of the date column shared by the presence and effort
+tables (default \code{"date"}).}
 
-\item{write_output}{Logical flag; when \code{TRUE} (default) the combined presence
-and pseudoabsence dataset is written to disk. Set to \code{FALSE} to skip
-writing while still returning the augmented object and updating metadata.}
+\item{lon_col}{Name of longitude column in the presence dataset (default \code{"lon"}).}
+
+\item{lat_col}{Name of latitude column in the presence dataset (default \code{"lat"}).}
+
+\item{source_col}{Name of the data-source column in the presence dataset
+(default \code{"source"}).}
+
+\item{se_col}{Name of the TRS sampling-effort column (default \code{"SE_expected"}).}
+
+\item{tgb_col}{Name of the GBIF target-group background weight column (default
+\code{"tgb_w"}).}
+
+\item{ma_source}{Label used for Mosquito Alert records in \code{source_col}
+(default \code{"malert"}).}
+
+\item{gbif_source}{Label used for GBIF records in \code{source_col} (default
+\code{"gbif"}).}
+
+\item{write_output}{Logical; when \code{TRUE} (default) persists the combined
+presence+pseudoabsence dataset to disk.}
 }
 \value{
-A tibble/data frame combining presences (\code{presence = TRUE}) and
-pseudoabsences (\code{presence = FALSE}) with numeric \code{lon}/\code{lat} columns. The
-dataset is also written to \verb{model_prep_<slug>_wx_lc_ndvi_se.Rds}.
+A tibble combining presences (\code{presence = TRUE}) and pseudoabsences
+(\code{presence = FALSE}) with numeric coordinate columns (\code{lon_col}/\code{lat_col})
+plus \code{pa_method} metadata. Attributes mirror the input dataset with updated
+\code{output_path} and \code{location_slug} values.
 }
 \description{
-This version treats \code{trs_daily} as the "true" sampling grid (Tigacell),
-samples rows proportional to sampling effort, and uses their point
-geometry directly. It does \emph{not} depend on the hex grid; you can attach
-hex \code{grid_id} and other spatial attributes in a later step.
+Samples pseudoabsences separately for Mosquito Alert (TRS-based effort
+surface) and GBIF (target-group background weights). The function expects the
+presence dataset to include coordinates (configurable via \code{lon_col}/\code{lat_col}),
+the specified date column, and a source column distinguishing Mosquito Alert vs
+GBIF records. When supplied an in-memory dataset it must carry an \code{output_path}
+attribute so the helper can infer the location slug and persist the augmented
+output.
 }

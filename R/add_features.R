@@ -12,11 +12,14 @@
 #' @param admin_level Administrative level used when preparing the inputs.
 #' @param admin_name Administrative unit name used in the file naming scheme.
 #' @param features Character vector (or comma-separated string) indicating which
-#'   feature steps to run. Accepted values: `"hex"`, `"wx"`/`"weather"`,
+#'   feature steps to run. Accepted values: `"hex"`,
+#'   `"hex_<cellsize>"` (for example `hex_800`), `"wx"`/`"weather"`,
 #'   `"lc"`/`"landcover"`, `"ndvi"`, `"el"`/`"elevation"`,
 #'   `"pd"`/`"popdensity"`, `"se"`/`"pseudoabsence"`.
 #' @param data_dir Directory containing the model-preparation datasets and
 #'   derived artefacts. Defaults to `"data/proc"`.
+#' @param grid_cellsize_m Numeric cell size (meters) corresponding to the stored
+#'   hex grid. Defaults to 400.
 #' @param verbose Logical; if `TRUE`, prints progress messages while processing.
 #'
 #' @return The enriched dataset returned by the final helper that ran. The
@@ -72,18 +75,41 @@ add_features <- function(
     pseudo_absense = "se"
   )
 
-  canonical <- feature_aliases[features]
-  if (any(is.na(canonical))) {
-    unknown <- unique(features[is.na(canonical)])
-    stop(
-      "Unsupported feature code(s): ", paste(unknown, collapse = ", "),
-      ". Allowed values include hex, wx, lc, ndvi, el, pd, se.",
-      call. = FALSE
-    )
+  default_hex_cellsize <- 400
+
+  parse_feature <- function(raw_code) {
+    raw_code <- tolower(trimws(raw_code))
+    hex_match <- grepl("^hex(?:_[0-9]+(?:\\.[0-9]+)?)?$", raw_code)
+    if (hex_match) {
+      size_part <- sub("^hex_?", "", raw_code)
+      if (!nzchar(size_part)) {
+        size_val <- default_hex_cellsize
+      } else {
+        size_val <- suppressWarnings(as.numeric(size_part))
+        if (is.na(size_val)) {
+          stop("Could not parse hex grid cell size from '", raw_code, "'.", call. = FALSE)
+        }
+      }
+      return(list(code = "hex", raw = raw_code, cellsize = size_val))
+    }
+
+    alias <- feature_aliases[[raw_code]]
+    if (is.na(alias)) {
+      stop(
+        "Unsupported feature code: ", raw_code,
+        ". Allowed values include hex, wx, lc, ndvi, el, pd, se (hex can optionally include a cell size, e.g. hex_800).",
+        call. = FALSE
+      )
+    }
+    list(code = alias, raw = raw_code, cellsize = NA_real_)
   }
 
-  # Preserve user-specified order but drop duplicates to avoid redundant work.
-  canonical <- canonical[!duplicated(canonical)]
+  feature_specs <- lapply(features, parse_feature)
+
+  # Remove duplicates while preserving order (including cellsize for hex)
+  spec_keys <- vapply(feature_specs, function(x) paste0(x$code, ":", ifelse(is.na(x$cellsize), "", x$cellsize)), character(1))
+  unique_idx <- match(unique(spec_keys), spec_keys)
+  feature_specs <- feature_specs[unique_idx]
 
   dataset_filename <- paste0("model_prep_", location_slug, "_base.Rds")
   dataset_path <- file.path(data_dir, dataset_filename)
@@ -100,7 +126,7 @@ add_features <- function(
   }
   attr(current, "location_slug") <- location_slug
 
-  feature_labels <- c(
+  feature_labels <- list(
     hex = "hex-grid",
     wx = "ERA5 weather",
     lc = "land-cover",
@@ -110,14 +136,20 @@ add_features <- function(
     se = "sampling-effort pseudoabsences"
   )
 
-  last_code <- tail(canonical, 1L)
+  last_idx <- length(feature_specs)
 
-  for (code in canonical) {
+  for (idx in seq_along(feature_specs)) {
+    spec <- feature_specs[[idx]]
+    code <- spec$code
+    write_current <- idx == last_idx
+
     if (isTRUE(verbose)) {
-      message("→ Adding ", feature_labels[[code]], " features (", code, ")")
+      label <- feature_labels[[code]]
+      if (code == "hex") {
+        label <- sprintf("%s (%.0f m)", label, spec$cellsize)
+      }
+      message("→ Adding ", label, " features (", spec$raw, ")")
     }
-
-    write_current <- identical(code, last_code)
 
     current <- switch(
       code,
@@ -133,6 +165,7 @@ add_features <- function(
         admin_level = admin_level,
         admin_name = admin_name,
         grid_dir = data_dir,
+        cellsize_m = if (is.na(spec$cellsize)) default_hex_cellsize else spec$cellsize,
         verbose = verbose,
         write_output = write_current
       ),
