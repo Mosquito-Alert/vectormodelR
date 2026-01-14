@@ -121,8 +121,7 @@ run_brms_model <- function(
   }
 
   required_cols <- c(
-    "date", "grid_id", "grid_lon", "grid_lat", "tigacell_lon", "tigacell_lat",
-    "TigacellID", "TigacellID_small", "sea_days", "biweek", "presence", "year",
+    "date", "sea_days", "presence", "year",
     "ndvi_distance_m", "ndvi_value_nearest", "ndvi_ddf_proximity", "elevation_m",
     "popdensity_km2", "landcover_code", "landcover_class", "mwi", "maxTM", "meanPPT24H"
   )
