@@ -11,6 +11,9 @@
 #' @param iso3 Three-letter ISO3 country code.
 #' @param admin_level Administrative level used when preparing the inputs.
 #' @param admin_name Administrative unit name used in the file naming scheme.
+#' @param vector_sources Character vector (or comma-separated string) describing
+#'   which vector data sources were used to build the base dataset. Accepted
+#'   values: "malert", "gbif". Determines the filename suffix that is located.
 #' @param features Character vector (or comma-separated string) indicating which
 #'   feature steps to run. Accepted values: `"hex"`,
 #'   `"hex_<cellsize>"` (for example `hex_800`), `"wx"`/`"weather"`,
@@ -30,12 +33,33 @@ add_features <- function(
   iso3,
   admin_level,
   admin_name,
+  vector_sources = c("malert", "gbif"),
   features,
   data_dir = "data/proc",
   verbose  = TRUE
 ) {
   ids <- build_location_identifiers(iso3, admin_level, admin_name)
   location_slug <- ids$slug
+
+  if (length(vector_sources) == 1L) {
+    vector_sources <- unlist(strsplit(vector_sources, "[,\\s]+", perl = TRUE))
+  }
+  vector_sources <- tolower(trimws(vector_sources))
+  vector_sources <- vector_sources[nzchar(vector_sources)]
+  allowed_sources <- c("malert", "gbif")
+  invalid_sources <- setdiff(vector_sources, allowed_sources)
+  if (length(invalid_sources)) {
+    stop(
+      "Unsupported vector source(s): ", paste(invalid_sources, collapse = ", "),
+      ". Allowed values are 'malert' and 'gbif'.",
+      call. = FALSE
+    )
+  }
+  if (!length(vector_sources)) {
+    stop("`vector_sources` must include at least one of 'malert' or 'gbif'.", call. = FALSE)
+  }
+  ordered_sources <- allowed_sources[allowed_sources %in% vector_sources]
+  vector_suffix <- paste(ordered_sources, collapse = "_")
 
   if (missing(features) || length(features) == 0L) {
     stop("`features` must supply at least one feature code (e.g. 'wx,lc,ndvi').", call. = FALSE)
@@ -111,7 +135,7 @@ add_features <- function(
   unique_idx <- match(unique(spec_keys), spec_keys)
   feature_specs <- feature_specs[unique_idx]
 
-  dataset_filename <- paste0("model_prep_", location_slug, "_base.Rds")
+  dataset_filename <- paste0("model_prep_", location_slug, "_", vector_suffix, ".Rds")
   dataset_path <- file.path(data_dir, dataset_filename)
   if (!file.exists(dataset_path)) {
     stop("Base dataset not found at ", dataset_path, call. = FALSE)

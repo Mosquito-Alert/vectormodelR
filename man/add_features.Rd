@@ -8,6 +8,7 @@ add_features(
   iso3,
   admin_level,
   admin_name,
+  vector_sources = c("malert", "gbif"),
   features,
   data_dir = "data/proc",
   verbose = TRUE
@@ -19,6 +20,10 @@ add_features(
 \item{admin_level}{Administrative level used when preparing the inputs.}
 
 \item{admin_name}{Administrative unit name used in the file naming scheme.}
+
+\item{vector_sources}{Character vector (or comma-separated string) describing
+which vector data sources were used to build the base dataset. Accepted
+values: "malert", "gbif". Determines the filename suffix that is located.}
 
 \item{features}{Character vector (or comma-separated string) indicating which
 feature steps to run. Accepted values: \code{"hex"},
