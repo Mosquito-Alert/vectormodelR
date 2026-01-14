@@ -40,7 +40,7 @@ values to drop when both sources are merged. Defaults to discarding
 \code{NULL} to keep all collection codes.}
 }
 \value{
-A tibble with columns \code{date}, \code{year}, \code{longitude}, \code{latitude},
+A tibble with columns \code{date}, \code{year}, \code{lon}, \code{lat},
 \code{presence}, \code{referenceID}, and \code{source}. Attributes include \code{output_path}
 and \code{source_files}.
 }

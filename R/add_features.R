@@ -33,8 +33,8 @@ add_features <- function(
   iso3,
   admin_level,
   admin_name,
-  vector_sources = c("malert", "gbif"),
   features,
+  vector_sources = c("malert", "gbif"),
   data_dir = "data/proc",
   verbose  = TRUE
 ) {

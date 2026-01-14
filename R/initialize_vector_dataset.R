@@ -21,7 +21,7 @@
 #'   `"Mosquito Alert Tiger Mosquito"` when Mosquito Alert data is present. Use
 #'   `NULL` to keep all collection codes.
 #'
-#' @return A tibble with columns `date`, `year`, `longitude`, `latitude`,
+#' @return A tibble with columns `date`, `year`, `lon`, `lat`,
 #'   `presence`, `referenceID`, and `source`. Attributes include `output_path`
 #'   and `source_files`.
 #' @export
@@ -96,8 +96,8 @@ initialize_vector_dataset <- function(
 		tibble::tibble(
 			date = as.Date(character()),
 			year = integer(),
-			longitude = numeric(),
-			latitude = numeric(),
+			lon = numeric(),
+			lat = numeric(),
 			presence = character(),
 			referenceID = character(),
 			source = character()
@@ -132,8 +132,8 @@ initialize_vector_dataset <- function(
 		malert_prepped <- tibble::tibble(
 			date = to_date(malert_data[[mapped$date_col]]),
 			year = as.integer(malert_data[[mapped$year_col]]),
-			longitude = as.numeric(malert_data[[mapped$lon_col]]),
-			latitude = as.numeric(malert_data[[mapped$lat_col]]),
+			lon = as.numeric(malert_data[[mapped$lon_col]]),
+			lat = as.numeric(malert_data[[mapped$lat_col]]),
 			presence = rep("TRUE", nrow(malert_data)),
 			referenceID = as.character(malert_data[[mapped$ref_col]]),
 			source = "malert"
@@ -190,8 +190,8 @@ initialize_vector_dataset <- function(
 		gbif_prepped <- tibble::tibble(
 			date = to_date(gbif_data[[mapped$date_col]]),
 			year = as.integer(gbif_data[[mapped$year_col]]),
-			longitude = as.numeric(gbif_data[[mapped$lon_col]]),
-			latitude = as.numeric(gbif_data[[mapped$lat_col]]),
+			lon = as.numeric(gbif_data[[mapped$lon_col]]),
+			lat = as.numeric(gbif_data[[mapped$lat_col]]),
 			presence = presence_values,
 			referenceID = as.character(gbif_data[[mapped$ref_col]]),
 			source = "gbif"
