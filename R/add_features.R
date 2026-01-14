@@ -103,7 +103,7 @@ add_features <- function(
 
   parse_feature <- function(raw_code) {
     raw_code <- tolower(trimws(raw_code))
-    hex_match <- grepl("^hex(?:_[0-9]+(?:\\.[0-9]+)?)?$", raw_code)
+    hex_match <- grepl("^hex(?:_?[0-9]+(?:\\.[0-9]+)?)?$", raw_code)
     if (hex_match) {
       size_part <- sub("^hex_?", "", raw_code)
       if (!nzchar(size_part)) {

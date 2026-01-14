@@ -42,9 +42,9 @@ is written to disk with \verb{_hex<cellsize>.Rds} appended to the filename stem
 \value{
 A tibble/data frame containing the augmented dataset. Attributes from
 the input object are preserved and supplemented with \code{hex_grid_source},
-\code{location_slug}, and an updated \code{output_path}. A new \verb{grid_id_<cellsize>}
-column is added alongside the existing \code{grid_id} field, and the
-\code{hex_grid_id_column} attribute records available grid identifiers.
+\code{location_slug}, and an updated \code{output_path}. Each call adds a
+size-specific \verb{grid_id_<cellsize>} column, and the
+\code{hex_grid_id_column} attribute records the available grid identifiers.
 }
 \description{
 Reads the precomputed hex grid for a given location, assigns each report to

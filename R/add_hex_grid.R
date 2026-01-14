@@ -23,9 +23,9 @@
 #'
 #' @return A tibble/data frame containing the augmented dataset. Attributes from
 #'   the input object are preserved and supplemented with `hex_grid_source`,
-#'   `location_slug`, and an updated `output_path`. A new `grid_id_<cellsize>`
-#'   column is added alongside the existing `grid_id` field, and the
-#'   `hex_grid_id_column` attribute records available grid identifiers.
+#'   `location_slug`, and an updated `output_path`. Each call adds a
+#'   size-specific `grid_id_<cellsize>` column, and the
+#'   `hex_grid_id_column` attribute records the available grid identifiers.
 #' @export
 #' @importFrom sf st_as_sf st_join st_within st_drop_geometry
 add_hex_grid <- function(
@@ -93,8 +93,7 @@ add_hex_grid <- function(
 
   base_attrs <- attributes(enriched)
   if ("grid_id" %in% names(enriched)) {
-    warning("Input dataset already contains `grid_id`; it will be overwritten.",
-            call. = FALSE)
+    enriched$grid_id <- NULL
   }
 
   enriched_sf <- sf::st_as_sf(enriched, coords = c("lon", "lat"), crs = 4326, remove = FALSE)
@@ -115,9 +114,10 @@ add_hex_grid <- function(
   }
 
   grid_id_suffix <- paste0("grid_id_", cellsize_token)
-  if (!grid_id_suffix %in% names(enriched_out)) {
-    enriched_out[[grid_id_suffix]] <- enriched_out$grid_id
+  if (!"grid_id" %in% names(enriched_out)) {
+    stop("Hex grid join did not produce a `grid_id` column.", call. = FALSE)
   }
+  names(enriched_out)[names(enriched_out) == "grid_id"] <- grid_id_suffix
 
   attr(enriched_out, "hex_grid_source") <- grid_path
   attr(enriched_out, "location_slug") <- location_slug
