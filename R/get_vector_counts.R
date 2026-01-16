@@ -1,260 +1,214 @@
-#' Summarise vector observations by administrative unit
+#' Aggregate Mosquito Alert + GBIF occurrence counts by GADM administrative level
 #'
-#' Retrieves GADM boundaries for a country, counts Mosquito Alert and GBIF
-#' occurrences within each administrative unit, and returns a tidy summary
-#' table. The helper gracefully downgrades the requested administrative level
-#' when it is not available in GADM (for example, requesting level 4 in a
-#' country where level 3 is the finest resolution).
+#' Spatially joins Mosquito Alert (MA) and GBIF occurrence points to GADM polygons
+#' and returns counts by admin name at the chosen level, plus totals.
 #'
-#' @param iso3 Three-letter ISO3 code identifying the country.
-#' @param admin_level Integer administrative level to aggregate by. If the
-#'   requested level is unavailable, the highest existing level is used instead.
-#' @param gbif_data Optional pre-loaded GBIF tibble. When supplied, the GBIF
-#'   download step is skipped.
-#' @param malert_data Optional pre-loaded Mosquito Alert tibble. When supplied,
-#'   the Mosquito Alert download step is skipped.
-#' @param gbif_lon_col Character name of the longitude column in the GBIF
-#'   dataset. Defaults to "decimalLongitude".
-#' @param gbif_lat_col Character name of the latitude column in the GBIF
-#'   dataset. Defaults to "decimalLatitude".
-#' @param malert_lon_col Character name of the longitude column in the Mosquito
-#'   Alert dataset. Defaults to "lon".
-#' @param malert_lat_col Character name of the latitude column in the Mosquito
-#'   Alert dataset. Defaults to "lat".
-#' @param gbif_args List of additional arguments passed to [get_gbif_data()].
-#'   Values supplied here override the defaults used by this helper.
-#' @param malert_args List of additional arguments passed to
-#'   [get_malert_data()]. Values supplied here override the defaults used by this
-#'   helper. The `source` argument defaults to "github" when Mosquito Alert data
-#'   must be downloaded.
-#' @param clip_to_perimeter Logical; forwarded to [get_gbif_data()]. Defaults to
-#'   `FALSE`, allowing a full-country download that is intersected with the GADM
-#'   polygons inside this helper.
-#' @param save_gbif_outputs Logical; forwarded to [get_gbif_data()]. Defaults to
-#'   `FALSE` so intermediate GBIF artefacts are not persisted.
-#' @param gadm_path Directory where GADM downloads are cached. Passed to
-#'   [get_gadm_data()]. Defaults to `"data/gadm"`.
-#' @param verbose Logical; print progress messages. Default `TRUE`.
+#' If the requested GADM level is not available for the given ISO3, the function
+#' falls back to the highest available GADM level.
 #'
-#' @return A tibble with columns `admin_name`, `malert_count`, `gbif_count`, and
-#'   `total`, ordered by descending total records. Attributes include the
-#'   requested and resolved administrative levels (`admin_level_requested` and
-#'   `admin_level_used`) and the boundary object used (`boundary`).
+#' @param iso3 Character ISO3 code (e.g., "MEX", "JAM").
+#' @param level Integer requested GADM level (0 = country, 1 = region, 2 = district, ...).
+#' @param gadm Optional sf polygon layer for the chosen GADM level. If NULL, fetched via
+#'   \code{mosquitoR::get_gadm_data(iso3, level)}.
+#' @param gbif_tbl Optional data.frame/tibble of GBIF occurrences. If NULL, fetched via
+#'   \code{mosquitoR::get_gbif_data()}.
+#' @param malert_sf Optional sf POINT layer for Mosquito Alert occurrences. If NULL, fetched via
+#'   \code{mosquitoR::get_malert_data()}.
+#' @param malert_source Character passed to \code{mosquitoR::get_malert_data(source = ...)}.
+#'   Default: "github".
+#' @param gbif_clip_to_perimeter Logical passed to \code{mosquitoR::get_gbif_data()}.
+#' @param gbif_save_outputs Logical passed to \code{mosquitoR::get_gbif_data()}.
+#' @param crs Integer EPSG for point creation / joining. Default 4326 (WGS84).
+#' @param join_predicate Spatial predicate for join. Default \code{sf::st_within}.
+#'   You can set \code{sf::st_intersects} if you prefer edge-inclusion.
+#' @param keep_unmatched Logical. If TRUE, includes an "UNMATCHED" bucket for points
+#'   that do not fall inside polygons. Default FALSE (drops NAs).
+#'
+#' @return A tibble with columns:
+#'   \itemize{
+#'     \item \code{admin_name} : the selected name column at the level (e.g., NAME_2)
+#'     \item \code{malert_count}
+#'     \item \code{gbif_count}
+#'     \item \code{total}
+#'     \item \code{iso3}
+#'     \item \code{level_used} : actual level used after fallback
+#'     \item \code{name_col} : which NAME_* column was used
+#'   }
 #'
 #' @examples
 #' \dontrun{
-#' counts <- get_vector_counts(
-#'   iso3 = "MEX",
-#'   admin_level = 2,
-#'   clip_to_perimeter = FALSE,
-#'   save_gbif_outputs = FALSE,
-#'   gbif_args = list(taxon_key = c(1651430, 1651891))
-#' )
-#' head(counts)
+#' counts <- get_vector_counts(iso3 = "MEX", level = 2)
+#' counts <- get_vector_counts(iso3 = "JAM", level = 4) # falls back if 4 unavailable
 #' }
 #'
 #' @export
 get_vector_counts <- function(
   iso3,
-  admin_level,
-  gbif_data = NULL,
-  malert_data = NULL,
-  gbif_lon_col = "decimalLongitude",
-  gbif_lat_col = "decimalLatitude",
-  malert_lon_col = "lon",
-  malert_lat_col = "lat",
-  gbif_args = list(),
-  malert_args = list(),
-  clip_to_perimeter = FALSE,
-  save_gbif_outputs = FALSE,
-  gadm_path = "data/gadm",
-  verbose = TRUE
+  level = 2,
+  gadm = NULL,
+  gbif_tbl = NULL,
+  malert_sf = NULL,
+  malert_source = "github",
+  gbif_clip_to_perimeter = FALSE,
+  gbif_save_outputs = FALSE,
+  crs = 4326,
+  join_predicate = sf::st_within,
+  keep_unmatched = FALSE
 ) {
-  if (!requireNamespace("sf", quietly = TRUE)) {
-    stop("Package 'sf' is required. Install it with install.packages('sf').", call. = FALSE)
+  # Dependencies (avoid attaching; use ::)
+  stopifnot(is.character(iso3), length(iso3) == 1)
+  iso3 <- toupper(iso3)
+  if (!is.numeric(level) || length(level) != 1 || is.na(level) || level < 0) {
+    stop("`level` must be a single non-negative integer.")
   }
-  if (!requireNamespace("dplyr", quietly = TRUE)) {
-    stop("Package 'dplyr' is required. Install it with install.packages('dplyr').", call. = FALSE)
-  }
-  if (!requireNamespace("tibble", quietly = TRUE)) {
-    stop("Package 'tibble' is required. Install it with install.packages('tibble').", call. = FALSE)
-  }
-  if (!requireNamespace("tidyr", quietly = TRUE)) {
-    stop("Package 'tidyr' is required. Install it with install.packages('tidyr').", call. = FALSE)
-  }
+  level <- as.integer(level)
 
-  iso3_code <- toupper(as.character(iso3)[1])
-  target_level <- suppressWarnings(as.integer(admin_level))
-  if (is.na(target_level) || target_level < 0) {
-    stop("`admin_level` must be a non-negative integer.", call. = FALSE)
-  }
-
-  fetch_boundary <- function(level) {
-    tryCatch(
-      {
-        get_gadm_data(
-          iso3 = iso3_code,
-          level = level,
-          path = gadm_path,
-          rds = FALSE,
-          perimeter = FALSE,
-          union = FALSE,
-          verbose = verbose
-        )
-      },
-      error = function(e) NULL
-    )
-  }
-
-  current_level <- target_level
-  boundary <- NULL
-  name_col <- NULL
-  while (current_level >= 0) {
-    boundary <- fetch_boundary(current_level)
-    if (is.null(boundary)) {
-      current_level <- current_level - 1L
-      next
+  # ---- helper: attempt to get the highest available gadm level ----
+  get_gadm_with_fallback <- function(iso3, level) {
+    # First try requested level
+    gadm_try <- try(mosquitoR::get_gadm_data(iso3 = iso3, level = level), silent = TRUE)
+    if (!inherits(gadm_try, "try-error") && inherits(gadm_try, "sf")) {
+      return(list(gadm = gadm_try, level_used = level))
     }
-    candidate_col <- paste0("NAME_", current_level)
-    if (!candidate_col %in% names(boundary)) {
-      boundary <- NULL
-      current_level <- current_level - 1L
-      next
+
+    # If it fails, search downward for highest available
+    # (We don't know max ahead of time, so probe down from requested level, then up to some sane cap)
+    # Strategy:
+    # 1) If requested level fails, try levels from (level-1) down to 0
+    for (lv in seq.int(from = level - 1L, to = 0L, by = -1L)) {
+      gadm_try <- try(mosquitoR::get_gadm_data(iso3 = iso3, level = lv), silent = TRUE)
+      if (!inherits(gadm_try, "try-error") && inherits(gadm_try, "sf")) {
+        return(list(gadm = gadm_try, level_used = lv))
+      }
     }
-    name_col <- candidate_col
-    break
+
+    # 2) If even 0 fails (rare, but handle), try a small upward probe (some datasets might not support low?)
+    for (lv in seq.int(from = 0L, to = 6L, by = 1L)) {
+      gadm_try <- try(mosquitoR::get_gadm_data(iso3 = iso3, level = lv), silent = TRUE)
+      if (!inherits(gadm_try, "try-error") && inherits(gadm_try, "sf")) {
+        return(list(gadm = gadm_try, level_used = lv))
+      }
+    }
+
+    stop("Could not retrieve GADM data for iso3='", iso3, "' at any level (0..6 tried).")
   }
 
-  if (is.null(boundary)) {
-    stop(
-      "Unable to retrieve GADM data for ", iso3_code,
-      " at or below level ", target_level, ".",
-      call. = FALSE
+  # ---- get gadm polygons (or validate provided) ----
+  level_used <- level
+  if (is.null(gadm)) {
+    got <- get_gadm_with_fallback(iso3, level)
+    gadm <- got$gadm
+    level_used <- got$level_used
+  } else {
+    if (!inherits(gadm, "sf")) stop("`gadm` must be an sf object when provided.")
+  }
+
+  # Determine name column for this level
+  name_col <- paste0("NAME_", level_used)
+  if (!name_col %in% names(gadm)) {
+    # fallback: choose the highest NAME_* present
+    name_cols <- grep("^NAME_[0-9]+$", names(gadm), value = TRUE)
+    if (length(name_cols) == 0) stop("No NAME_* columns found in `gadm`.")
+    # pick max numeric suffix
+    lv_max <- max(as.integer(sub("^NAME_", "", name_cols)), na.rm = TRUE)
+    name_col <- paste0("NAME_", lv_max)
+  }
+
+  gadm <- gadm |>
+    sf::st_transform(crs) |>
+    dplyr::select(dplyr::all_of(name_col))
+
+  # ---- get gbif / malert data if needed ----
+  if (is.null(gbif_tbl)) {
+    gbif_tbl <- mosquitoR::get_gbif_data(
+      iso3 = iso3,
+      clip_to_perimeter = gbif_clip_to_perimeter,
+      save_outputs = gbif_save_outputs
     )
   }
 
-  used_level <- current_level
-  if (used_level != target_level && isTRUE(verbose)) {
-    message(
-      "Requested level ", target_level,
-      " unavailable; using level ", used_level, " instead."
-    )
+  if (is.null(malert_sf)) {
+    malert_sf <- mosquitoR::get_malert_data(source = malert_source)
   }
 
-  boundary <- sf::st_make_valid(boundary)
-  boundary <- boundary[!sf::st_is_empty(boundary), , drop = FALSE]
-  boundary <- sf::st_transform(boundary, 4326)
+  # ---- make sf points (GBIF) ----
+  if (!inherits(gbif_tbl, "sf")) {
+    if (!all(c("decimalLongitude", "decimalLatitude") %in% names(gbif_tbl))) {
+      stop("`gbif_tbl` must include columns decimalLongitude and decimalLatitude (or be an sf object).")
+    }
 
-  if (is.null(gbif_data)) {
-    default_gbif_args <- list(
-      iso3 = iso3_code,
-      admin_level = used_level,
-      admin_name = "country",
-      clip_to_perimeter = clip_to_perimeter,
-      save_outputs = save_gbif_outputs,
-      verbose = verbose
-    )
-    gbif_args <- base::modifyList(default_gbif_args, gbif_args, keep.null = TRUE)
-    if (isTRUE(gbif_args$clip_to_perimeter) && identical(gbif_args$admin_name, "country")) {
-      warning(
-        "`clip_to_perimeter = TRUE` requested without specifying `admin_name` in `gbif_args`; ensure a matching perimeter exists.",
-        call. = FALSE
+    gbif_sf <- gbif_tbl |>
+      dplyr::filter(!is.na(.data$decimalLatitude), !is.na(.data$decimalLongitude)) |>
+      sf::st_as_sf(
+        coords = c("decimalLongitude", "decimalLatitude"),
+        crs = crs,
+        remove = FALSE
       )
-    }
-    gbif_data <- do.call(get_gbif_data, gbif_args)
+  } else {
+    gbif_sf <- sf::st_transform(gbif_tbl, crs)
   }
 
-  if (is.null(malert_data)) {
-    default_malert_args <- list(source = "github")
-    malert_args <- base::modifyList(default_malert_args, malert_args, keep.null = TRUE)
-    malert_data <- do.call(get_malert_data, malert_args)
-  }
-
-  if (!is.data.frame(gbif_data)) {
-    stop("`gbif_data` must be a data frame or tibble.", call. = FALSE)
-  }
-  if (!is.data.frame(malert_data)) {
-    stop("`malert_data` must be a data frame or tibble.", call. = FALSE)
-  }
-
-  count_points <- function(data, lon_col, lat_col, count_col) {
-    make_empty <- function() {
-      out <- tibble::tibble(admin_name = character())
-      out[[count_col]] <- integer()
-      out
+  # ---- make sf points (Mosquito Alert) ----
+  # Support both common naming schemes: (lon, lat) or (longitude, latitude)
+  if (!inherits(malert_sf, "sf")) {
+    lon_col <- dplyr::case_when(
+      "lon" %in% names(malert_sf) ~ "lon",
+      "longitude" %in% names(malert_sf) ~ "longitude",
+      TRUE ~ NA_character_
+    )
+    lat_col <- dplyr::case_when(
+      "lat" %in% names(malert_sf) ~ "lat",
+      "latitude" %in% names(malert_sf) ~ "latitude",
+      TRUE ~ NA_character_
+    )
+    if (is.na(lon_col) || is.na(lat_col)) {
+      stop("`malert_sf` must be an sf object or contain lon/lat (or longitude/latitude) columns.")
     }
 
-    if (!all(c(lon_col, lat_col) %in% names(data))) {
-      warning(
-        "Skipping count for ", count_col, ": columns ", lon_col,
-        " and/or ", lat_col, " not found.",
-        call. = FALSE
+    malert_pts <- malert_sf |>
+      dplyr::filter(!is.na(.data[[lon_col]]), !is.na(.data[[lat_col]])) |>
+      sf::st_as_sf(
+        coords = c(lon_col, lat_col),
+        crs = crs,
+        remove = FALSE
       )
-      return(make_empty())
-    }
-
-    coord_idx <- stats::complete.cases(data[, c(lon_col, lat_col)])
-    if (!any(coord_idx)) {
-      warning(
-        "Skipping count for ", count_col,
-        ": no records with complete coordinates.",
-        call. = FALSE
-      )
-      return(make_empty())
-    }
-
-    pts_sf <- sf::st_as_sf(
-      data[coord_idx, , drop = FALSE],
-      coords = c(lon_col, lat_col),
-      crs = 4326,
-      remove = FALSE
-    )
-
-    joined <- sf::st_join(
-      pts_sf,
-      boundary[, c(name_col), drop = FALSE],
-      join = sf::st_within
-    )
-
-    if (!nrow(joined)) {
-      return(make_empty())
-    }
-
-    joined_tbl <- sf::st_drop_geometry(joined)
-    joined_tbl <- joined_tbl[!is.na(joined_tbl[[name_col]]), , drop = FALSE]
-    if (!nrow(joined_tbl)) {
-      return(make_empty())
-    }
-
-    counts <- dplyr::count(joined_tbl, .data[[name_col]], name = count_col)
-    counts <- tibble::as_tibble(counts)
-    names(counts)[names(counts) == name_col] <- "admin_name"
-    counts
+  } else {
+    malert_pts <- sf::st_transform(malert_sf, crs)
   }
 
-  gbif_counts <- count_points(gbif_data, gbif_lon_col, gbif_lat_col, "gbif_count")
-  malert_counts <- count_points(malert_data, malert_lon_col, malert_lat_col, "malert_count")
+  # ---- spatial join ----
+  gbif_joined <- sf::st_join(gbif_sf, gadm, join = join_predicate)
+  malert_joined <- sf::st_join(malert_pts, gadm, join = join_predicate)
 
-  combined <- dplyr::full_join(malert_counts, gbif_counts, by = "admin_name")
-  if (!nrow(combined)) {
-    combined <- tibble::tibble(
-      admin_name = character(),
-      malert_count = integer(),
-      gbif_count = integer()
-    )
-  }
+  # ---- counts ----
+  gbif_counts <- gbif_joined |>
+    sf::st_drop_geometry() |>
+    dplyr::mutate(admin_name = .data[[name_col]]) |>
+    dplyr::mutate(admin_name = dplyr::if_else(is.na(.data$admin_name) & keep_unmatched,
+                                              "UNMATCHED", .data$admin_name)) |>
+    dplyr::filter(!is.na(.data$admin_name)) |>
+    dplyr::group_by(.data$admin_name) |>
+    dplyr::summarise(gbif_count = dplyr::n(), .groups = "drop")
 
-  combined <- combined |>
+  malert_counts <- malert_joined |>
+    sf::st_drop_geometry() |>
+    dplyr::mutate(admin_name = .data[[name_col]]) |>
+    dplyr::mutate(admin_name = dplyr::if_else(is.na(.data$admin_name) & keep_unmatched,
+                                              "UNMATCHED", .data$admin_name)) |>
+    dplyr::filter(!is.na(.data$admin_name)) |>
+    dplyr::group_by(.data$admin_name) |>
+    dplyr::summarise(malert_count = dplyr::n(), .groups = "drop")
+
+  out <- dplyr::full_join(malert_counts, gbif_counts, by = "admin_name") |>
     dplyr::mutate(
       malert_count = tidyr::replace_na(.data$malert_count, 0L),
-      gbif_count = tidyr::replace_na(.data$gbif_count, 0L)
+      gbif_count   = tidyr::replace_na(.data$gbif_count, 0L),
+      total        = .data$malert_count + .data$gbif_count,
+      iso3         = iso3,
+      level_used   = level_used,
+      name_col     = name_col
     ) |>
-    dplyr::mutate(total = .data$malert_count + .data$gbif_count) |>
     dplyr::arrange(dplyr::desc(.data$total))
 
-  attr(combined, "admin_level_requested") <- target_level
-  attr(combined, "admin_level_used") <- used_level
-  attr(combined, "boundary") <- boundary
-
-  combined
+  out
 }
