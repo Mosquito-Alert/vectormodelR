@@ -26,7 +26,8 @@ build_grid_adjacency(
 
 \item{cellsize_m}{Numeric cell size (meters) for the hex grid file name.
 Defaults to 400. Use values matching the \code{build_spatial_grid()} output
-(for example, \code{hex_800} corresponds to \code{cellsize_m = 800}).}
+(for example, setting \code{cellsize_m = 800} targets
+\verb{spatial_*_hex_grid_800.Rds} and the corresponding \code{grid_id_800} column).}
 
 \item{target_crs}{Optional. EPSG code or \code{sf::st_crs()} object. If \code{NULL},
 a suitable CRS is chosen automatically (UTM if input is lon/lat).}
@@ -39,7 +40,8 @@ derives the model path automatically.}
 }
 \value{
 An adjacency matrix (dense base matrix if \code{sparse = FALSE},
-otherwise a \code{Matrix::dgCMatrix}) with row/col names = \code{grid_id}.
+otherwise a \code{Matrix::dgCMatrix}) with row/col names equal to the
+size-specific grid identifier (for example \code{grid_id_400}).
 }
 \description{
 Reads a polygon grid (\verb{spatial_*_hex_grid_<cellsize>.Rds}) and prepared model

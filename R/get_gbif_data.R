@@ -14,8 +14,9 @@
 #' @param iso3 Three-letter ISO country code (e.g. `"ESP"`). It is converted to
 #'   the GBIF-required ISO2 code using `countrycode`.
 #' @param admin_level Administrative level used when the perimeter was
-#'   generated.
-#' @param admin_name Administrative unit name used for the perimeter.
+#'   generated. If `clip_to_perimeter = FALSE`, this value is optional.
+#' @param admin_name Administrative unit name used for the perimeter. If
+#'   `clip_to_perimeter = FALSE`, this value is optional.
 #' @param year_min Optional minimum occurrence year.
 #' @param year_max Optional maximum occurrence year.
 #' @param desired_cols Optional character vector (or list) of column names to
@@ -29,11 +30,17 @@
 #'   `vector_<iso3>_<admin_level>_<admin_name>_gbif.Rds` (with the
 #'   administrative name normalised to lowercase underscores).
 #' @param perimeter_dir Directory containing the perimeter RDS artefacts. The
-#'   function looks for `spatial_<slug>_perimeter.rds` in this location.
+#'   function looks for `spatial_<slug>_perimeter.rds` in this location. Ignored
+#'   when `clip_to_perimeter = FALSE`.
 #' @param gbif_user GBIF username. Defaults to `Sys.getenv("GBIF_USER")`.
 #' @param gbif_pwd GBIF password. Defaults to `Sys.getenv("GBIF_PWD")`.
 #' @param gbif_email GBIF-registered email. Defaults to
 #'   `Sys.getenv("GBIF_EMAIL")`.
+#' @param clip_to_perimeter Logical; when `TRUE` (default) the download is
+#'   intersected with the administrative perimeter. Set to `FALSE` to retain
+#'   the countrywide results without requiring perimeter artefacts.
+#' @param save_outputs Logical; when `TRUE` (default) the raw and clipped
+#'   datasets are written to disk. Use `FALSE` to return the data in memory only.
 #' @param verbose Logical; if `TRUE` (default) progress messages are printed.
 #'
 #' @return Tibble of occurrence records. Metadata attributes include the GBIF
@@ -55,6 +62,8 @@ get_gbif_data <- function(
   gbif_user = Sys.getenv("GBIF_USER", unset = NA_character_),
   gbif_pwd = Sys.getenv("GBIF_PWD", unset = NA_character_),
   gbif_email = Sys.getenv("GBIF_EMAIL", unset = NA_character_),
+  clip_to_perimeter = TRUE,
+  save_outputs = TRUE,
   verbose = TRUE
 ) {
   if (!requireNamespace("rgbif", quietly = TRUE)) {
@@ -74,7 +83,7 @@ get_gbif_data <- function(
     )
   }
 
-  if (!dir.exists(out_dir)) {
+  if (isTRUE(save_outputs) && !dir.exists(out_dir)) {
     dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
   }
 
@@ -109,41 +118,53 @@ get_gbif_data <- function(
     )
   }
 
-  ids <- build_location_identifiers(iso3_code, admin_level, admin_name)
-  if (isTRUE(verbose)) {
-    message("Resolved location slug: ", ids$slug)
+  if (isTRUE(clip_to_perimeter)) {
+    ids <- build_location_identifiers(iso3_code, admin_level, admin_name)
+    if (isTRUE(verbose)) {
+      message("Resolved location slug: ", ids$slug)
+    }
+  } else {
+    ids <- list(slug = tolower(iso3_code))
+    if (isTRUE(verbose)) {
+      message("Perimeter clipping disabled; using slug ", ids$slug)
+    }
   }
 
-  if (!dir.exists(perimeter_dir)) {
-    stop("Perimeter directory not found at ", perimeter_dir, call. = FALSE)
-  }
+  if (isTRUE(clip_to_perimeter)) {
+    if (!dir.exists(perimeter_dir)) {
+      stop("Perimeter directory not found at ", perimeter_dir, call. = FALSE)
+    }
 
-  perimeter_candidates <- c(
-    file.path(perimeter_dir, sprintf("spatial_%s_perimeter.Rds", ids$slug)),
-    file.path(perimeter_dir, sprintf("spatial_%s_perimeter.rds", ids$slug))
-  )
-  perimeter_path <- perimeter_candidates[file.exists(perimeter_candidates)][1]
-  if (is.na(perimeter_path)) {
-    stop(
-      "Perimeter file not found. Looked for: ",
-      paste(perimeter_candidates, collapse = "; "),
-      call. = FALSE
+    perimeter_candidates <- c(
+      file.path(perimeter_dir, sprintf("spatial_%s_perimeter.Rds", ids$slug)),
+      file.path(perimeter_dir, sprintf("spatial_%s_perimeter.rds", ids$slug))
     )
-  }
-  if (isTRUE(verbose)) {
-    message("Using perimeter from ", perimeter_path)
-  }
-  perimeter_sf <- readRDS(perimeter_path)
-  perimeter_sf <- sf::st_as_sf(perimeter_sf)
-  if (!inherits(perimeter_sf, "sf")) {
-    stop("Perimeter file must be an sf object.", call. = FALSE)
-  }
-  perimeter_sf <- sf::st_make_valid(perimeter_sf)
-  perimeter_crs <- sf::st_crs(perimeter_sf)
-  if (is.na(perimeter_crs)) {
-    perimeter_sf <- sf::st_set_crs(perimeter_sf, 4326)
-  } else if (!sf::st_is_longlat(perimeter_sf)) {
-    perimeter_sf <- sf::st_transform(perimeter_sf, 4326)
+    perimeter_path <- perimeter_candidates[file.exists(perimeter_candidates)][1]
+    if (is.na(perimeter_path)) {
+      stop(
+        "Perimeter file not found. Looked for: ",
+        paste(perimeter_candidates, collapse = "; "),
+        call. = FALSE
+      )
+    }
+    if (isTRUE(verbose)) {
+      message("Using perimeter from ", perimeter_path)
+    }
+    perimeter_sf <- readRDS(perimeter_path)
+    perimeter_sf <- sf::st_as_sf(perimeter_sf)
+    if (!inherits(perimeter_sf, "sf")) {
+      stop("Perimeter file must be an sf object.", call. = FALSE)
+    }
+    perimeter_sf <- sf::st_make_valid(perimeter_sf)
+    perimeter_crs <- sf::st_crs(perimeter_sf)
+    if (is.na(perimeter_crs)) {
+      perimeter_sf <- sf::st_set_crs(perimeter_sf, 4326)
+    } else if (!sf::st_is_longlat(perimeter_sf)) {
+      perimeter_sf <- sf::st_transform(perimeter_sf, 4326)
+    }
+  } else {
+    perimeter_path <- NA_character_
+    perimeter_sf <- NULL
   }
 
   taxon_vals <- unique(as.integer(taxon_key))
@@ -191,13 +212,17 @@ get_gbif_data <- function(
 
   occ_data <- tibble::as_tibble(rgbif::occ_download_import(zip_path))
 
-  raw_iso_token <- tolower(iso3_code)
-  raw_filename <- sprintf("vector_%s_gbif.Rds", raw_iso_token)
-  raw_path <- file.path(out_dir, raw_filename)
-  if (isTRUE(verbose)) {
-    message("Saving unfiltered occurrences to ", raw_path)
+  if (isTRUE(save_outputs)) {
+    raw_iso_token <- tolower(iso3_code)
+    raw_filename <- sprintf("vector_%s_gbif.Rds", raw_iso_token)
+    raw_path <- file.path(out_dir, raw_filename)
+    if (isTRUE(verbose)) {
+      message("Saving unfiltered occurrences to ", raw_path)
+    }
+    saveRDS(occ_data, raw_path)
+  } else {
+    raw_path <- NA_character_
   }
-  saveRDS(occ_data, raw_path)
 
   coord_cols <- c("decimalLongitude", "decimalLatitude")
   if (!all(coord_cols %in% names(occ_data))) {
@@ -210,7 +235,7 @@ get_gbif_data <- function(
     )
   }
 
-  if (ncol(occ_data)) {
+  if (ncol(occ_data) && isTRUE(clip_to_perimeter) && !is.null(perimeter_sf)) {
     occ_sf <- sf::st_as_sf(
       occ_data,
       coords = coord_cols,
@@ -257,16 +282,20 @@ get_gbif_data <- function(
 
   occ_data <- tibble::as_tibble(occ_data)
 
-  iso_token <- ids$slug
-  table_filename <- sprintf("vector_%s_gbif.Rds", iso_token)
-  table_path <- file.path(out_dir, table_filename)
-  if (isTRUE(verbose)) {
-    message("Saving parsed occurrences to ", table_path)
+  if (isTRUE(save_outputs)) {
+    iso_token <- ids$slug
+    table_filename <- sprintf("vector_%s_gbif.Rds", iso_token)
+    table_path <- file.path(out_dir, table_filename)
+    if (isTRUE(verbose)) {
+      message("Saving parsed occurrences to ", table_path)
+    }
+    dir.create(dirname(table_path), recursive = TRUE, showWarnings = FALSE)
+    saveRDS(occ_data, table_path)
+  } else {
+    table_path <- NA_character_
   }
-  dir.create(dirname(table_path), recursive = TRUE, showWarnings = FALSE)
-  saveRDS(occ_data, table_path)
 
-  if (file.exists(zip_path)) {
+  if (file.exists(zip_path) && isTRUE(save_outputs)) {
     if (isTRUE(verbose)) {
       message("Removing GBIF archive ", zip_path)
     }

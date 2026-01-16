@@ -17,6 +17,8 @@ get_gbif_data(
   gbif_user = Sys.getenv("GBIF_USER", unset = NA_character_),
   gbif_pwd = Sys.getenv("GBIF_PWD", unset = NA_character_),
   gbif_email = Sys.getenv("GBIF_EMAIL", unset = NA_character_),
+  clip_to_perimeter = TRUE,
+  save_outputs = TRUE,
   verbose = TRUE
 )
 }
@@ -28,9 +30,10 @@ species.}
 the GBIF-required ISO2 code using \code{countrycode}.}
 
 \item{admin_level}{Administrative level used when the perimeter was
-generated.}
+generated. If \code{clip_to_perimeter = FALSE}, this value is optional.}
 
-\item{admin_name}{Administrative unit name used for the perimeter.}
+\item{admin_name}{Administrative unit name used for the perimeter. If
+\code{clip_to_perimeter = FALSE}, this value is optional.}
 
 \item{year_min}{Optional minimum occurrence year.}
 
@@ -49,7 +52,8 @@ perimeter-clipped output becomes
 administrative name normalised to lowercase underscores).}
 
 \item{perimeter_dir}{Directory containing the perimeter RDS artefacts. The
-function looks for \verb{spatial_<slug>_perimeter.rds} in this location.}
+function looks for \verb{spatial_<slug>_perimeter.rds} in this location. Ignored
+when \code{clip_to_perimeter = FALSE}.}
 
 \item{gbif_user}{GBIF username. Defaults to \code{Sys.getenv("GBIF_USER")}.}
 
@@ -57,6 +61,13 @@ function looks for \verb{spatial_<slug>_perimeter.rds} in this location.}
 
 \item{gbif_email}{GBIF-registered email. Defaults to
 \code{Sys.getenv("GBIF_EMAIL")}.}
+
+\item{clip_to_perimeter}{Logical; when \code{TRUE} (default) the download is
+intersected with the administrative perimeter. Set to \code{FALSE} to retain
+the countrywide results without requiring perimeter artefacts.}
+
+\item{save_outputs}{Logical; when \code{TRUE} (default) the raw and clipped
+datasets are written to disk. Use \code{FALSE} to return the data in memory only.}
 
 \item{verbose}{Logical; if \code{TRUE} (default) progress messages are printed.}
 }
