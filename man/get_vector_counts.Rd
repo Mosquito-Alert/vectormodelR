@@ -2,92 +2,75 @@
 % Please edit documentation in R/get_vector_counts.R
 \name{get_vector_counts}
 \alias{get_vector_counts}
-\title{Summarise vector observations by administrative unit}
+\title{Aggregate Mosquito Alert + GBIF occurrence counts by GADM administrative level}
 \usage{
 get_vector_counts(
   iso3,
-  admin_level,
-  gbif_data = NULL,
-  malert_data = NULL,
-  gbif_lon_col = "decimalLongitude",
-  gbif_lat_col = "decimalLatitude",
-  malert_lon_col = "lon",
-  malert_lat_col = "lat",
-  gbif_args = list(),
-  malert_args = list(),
-  clip_to_perimeter = FALSE,
-  save_gbif_outputs = FALSE,
-  gadm_path = "data/gadm",
-  verbose = TRUE
+  level = 2,
+  gadm = NULL,
+  gbif_tbl = NULL,
+  malert_sf = NULL,
+  malert_source = "github",
+  gbif_clip_to_perimeter = FALSE,
+  gbif_save_outputs = FALSE,
+  crs = 4326,
+  join_predicate = sf::st_within,
+  keep_unmatched = FALSE
 )
 }
 \arguments{
-\item{iso3}{Three-letter ISO3 code identifying the country.}
+\item{iso3}{Character ISO3 code (e.g., "MEX", "JAM").}
 
-\item{admin_level}{Integer administrative level to aggregate by. If the
-requested level is unavailable, the highest existing level is used instead.}
+\item{level}{Integer requested GADM level (0 = country, 1 = region, 2 = district, ...).}
 
-\item{gbif_data}{Optional pre-loaded GBIF tibble. When supplied, the GBIF
-download step is skipped.}
+\item{gadm}{Optional sf polygon layer for the chosen GADM level. If NULL, fetched via
+\code{mosquitoR::get_gadm_data(iso3, level)}.}
 
-\item{malert_data}{Optional pre-loaded Mosquito Alert tibble. When supplied,
-the Mosquito Alert download step is skipped.}
+\item{gbif_tbl}{Optional data.frame/tibble of GBIF occurrences. If NULL, fetched via
+\code{mosquitoR::get_gbif_data()}.}
 
-\item{gbif_lon_col}{Character name of the longitude column in the GBIF
-dataset. Defaults to "decimalLongitude".}
+\item{malert_sf}{Optional sf POINT layer for Mosquito Alert occurrences. If NULL, fetched via
+\code{mosquitoR::get_malert_data()}.}
 
-\item{gbif_lat_col}{Character name of the latitude column in the GBIF
-dataset. Defaults to "decimalLatitude".}
+\item{malert_source}{Character passed to \code{mosquitoR::get_malert_data(source = ...)}.
+Default: "github".}
 
-\item{malert_lon_col}{Character name of the longitude column in the Mosquito
-Alert dataset. Defaults to "lon".}
+\item{gbif_clip_to_perimeter}{Logical passed to \code{mosquitoR::get_gbif_data()}.}
 
-\item{malert_lat_col}{Character name of the latitude column in the Mosquito
-Alert dataset. Defaults to "lat".}
+\item{gbif_save_outputs}{Logical passed to \code{mosquitoR::get_gbif_data()}.}
 
-\item{gbif_args}{List of additional arguments passed to \code{\link[=get_gbif_data]{get_gbif_data()}}.
-Values supplied here override the defaults used by this helper.}
+\item{crs}{Integer EPSG for point creation / joining. Default 4326 (WGS84).}
 
-\item{malert_args}{List of additional arguments passed to
-\code{\link[=get_malert_data]{get_malert_data()}}. Values supplied here override the defaults used by this
-helper. The \code{source} argument defaults to "github" when Mosquito Alert data
-must be downloaded.}
+\item{join_predicate}{Spatial predicate for join. Default \code{sf::st_within}.
+You can set \code{sf::st_intersects} if you prefer edge-inclusion.}
 
-\item{clip_to_perimeter}{Logical; forwarded to \code{\link[=get_gbif_data]{get_gbif_data()}}. Defaults to
-\code{FALSE}, allowing a full-country download that is intersected with the GADM
-polygons inside this helper.}
-
-\item{save_gbif_outputs}{Logical; forwarded to \code{\link[=get_gbif_data]{get_gbif_data()}}. Defaults to
-\code{FALSE} so intermediate GBIF artefacts are not persisted.}
-
-\item{gadm_path}{Directory where GADM downloads are cached. Passed to
-\code{\link[=get_gadm_data]{get_gadm_data()}}. Defaults to \code{"data/gadm"}.}
-
-\item{verbose}{Logical; print progress messages. Default \code{TRUE}.}
+\item{keep_unmatched}{Logical. If TRUE, includes an "UNMATCHED" bucket for points
+that do not fall inside polygons. Default FALSE (drops NAs).}
 }
 \value{
-A tibble with columns \code{admin_name}, \code{malert_count}, \code{gbif_count}, and
-\code{total}, ordered by descending total records. Attributes include the
-requested and resolved administrative levels (\code{admin_level_requested} and
-\code{admin_level_used}) and the boundary object used (\code{boundary}).
+A tibble with columns:
+\itemize{
+\item \code{admin_name} : the selected name column at the level (e.g., NAME_2)
+\item \code{malert_count}
+\item \code{gbif_count}
+\item \code{total}
+\item \code{iso3}
+\item \code{level_used} : actual level used after fallback
+\item \code{name_col} : which NAME_* column was used
+}
 }
 \description{
-Retrieves GADM boundaries for a country, counts Mosquito Alert and GBIF
-occurrences within each administrative unit, and returns a tidy summary
-table. The helper gracefully downgrades the requested administrative level
-when it is not available in GADM (for example, requesting level 4 in a
-country where level 3 is the finest resolution).
+Spatially joins Mosquito Alert (MA) and GBIF occurrence points to GADM polygons
+and returns counts by admin name at the chosen level, plus totals.
+}
+\details{
+If the requested GADM level is not available for the given ISO3, the function
+falls back to the highest available GADM level.
 }
 \examples{
 \dontrun{
-counts <- get_vector_counts(
-  iso3 = "MEX",
-  admin_level = 2,
-  clip_to_perimeter = FALSE,
-  save_gbif_outputs = FALSE,
-  gbif_args = list(taxon_key = c(1651430, 1651891))
-)
-head(counts)
+counts <- get_vector_counts(iso3 = "MEX", level = 2)
+counts <- get_vector_counts(iso3 = "JAM", level = 4) # falls back if 4 unavailable
 }
 
 }
