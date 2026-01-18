@@ -176,18 +176,26 @@ process_era5_data <- function(
       dt <- data.table::fread(f, showProgress = FALSE)
       nm_lower <- tolower(names(dt))
 
-      if ("variable_name" %in% nm_lower) {
-        col_idx <- which(nm_lower == "variable_name")[1]
+      candidate_cols <- c(
+        "variable_name",
+        "grib_variable_name",
+        "variable",
+        "var_name",
+        "var"
+      )
+      match_idx <- which(nm_lower %in% candidate_cols)
+      if (length(match_idx)) {
+        col_idx <- match_idx[1]
         orig_name <- names(dt)[col_idx]
         if (!identical(orig_name, "variable_name")) {
           data.table::setnames(dt, orig_name, "variable_name")
         }
-      } else if ("grib_variable_name" %in% nm_lower) {
-        col_idx <- which(nm_lower == "grib_variable_name")[1]
-        orig_name <- names(dt)[col_idx]
-        data.table::setnames(dt, orig_name, "variable_name")
       } else {
-        stop("File ", basename(f), " is missing required column `variable_name` (or `grib_variable_name`).")
+        stop(
+          "File ", basename(f),
+          " is missing a column that can be mapped to `variable_name`. Available columns: ",
+          paste(names(dt), collapse = ", ")
+        )
       }
       dt <- dt[variable_name %in% wanted]
       dt <- dt[longitude >= lon_min & longitude <= lon_max &
