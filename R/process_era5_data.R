@@ -1,4 +1,4 @@
-#' Build daily & lagged weather features from processed ERA5 CSVs
+#' Build xxx daily & lagged weather features from processed ERA5 CSVs
 #'
 #' Reads monthly CSV.GZ files created by your ERA5 compiler (one file per
 #' month with multiple variables named like `era5_<iso3>_YYYY_MM_all_variables.csv.gz`), clips by a GADM admin polygon, aggregates
