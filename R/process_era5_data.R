@@ -206,7 +206,7 @@ process_era5_data <- function(
       if (!length(keep_var_idx)) {
         return(data.table::data.table())
       }
-      dt <- dt[keep_var_idx, , drop = FALSE]
+      dt <- dt[keep_var_idx]
 
       keep_bbox_idx <- which(
         dt[["longitude"]] >= lon_min & dt[["longitude"]] <= lon_max &
@@ -215,8 +215,7 @@ process_era5_data <- function(
       if (!length(keep_bbox_idx)) {
         return(data.table::data.table())
       }
-      dt <- dt[keep_bbox_idx, , drop = FALSE]
-      dt <- data.table::as.data.table(dt)
+      dt <- dt[keep_bbox_idx]
 
       # Some ERA5 exports append " UTC"; strip it before parsing to avoid warnings.
       time_vals <- lubridate::ymd_hms(gsub(" UTC$", "", dt[["time"]]), tz = "UTC", quiet = TRUE)
