@@ -226,6 +226,11 @@ process_era5_data <- function(
     }),
     use.names = TRUE, fill = TRUE
   )
+  DT <- data.table::as.data.table(DT)
+  if (!"time" %in% names(DT)) {
+    stop("Combined dataset is missing a `time` column after reading monthly files.")
+  }
+  data.table::set(DT, j = "time", value = as.POSIXct(DT$time, tz = "UTC"))
   if (!nrow(DT)) stop("No rows after bbox/var filtering. Check inputs.")
   .say("\nAfter bbox/var filter: %s rows.", .fmtI(nrow(DT)))
 
