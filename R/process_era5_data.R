@@ -1,4 +1,4 @@
-#' Build xxx daily & lagged weather features from processed ERA5 CSVs
+#' Build daily & lagged weather features from processed ERA5 CSVs
 #'
 #' Reads monthly CSV.GZ files created by your ERA5 compiler (one file per
 #' month with multiple variables named like `era5_<iso3>_YYYY_MM_all_variables.csv.gz`), clips by a GADM admin polygon, aggregates
@@ -174,12 +174,20 @@ process_era5_data <- function(
     lapply(seq_along(files), function(i) {
       f <- files[i]
       dt <- data.table::fread(f, showProgress = FALSE)
-      if (!"variable_name" %in% names(dt)) {
-        if ("grib_variable_name" %in% names(dt)) {
-          data.table::setnames(dt, "grib_variable_name", "variable_name")
-        } else {
-          stop("File ", basename(f), " is missing required column `variable_name`.")
+      nm_lower <- tolower(names(dt))
+
+      if ("variable_name" %in% nm_lower) {
+        col_idx <- which(nm_lower == "variable_name")[1]
+        orig_name <- names(dt)[col_idx]
+        if (!identical(orig_name, "variable_name")) {
+          data.table::setnames(dt, orig_name, "variable_name")
         }
+      } else if ("grib_variable_name" %in% nm_lower) {
+        col_idx <- which(nm_lower == "grib_variable_name")[1]
+        orig_name <- names(dt)[col_idx]
+        data.table::setnames(dt, orig_name, "variable_name")
+      } else {
+        stop("File ", basename(f), " is missing required column `variable_name` (or `grib_variable_name`).")
       }
       dt <- dt[variable_name %in% wanted]
       dt <- dt[longitude >= lon_min & longitude <= lon_max &

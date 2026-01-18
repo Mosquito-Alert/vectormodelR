@@ -2,7 +2,7 @@
 % Please edit documentation in R/process_era5_data.R
 \name{process_era5_data}
 \alias{process_era5_data}
-\title{Build xxx daily & lagged weather features from processed ERA5 CSVs}
+\title{Build daily & lagged weather features from processed ERA5 CSVs}
 \usage{
 process_era5_data(
   processed_dir = NULL,
