@@ -74,14 +74,9 @@ get_elevation_data <- function(country,
   if (isTRUE(write_tif)) {
     dir.create(proc_dir, recursive = TRUE, showWarnings = FALSE)
 
-    sanitize <- function(x) {
-      x <- gsub("[^A-Za-z0-9]+", "-", tolower(x))
-      x[nzchar(x)]
-    }
-
     name_suffix <- ""
     if (!is.null(name_value) && length(name_value)) {
-      clean_names <- sanitize(name_value)
+      clean_names <- sanitize_slug(name_value)
       if (length(clean_names)) {
         name_suffix <- paste0("_", paste(clean_names, collapse = "-"))
       }

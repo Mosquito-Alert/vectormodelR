@@ -85,14 +85,9 @@ build_tigacell_grid <- function(
     proc_dir <- file.path("data", "proc")
     dir.create(proc_dir, recursive = TRUE, showWarnings = FALSE)
 
-    sanitize <- function(x) {
-      x <- gsub("[^A-Za-z0-9]+", "-", tolower(x))
-      x[nzchar(x)]
-    }
-
     name_suffix <- ""
     if (!is.null(admin_name) && length(admin_name)) {
-      clean_names <- sanitize(admin_name)
+      clean_names <- sanitize_slug(admin_name)
       if (length(clean_names)) {
         name_suffix <- paste0("_", paste(clean_names, collapse = "-"))
       }

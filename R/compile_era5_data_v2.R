@@ -96,14 +96,12 @@ compile_era5_data_v2 <- function(
       df <- as.data.frame(r[[i]], xy = TRUE, na.rm = FALSE)
       data.table::setDT(df)
       data.table::setnames(df, c("x","y", names(df)[3]), c("longitude","latitude","value"))
-      df[, `:=`(
-        time               = tvals[i],
-        variable_name      = variable_name,
-        grib_variable_name = variable_name,   # one name; time carries timestamps
-        year               = as.integer(year),
-        month              = as.integer(month)
-      )]
-      df[]
+      data.table::set(df, j = "time", value = tvals[i])
+      data.table::set(df, j = "variable_name", value = variable_name)
+      data.table::set(df, j = "grib_variable_name", value = variable_name)   # one name; time carries timestamps
+      data.table::set(df, j = "year", value = as.integer(year))
+      data.table::set(df, j = "month", value = as.integer(month))
+      df
     }
 
     if (parallel && requireNamespace("future.apply", quietly = TRUE)) {

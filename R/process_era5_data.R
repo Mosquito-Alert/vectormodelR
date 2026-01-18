@@ -174,6 +174,13 @@ process_era5_data <- function(
     lapply(seq_along(files), function(i) {
       f <- files[i]
       dt <- data.table::fread(f, showProgress = FALSE)
+      if (!"variable_name" %in% names(dt)) {
+        if ("grib_variable_name" %in% names(dt)) {
+          data.table::setnames(dt, "grib_variable_name", "variable_name")
+        } else {
+          stop("File ", basename(f), " is missing required column `variable_name`.")
+        }
+      }
       dt <- dt[variable_name %in% wanted]
       dt <- dt[longitude >= lon_min & longitude <= lon_max &
            latitude  >= lat_min & latitude  <= lat_max]
@@ -474,11 +481,9 @@ process_era5_data <- function(
     }
 
     # ---- write outputs with informative names ----
-    sanitize <- function(x) {
-      if (is.null(x) || is.na(x) || identical(x, "")) return("all")
-      gsub("[^A-Za-z0-9]+", "", tolower(x))
-    }
-    base_prefix <- paste0("weather_", iso_fragment, "_", admin_level, "_", sanitize(admin_name))
+    admin_tokens <- sanitize_slug(admin_name)
+    if (!length(admin_tokens)) admin_tokens <- "all"
+    base_prefix <- paste0("weather_", iso_fragment, "_", admin_level, "_", paste(admin_tokens, collapse = "-"))
     prefix <- if (identical(aggregation_unit, "cell")) paste0(base_prefix, "_cell") else paste0(base_prefix, "_region")
 
     p_daily         <- file.path(out_dir, paste0(prefix, "_daily.Rds"))
@@ -525,11 +530,9 @@ process_era5_data <- function(
       )
     )
   } else {
-    sanitize <- function(x) {
-      if (is.null(x) || is.na(x) || identical(x, "")) return("all")
-      gsub("[^A-Za-z0-9]+", "", tolower(x))
-    }
-    base_prefix <- paste0("weather_", iso_fragment, "_", admin_level, "_", sanitize(admin_name))
+    admin_tokens <- sanitize_slug(admin_name)
+    if (!length(admin_tokens)) admin_tokens <- "all"
+    base_prefix <- paste0("weather_", iso_fragment, "_", admin_level, "_", paste(admin_tokens, collapse = "-"))
     prefix <- paste0(base_prefix, "_hourly")
     p_hourly <- file.path(out_dir, paste0(prefix, ".Rds"))
 

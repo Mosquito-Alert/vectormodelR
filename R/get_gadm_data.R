@@ -112,14 +112,9 @@ get_gadm_data <- function(
     g$union_id <- 1L
   }
 
-  sanitize <- function(x) {
-    x <- gsub("[^A-Za-z0-9]+", "-", tolower(x))
-    x[nzchar(x)]
-  }
-
   name_suffix <- ""
   if (!is.null(name) && length(name)) {
-    clean_names <- sanitize(name)
+    clean_names <- sanitize_slug(name)
     if (length(clean_names)) {
       name_suffix <- paste0("_", paste(clean_names, collapse = "-"))
     }
