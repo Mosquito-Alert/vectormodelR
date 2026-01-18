@@ -190,6 +190,9 @@ process_era5_data <- function(
         if (!identical(orig_name, "variable_name")) {
           data.table::setnames(dt, orig_name, "variable_name")
         }
+        if (isTRUE(verbose) && i == 1L) {
+          .say("Detected variable column '%s' in %s", orig_name, basename(f))
+        }
       } else {
         stop(
           "File ", basename(f),
