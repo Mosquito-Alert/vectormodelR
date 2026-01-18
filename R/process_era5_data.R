@@ -191,9 +191,6 @@ process_era5_data <- function(
         if (!identical(orig_name, "variable_name")) {
           data.table::setnames(dt, orig_name, "variable_name")
         }
-        if (isTRUE(verbose) && i == 1L) {
-          .say("Detected variable column '%s' in %s", orig_name, basename(f))
-        }
       } else {
         stop(
           "File ", basename(f),
@@ -212,7 +209,8 @@ process_era5_data <- function(
         dt[["latitude"]]  >= lat_min & dt[["latitude"]]  <= lat_max
       dt <- dt[keep_bbox]
       # Some ERA5 exports append " UTC"; strip it before parsing to avoid warnings.
-      dt[, time := lubridate::ymd_hms(gsub(" UTC$", "", time), tz = "UTC", quiet = TRUE)]
+      time_vals <- lubridate::ymd_hms(gsub(" UTC$", "", dt[["time"]]), tz = "UTC", quiet = TRUE)
+      data.table::set(dt, j = "time", value = time_vals)
       utils::setTxtProgressBar(pb, i)
       dt
     }),
@@ -277,17 +275,23 @@ process_era5_data <- function(
 
   # ---- derived hourly features ----
   .say("Computing hourly derived features ...")
-  wide[, ws10 := sqrt(`10m_u_component_of_wind`^2 + `10m_v_component_of_wind`^2)]
-  wide[, `:=`(
-    t2m_C = K_to_C(`2m_temperature`),
-    d2m_C = K_to_C(`2m_dewpoint_temperature`)
-  )]
-  wide[, RH := pmin(pmax(rh_from_T_Td(t2m_C, d2m_C), 0), 100)]
-  wide[, ppt_mm := `total_precipitation` * 1000]  # m -> mm
+  ws10_vals <- sqrt(wide[["10m_u_component_of_wind"]]^2 + wide[["10m_v_component_of_wind"]]^2)
+  data.table::set(wide, j = "ws10", value = ws10_vals)
+
+  t2m_vals <- K_to_C(wide[["2m_temperature"]])
+  d2m_vals <- K_to_C(wide[["2m_dewpoint_temperature"]])
+  data.table::set(wide, j = "t2m_C", value = t2m_vals)
+  data.table::set(wide, j = "d2m_C", value = d2m_vals)
+
+  rh_vals <- pmin(pmax(rh_from_T_Td(t2m_vals, d2m_vals), 0), 100)
+  data.table::set(wide, j = "RH", value = rh_vals)
+
+  ppt_vals <- wide[["total_precipitation"]] * 1000
+  data.table::set(wide, j = "ppt_mm", value = ppt_vals)  # m -> mm
 
   wide_small <- wide[, .(lon, lat, time, t2m_C, d2m_C, RH, ws10, ppt_mm)]
   hourly_cells <- data.table::copy(wide_small)
-  hourly_cells[, date := as.Date(time, tz = "UTC")]
+  data.table::set(hourly_cells, j = "date", value = as.Date(hourly_cells[["time"]], tz = "UTC"))
 
   if (identical(aggregation_unit, "region")) {
     .say("Aggregating to hourly area means ...")
@@ -301,7 +305,7 @@ process_era5_data <- function(
       ),
       by = .(time)
     ]
-    hourly[, date := as.Date(time, tz = "UTC")]
+    data.table::set(hourly, j = "date", value = as.Date(hourly[["time"]], tz = "UTC"))
     .say("Hourly table: %s rows.", .fmtI(nrow(hourly)))
 
     .say("Aggregating to daily summaries ...")
@@ -486,7 +490,9 @@ process_era5_data <- function(
       lags_14d  <- build_lag(14, "14")
       lags_30d  <- build_lag(30, "30")
       lags_21d_lag7 <- build_lag(21, "21")
-      lags_21d_lag7[, date := date + 7]
+      if (nrow(lags_21d_lag7)) {
+        data.table::set(lags_21d_lag7, j = "date", value = lags_21d_lag7[["date"]] + 7)
+      }
 
       ppt_pieces <- lapply(cell_split, function(df) {
         out <- df |>
