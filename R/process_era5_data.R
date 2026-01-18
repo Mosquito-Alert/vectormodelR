@@ -174,7 +174,7 @@ process_era5_data <- function(
     lapply(seq_along(files), function(i) {
       f <- files[i]
       dt <- data.table::fread(f, showProgress = FALSE)
-      data.table::setDT(dt)
+      dt <- as.data.frame(dt)
       nm_lower <- tolower(names(dt))
 
       candidate_cols <- c(
@@ -189,7 +189,7 @@ process_era5_data <- function(
         col_idx <- match_idx[1]
         orig_name <- names(dt)[col_idx]
         if (!identical(orig_name, "variable_name")) {
-          data.table::setnames(dt, orig_name, "variable_name")
+          names(dt)[col_idx] <- "variable_name"
         }
       } else {
         stop(
@@ -204,22 +204,22 @@ process_era5_data <- function(
       }
       keep_var_idx <- which(dt[["variable_name"]] %in% wanted)
       if (!length(keep_var_idx)) {
-        return(data.table::data.table())
+        return(data.frame())
       }
-      dt <- dt[keep_var_idx]
+      dt <- dt[keep_var_idx, , drop = FALSE]
 
       keep_bbox_idx <- which(
         dt[["longitude"]] >= lon_min & dt[["longitude"]] <= lon_max &
           dt[["latitude"]]  >= lat_min & dt[["latitude"]]  <= lat_max
       )
       if (!length(keep_bbox_idx)) {
-        return(data.table::data.table())
+        return(data.frame())
       }
-      dt <- dt[keep_bbox_idx]
+      dt <- dt[keep_bbox_idx, , drop = FALSE]
 
       # Some ERA5 exports append " UTC"; strip it before parsing to avoid warnings.
       time_vals <- lubridate::ymd_hms(gsub(" UTC$", "", dt[["time"]]), tz = "UTC", quiet = TRUE)
-      data.table::set(dt, j = "time", value = time_vals)
+      dt$time <- time_vals
       utils::setTxtProgressBar(pb, i)
       dt
     }),
