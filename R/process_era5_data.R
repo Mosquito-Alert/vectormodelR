@@ -227,22 +227,20 @@ process_era5_data <- function(
     use.names = TRUE, fill = TRUE
   )
   DT <- data.table::as.data.table(DT)
-  if (!"time" %in% names(DT)) {
-    stop("Combined dataset is missing a `time` column after reading monthly files.")
+  if (!inherits(DT$time, "POSIXct")) {
+    DT$time <- lubridate::ymd_hms(DT$time, tz = "UTC", quiet = TRUE)
   }
-  data.table::set(DT, j = "time", value = as.POSIXct(DT$time, tz = "UTC"))
   if (!nrow(DT)) stop("No rows after bbox/var filtering. Check inputs.")
   .say("\nAfter bbox/var filter: %s rows.", .fmtI(nrow(DT)))
 
   # ---- set default dates if missing, then filter once ----
-  if (is.null(start_date)) start_date <- as.Date(min(DT$time, na.rm = TRUE))
-  if (is.null(end_date))   end_date   <- as.Date(max(DT$time, na.rm = TRUE))
+  if (is.null(start_date)) start_date <- as.Date(lubridate::floor_date(min(DT$time, na.rm = TRUE), unit = "day"))
+  if (is.null(end_date))   end_date   <- as.Date(lubridate::ceiling_date(max(DT$time, na.rm = TRUE), unit = "day") - 1)
   .say("Date window: %s to %s (inclusive).", format(start_date), format(end_date))
 
-  DT <- DT[
-    time >= as.POSIXct(start_date, tz = "UTC") &
-    time <  as.POSIXct(end_date + 1, tz = "UTC")
-  ]
+  keep_range <- DT$time >= as.POSIXct(start_date, tz = "UTC") &
+    DT$time < as.POSIXct(end_date + 1, tz = "UTC")
+  DT <- DT[keep_range]
   if (!nrow(DT)) stop("No rows after time filtering. Check date window.")
   .say("After time filter: %s rows.", .fmtI(nrow(DT)))
 
