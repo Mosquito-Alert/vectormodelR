@@ -246,8 +246,10 @@ process_era5_data <- function(
   # ---- polygon mask (exact clip) ----
   .say("Applying exact polygon mask ...")
   poly <- g |> sf::st_make_valid() |> sf::st_union()
-  DT_sf <- sf::st_as_sf(DT, coords = c("longitude","latitude"), crs = 4326, remove = FALSE)
-  inside_idx <- lengths(sf::st_within(DT_sf, poly, sparse = TRUE)) > 0
+
+  DT_sf <- sf::st_as_sf(DT, coords = c("longitude", "latitude"), crs = 4326, remove = FALSE)
+  inside_idx <- as.logical(sf::st_intersects(DT_sf, poly, sparse = FALSE))
+  inside_idx[is.na(inside_idx)] <- FALSE
 
   if (!any(inside_idx) && polygon_buffer_km > 0) {
     .say("No points inside polygon; buffering by %.1f km and retrying ...", polygon_buffer_km)
@@ -255,20 +257,27 @@ process_era5_data <- function(
       sf::st_transform(3857) |>
       sf::st_buffer(polygon_buffer_km * 1000) |>
       sf::st_transform(4326)
-    inside_idx <- lengths(sf::st_within(DT_sf, poly_buffer, sparse = TRUE)) > 0
+
+    inside_idx <- as.logical(sf::st_intersects(DT_sf, poly_buffer, sparse = FALSE))
+    inside_idx[is.na(inside_idx)] <- FALSE
+
     if (any(inside_idx)) {
       .say("Buffer captured %s rows inside the polygon.", .fmtI(sum(inside_idx)))
       poly <- poly_buffer
-    } else {
-      .say("Buffering failed to capture any points.")
     }
   }
 
+  if (!any(inside_idx)) {
+    stop("No rows inside the polygon. Check coordinates or increase buffer.")
+  }
+
   kept_n <- sum(inside_idx)
-  DT_sf <- DT_sf[inside_idx, , drop = FALSE]
-  DT <- data.table::as.data.table(sf::st_drop_geometry(DT_sf))
+  DT <- DT[which(inside_idx), ]
+
   rm(DT_sf, inside_idx); gc()
-  if (!nrow(DT)) stop("No rows inside the polygon. Consider raising `polygon_buffer_km` or using a coarser admin level.")
+  if (!nrow(DT)) {
+    stop("No rows inside the polygon. Consider raising `polygon_buffer_km` or using a coarser admin level.")
+  }
   .say("Points inside polygon: %s rows kept.", .fmtI(kept_n))
 
   # ---- round lon/lat (stabilize keys for dcast) ----
