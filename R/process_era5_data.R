@@ -174,61 +174,47 @@ process_era5_data <- function(
     lapply(seq_along(files), function(i) {
       f <- files[i]
       dt <- data.table::fread(f, showProgress = FALSE)
-      dt <- as.data.frame(dt)
+      # OPTIMIZATION: Removed as.data.frame(dt) to save memory/speed
+      
       nm_lower <- tolower(names(dt))
-
-      candidate_cols <- c(
-        "variable_name",
-        "grib_variable_name",
-        "variable",
-        "var_name",
-        "var"
-      )
+      candidate_cols <- c("variable_name","grib_variable_name","variable","var_name","var")
       match_idx <- which(nm_lower %in% candidate_cols)
+      
       if (length(match_idx)) {
         col_idx <- match_idx[1]
         orig_name <- names(dt)[col_idx]
         if (!identical(orig_name, "variable_name")) {
-          names(dt)[col_idx] <- "variable_name"
+          data.table::setnames(dt, orig_name, "variable_name")
         }
       } else {
-        stop(
-          "File ", basename(f),
-          " is missing a column that can be mapped to `variable_name`. Available columns: ",
-          paste(names(dt), collapse = ", ")
-        )
+        stop("File ", basename(f), " is missing 'variable_name' column.")
       }
 
-      if (!"variable_name" %in% names(dt)) {
-        stop("Column renaming failed for file ", basename(f), ". Columns available: ", paste(names(dt), collapse = ", "))
-      }
       keep_var_idx <- which(dt[["variable_name"]] %in% wanted)
-      if (!length(keep_var_idx)) {
-        return(data.frame())
-      }
+      if (!length(keep_var_idx)) return(data.table::data.table()) # Return empty DT
       dt <- dt[keep_var_idx, , drop = FALSE]
 
       keep_bbox_idx <- which(
         dt[["longitude"]] >= lon_min & dt[["longitude"]] <= lon_max &
-          dt[["latitude"]]  >= lat_min & dt[["latitude"]]  <= lat_max
+        dt[["latitude"]]  >= lat_min & dt[["latitude"]]  <= lat_max
       )
-      if (!length(keep_bbox_idx)) {
-        return(data.frame())
-      }
+      if (!length(keep_bbox_idx)) return(data.table::data.table()) # Return empty DT
       dt <- dt[keep_bbox_idx, , drop = FALSE]
 
-      # Some ERA5 exports append " UTC"; strip it before parsing to avoid warnings.
-      time_vals <- lubridate::ymd_hms(gsub(" UTC$", "", dt[["time"]]), tz = "UTC", quiet = TRUE)
-      dt$time <- time_vals
+      # Parse time directly in DT
+      # Some ERA5 exports append " UTC"
+      time_char <- gsub(" UTC$", "", dt[["time"]])
+      time_vals <- lubridate::ymd_hms(time_char, tz = "UTC", quiet = TRUE)
+      data.table::set(dt, j = "time", value = time_vals)
+      
       utils::setTxtProgressBar(pb, i)
       dt
     }),
     use.names = TRUE, fill = TRUE
   )
+  
   DT <- data.table::as.data.table(DT)
-  if (!inherits(DT$time, "POSIXct")) {
-    DT$time <- lubridate::ymd_hms(DT$time, tz = "UTC", quiet = TRUE)
-  }
+  
   if (!nrow(DT)) stop("No rows after bbox/var filtering. Check inputs.")
   .say("\nAfter bbox/var filter: %s rows.", .fmtI(nrow(DT)))
 
@@ -243,42 +229,41 @@ process_era5_data <- function(
   if (!nrow(DT)) stop("No rows after time filtering. Check date window.")
   .say("After time filter: %s rows.", .fmtI(nrow(DT)))
 
-  # ---- polygon mask (exact clip) ----
+  # ---- polygon mask (exact clip) [UPDATED/FIXED SECTION] ----
   .say("Applying exact polygon mask ...")
   poly <- g |> sf::st_make_valid() |> sf::st_union()
 
-  DT_sf <- sf::st_as_sf(DT, coords = c("longitude", "latitude"), crs = 4326, remove = FALSE)
-  inside_idx <- as.logical(sf::st_intersects(DT_sf, poly, sparse = FALSE))
-  inside_idx[is.na(inside_idx)] <- FALSE
+  # 1. Create a temporary SF object for spatial matching ONLY
+  temp_sf <- sf::st_as_sf(DT, coords = c("longitude", "latitude"), crs = 4326, remove = FALSE)
 
+  # 2. Get logical vector of points inside (sparse=FALSE returns logical vector)
+  inside_idx <- as.logical(sf::st_intersects(temp_sf, poly, sparse = FALSE))
+  inside_idx[is.na(inside_idx)] <- FALSE 
+
+  # 3. Handle buffering if no points found
   if (!any(inside_idx) && polygon_buffer_km > 0) {
     .say("No points inside polygon; buffering by %.1f km and retrying ...", polygon_buffer_km)
     poly_buffer <- poly |>
       sf::st_transform(3857) |>
       sf::st_buffer(polygon_buffer_km * 1000) |>
       sf::st_transform(4326)
-
-    inside_idx <- as.logical(sf::st_intersects(DT_sf, poly_buffer, sparse = FALSE))
+    
+    inside_idx <- as.logical(sf::st_intersects(temp_sf, poly_buffer, sparse = FALSE))
     inside_idx[is.na(inside_idx)] <- FALSE
-
+    
     if (any(inside_idx)) {
-      .say("Buffer captured %s rows inside the polygon.", .fmtI(sum(inside_idx)))
-      poly <- poly_buffer
+      .say("Buffer captured %s rows.", .fmtI(sum(inside_idx)))
     }
   }
 
-  if (!any(inside_idx)) {
-    stop("No rows inside the polygon. Check coordinates or increase buffer.")
-  }
+  if (!any(inside_idx)) stop("No rows inside the polygon. Check coordinates.")
 
-  kept_n <- sum(inside_idx)
+  # 4. Subset using integer indices (Safe against 'undefined columns' error)
   DT <- DT[which(inside_idx), ]
 
-  rm(DT_sf, inside_idx); gc()
-  if (!nrow(DT)) {
-    stop("No rows inside the polygon. Consider raising `polygon_buffer_km` or using a coarser admin level.")
-  }
-  .say("Points inside polygon: %s rows kept.", .fmtI(kept_n))
+  # 5. Cleanup
+  rm(temp_sf, inside_idx); gc()
+  .say("Points inside polygon: %s rows kept.", .fmtI(nrow(DT)))
 
   # ---- round lon/lat (stabilize keys for dcast) ----
   data.table::set(DT, j = "lat", value = round(DT$latitude,  round_ll))
