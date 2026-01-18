@@ -174,6 +174,7 @@ process_era5_data <- function(
     lapply(seq_along(files), function(i) {
       f <- files[i]
       dt <- data.table::fread(f, showProgress = FALSE)
+      data.table::setDT(dt)
       nm_lower <- tolower(names(dt))
 
       candidate_cols <- c(
