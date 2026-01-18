@@ -200,9 +200,16 @@ process_era5_data <- function(
           paste(names(dt), collapse = ", ")
         )
       }
-      dt <- dt[variable_name %in% wanted]
-      dt <- dt[longitude >= lon_min & longitude <= lon_max &
-           latitude  >= lat_min & latitude  <= lat_max]
+
+      if (!"variable_name" %in% names(dt)) {
+        stop("Column renaming failed for file ", basename(f), ". Columns available: ", paste(names(dt), collapse = ", "))
+      }
+      keep_var <- dt[["variable_name"]] %in% wanted
+      dt <- dt[keep_var]
+
+      keep_bbox <- dt[["longitude"]] >= lon_min & dt[["longitude"]] <= lon_max &
+        dt[["latitude"]]  >= lat_min & dt[["latitude"]]  <= lat_max
+      dt <- dt[keep_bbox]
       # Some ERA5 exports append " UTC"; strip it before parsing to avoid warnings.
       dt[, time := lubridate::ymd_hms(gsub(" UTC$", "", time), tz = "UTC", quiet = TRUE)]
       utils::setTxtProgressBar(pb, i)
