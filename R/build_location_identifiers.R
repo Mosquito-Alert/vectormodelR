@@ -17,9 +17,10 @@ build_location_identifiers <- function(iso3, admin_level, admin_name) {
 
   iso3_slug <- tolower(iso3)
   admin_level_slug <- as.character(admin_level)
-  admin_name_slug <- tolower(admin_name)
-  admin_name_slug <- gsub("[^a-z0-9]+", "_", admin_name_slug)
-  admin_name_slug <- gsub("^_+|_+$", "", admin_name_slug)
+  admin_name_slug <- sanitize_slug(admin_name, separator = "_")
+  if (!length(admin_name_slug)) {
+    admin_name_slug <- ""
+  }
 
   list(
     iso3 = iso3_slug,
