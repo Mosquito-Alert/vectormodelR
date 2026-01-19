@@ -42,47 +42,13 @@
 #'
 #' @importFrom lubridate ymd_hms
 #' @importFrom RcppRoll roll_mean roll_sum
-#' @importFrom sf st_as_sf st_make_valid st_union st_within st_drop_geometry st_bbox st_transform st_buffer
+#' @importFrom sf st_as_sf st_make_valid st_union st_within st_drop_geometry st_bbox st_transform st_buffer st_intersects
 #' @importFrom geodata gadm
 #' @importFrom tidyr pivot_longer pivot_wider
 #' @importFrom dplyr mutate case_when transmute arrange lag select all_of
 #' @importFrom readr write_rds
+#' @importFrom data.table fread setDT setnames as.data.table rbindlist dcast copy setorder set
 #' @export
-#'
-#' @examples
-#' \dontrun{
-#' # Barcelona province
-#' process_era5_data(
-#'   iso3 = "ESP",
-#'   admin_level = 2,
-#'   admin_name = "Barcelona",
-#'   processed_dir = "~/data/weather/grib/esp/processed",
-#'   out_dir = "data/proc",
-#'   attach_to_global = TRUE,
-#'   aggregation_unit = "hourly"
-#' )
-#'
-#' # Catalonia region (level 1)
-#' process_era5_data(
-#'   iso3 = "ESP",
-#'   admin_level = 1,
-#'   admin_name = "Cataluña",
-#'   processed_dir = "~/data/weather/grib/esp/processed",
-#'   out_dir = "data/weather_catalonia",
-#'   aggregation_unit = "region"
-#' )
-#'
-#' # Stricter calm wind threshold (4 km/h)
-#' process_era5_data(
-#'   iso3 = "ESP",
-#'   admin_level = 2,
-#'   admin_name = "Barcelona",
-#'   processed_dir = "~/data/weather/grib/esp/processed",
-#'   out_dir = "data/proc",
-#'   wind_calm_kmh = 4,
-#'   aggregation_unit = "cell"
-#' )
-#' }
 process_era5_data <- function(
   processed_dir = NULL,
   iso3,
@@ -174,7 +140,7 @@ process_era5_data <- function(
     lapply(seq_along(files), function(i) {
       f <- files[i]
       dt <- data.table::fread(f, showProgress = FALSE)
-      # OPTIMIZATION: Removed as.data.frame(dt) to save memory/speed
+      # OPTIMIZATION: Removed as.data.frame(dt) to save memory/speed for large inputs
       
       nm_lower <- tolower(names(dt))
       candidate_cols <- c("variable_name","grib_variable_name","variable","var_name","var")
@@ -229,16 +195,18 @@ process_era5_data <- function(
   if (!nrow(DT)) stop("No rows after time filtering. Check date window.")
   .say("After time filter: %s rows.", .fmtI(nrow(DT)))
 
-  # ---- polygon mask (exact clip) [UPDATED/FIXED SECTION] ----
+  # ---- polygon mask (exact clip) [FIXED SECTION] ----
   .say("Applying exact polygon mask ...")
   poly <- g |> sf::st_make_valid() |> sf::st_union()
 
   # 1. Create a temporary SF object for spatial matching ONLY
+  # We do this to find the indices, then we'll throw it away to free memory
   temp_sf <- sf::st_as_sf(DT, coords = c("longitude", "latitude"), crs = 4326, remove = FALSE)
 
-  # 2. Get logical vector of points inside (sparse=FALSE returns logical vector)
+  # 2. Get logical vector of points inside
+  # sparse = FALSE returns a simple logical vector
   inside_idx <- as.logical(sf::st_intersects(temp_sf, poly, sparse = FALSE))
-  inside_idx[is.na(inside_idx)] <- FALSE 
+  inside_idx[is.na(inside_idx)] <- FALSE # Safety for coordinate edge cases
 
   # 3. Handle buffering if no points found
   if (!any(inside_idx) && polygon_buffer_km > 0) {
@@ -247,7 +215,6 @@ process_era5_data <- function(
       sf::st_transform(3857) |>
       sf::st_buffer(polygon_buffer_km * 1000) |>
       sf::st_transform(4326)
-    
     inside_idx <- as.logical(sf::st_intersects(temp_sf, poly_buffer, sparse = FALSE))
     inside_idx[is.na(inside_idx)] <- FALSE
     
@@ -258,10 +225,11 @@ process_era5_data <- function(
 
   if (!any(inside_idx)) stop("No rows inside the polygon. Check coordinates.")
 
-  # 4. Subset using integer indices (Safe against 'undefined columns' error)
+  # 4. THE CRITICAL FIX: Subset the data.table 'DT' using which() integer indices
+  # This avoids the 'undefined columns' error triggered by sf/data.frame methods
   DT <- DT[which(inside_idx), ]
 
-  # 5. Cleanup
+  # 5. Cleanup memory immediately
   rm(temp_sf, inside_idx); gc()
   .say("Points inside polygon: %s rows kept.", .fmtI(nrow(DT)))
 

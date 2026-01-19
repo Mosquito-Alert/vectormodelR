@@ -77,38 +77,3 @@ Expects variables in the CSVs:
 Units assumed (ERA5 defaults): temperature in Kelvin, precipitation in meters
 per step; wind components in m/s.
 }
-\examples{
-\dontrun{
-# Barcelona province
-process_era5_data(
-  iso3 = "ESP",
-  admin_level = 2,
-  admin_name = "Barcelona",
-  processed_dir = "~/data/weather/grib/esp/processed",
-  out_dir = "data/proc",
-  attach_to_global = TRUE,
-  aggregation_unit = "hourly"
-)
-
-# Catalonia region (level 1)
-process_era5_data(
-  iso3 = "ESP",
-  admin_level = 1,
-  admin_name = "Cataluña",
-  processed_dir = "~/data/weather/grib/esp/processed",
-  out_dir = "data/weather_catalonia",
-  aggregation_unit = "region"
-)
-
-# Stricter calm wind threshold (4 km/h)
-process_era5_data(
-  iso3 = "ESP",
-  admin_level = 2,
-  admin_name = "Barcelona",
-  processed_dir = "~/data/weather/grib/esp/processed",
-  out_dir = "data/proc",
-  wind_calm_kmh = 4,
-  aggregation_unit = "cell"
-)
-}
-}
