@@ -11,6 +11,7 @@ get_vector_counts(
   gbif_tbl = NULL,
   malert_sf = NULL,
   malert_source = "github",
+  taxon_key = NULL,
   gbif_clip_to_perimeter = FALSE,
   gbif_save_outputs = FALSE,
   crs = 4326,
@@ -34,6 +35,8 @@ get_vector_counts(
 
 \item{malert_source}{Character passed to \code{mosquitoR::get_malert_data(source = ...)}.
 Default: "github".}
+
+\item{taxon_key}{Optional vector of GBIF taxon key passed to \code{mosquitoR::get_gbif_data()}.}
 
 \item{gbif_clip_to_perimeter}{Logical passed to \code{mosquitoR::get_gbif_data()}.}
 

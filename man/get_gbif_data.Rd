@@ -5,14 +5,14 @@
 \title{Download GBIF occurrence data for a taxon and country}
 \usage{
 get_gbif_data(
-  taxon_key = c(1651430, 1651891),
+  taxon_key,
   iso3,
   admin_level,
   admin_name,
   year_min = NULL,
   year_max = NULL,
   desired_cols = NULL,
-  out_dir = "data/vector",
+  out_dir = "data/proc",
   perimeter_dir = "data/proc",
   gbif_user = Sys.getenv("GBIF_USER", unset = NA_character_),
   gbif_pwd = Sys.getenv("GBIF_PWD", unset = NA_character_),
@@ -23,8 +23,7 @@ get_gbif_data(
 )
 }
 \arguments{
-\item{taxon_key}{Numeric vector of GBIF taxon keys (e.g. \code{c(1651430, 1651891)} for \emph{Aedes albopictus} and \emph{Aedes aegypti}). Defaults to both
-species.}
+\item{taxon_key}{Numeric vector of GBIF taxon keys (e.g. \code{c(1651430, 1651891)} for \emph{Aedes albopictus} and \emph{Aedes aegypti}).}
 
 \item{iso3}{Three-letter ISO country code (e.g. \code{"ESP"}). It is converted to
 the GBIF-required ISO2 code using \code{countrycode}.}

@@ -16,6 +16,7 @@
 #'   \code{mosquitoR::get_malert_data()}.
 #' @param malert_source Character passed to \code{mosquitoR::get_malert_data(source = ...)}.
 #'   Default: "github".
+#' @param taxon_key Optional vector of GBIF taxon key passed to \code{mosquitoR::get_gbif_data()}.
 #' @param gbif_clip_to_perimeter Logical passed to \code{mosquitoR::get_gbif_data()}.
 #' @param gbif_save_outputs Logical passed to \code{mosquitoR::get_gbif_data()}.
 #' @param crs Integer EPSG for point creation / joining. Default 4326 (WGS84).
@@ -49,6 +50,7 @@ get_vector_counts <- function(
   gbif_tbl = NULL,
   malert_sf = NULL,
   malert_source = "github",
+  taxon_key = NULL,
   gbif_clip_to_perimeter = FALSE,
   gbif_save_outputs = FALSE,
   crs = 4326,
@@ -121,6 +123,7 @@ get_vector_counts <- function(
   # ---- get gbif / malert data if needed ----
   if (is.null(gbif_tbl)) {
     gbif_tbl <- mosquitoR::get_gbif_data(
+      taxon_key = taxon_key,
       iso3 = iso3,
       clip_to_perimeter = gbif_clip_to_perimeter,
       save_outputs = gbif_save_outputs
