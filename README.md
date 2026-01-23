@@ -94,7 +94,7 @@ Research and Innovation Actions) under Grant Agreement 101086640.
 
 <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-top: 12px;">
 
-<img src="man/figures/funding/EN-Funded-by-the-EU-NEG-1024x215.png" alt="Funded by the European Union" height="60" />
+<img src="man/figures/funding/eu_funded_en.jpg" alt="Funded by the European Union" height="60" />
 <img src="man/figures/funding/MICIU+NextG+PRTR+AEI_page-0001.jpg" alt="MCIN/AEI/EU NextGenerationEU/PRTR" height="60" />
 
 </div>
