@@ -18,6 +18,8 @@ A tibble.
 Download Mosquito Alert report data from GitHub
 }
 \examples{
+\dontrun{
 malert_reports = get_malert_data(source = "github")
 malert_reports
+}
 }

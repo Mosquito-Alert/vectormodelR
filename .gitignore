@@ -8,4 +8,7 @@ docs/reference/senscape_api_key.txt
 .Rdata
 .httr-oauth
 .DS_Store
+README.html
+*.tar.gz
+*.Rcheck/
 docs
