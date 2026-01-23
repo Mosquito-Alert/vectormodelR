@@ -169,10 +169,9 @@ download_zenodo <- function(doi,
 human_filesize <- function(x) {
   assert_that(is.numeric(x))
   assert_that(all(x %% 1 == 0 & x >= 0))
-  magnitude <-
-    log(x, base = 1024) %>%
-    floor(x = .) %>%
-    pmin(8)
+  magnitude <- rep(0, length(x))
+  nonzero <- x > 0
+  magnitude[nonzero] <- pmin(floor(log(x[nonzero], base = 1024)), 8)
   unit <- factor(magnitude,
                  levels = 0:8,
                  labels = c(

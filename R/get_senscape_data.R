@@ -8,12 +8,14 @@
 #' @returns A tibble.
 #' @export
 #' @examples
-#' new_smart_trap_data = get_senscape_data(api_key = Sys.getenv("SENSCAPE_API_KEY"),
-#' start_datetime = lubridate::as_datetime("2023-03-08"),
-#' end_datetime = lubridate::as_datetime("2023-03-09"),
-#'  deviceIds = c("5f1076c998fda900151ff683", "5f1076c998fda900151ff683",
-#'  "5f10762e98fda900151ff680", "5f10767c98fda900151ff681", "5f1076ae98fda900151ff682"))
-#' new_smart_trap_data
+#' if (nzchar(Sys.getenv("SENSCAPE_API_KEY"))) {
+#'   new_smart_trap_data = get_senscape_data(api_key = Sys.getenv("SENSCAPE_API_KEY"),
+#'   start_datetime = lubridate::as_datetime("2023-03-08"),
+#'   end_datetime = lubridate::as_datetime("2023-03-09"),
+#'    deviceIds = c("5f1076c998fda900151ff683", "5f1076c998fda900151ff683",
+#'    "5f10762e98fda900151ff680", "5f10767c98fda900151ff681", "5f1076ae98fda900151ff682"))
+#'   new_smart_trap_data
+#' }
 get_senscape_data = function(api_key, page_size = 10, start_datetime, end_datetime, deviceIds=NA){
 
   httr::set_config(httr::config(ssl_verifypeer = 0L))
@@ -52,30 +54,42 @@ flush.console()
     this_query = paste0("https://senscape.eu/api/data?", deviceId_query, "sortOrder=asc&sortField=record_time&filterStart=", start, "&filterEnd=", end)
 
     data_req <- httr::GET(this_query, httr::add_headers('authorization' = api_key))
+    if (httr::status_code(data_req) >= 300) {
+      stop(paste0("Senscape API request failed (", httr::status_code(data_req), "): ", httr::content(data_req, "text", encoding = "UTF-8")), call. = FALSE)
+    }
 
-    sense_data_count = tibble::as_tibble(jsonlite::fromJSON(httr::content(data_req, "text"))$count)
+    sense_data_count = tibble::as_tibble(jsonlite::fromJSON(httr::content(data_req, "text", encoding = "UTF-8"))$count)
 
     total_pages = (as.integer(sense_data_count/page_size)+1)
 
     this_smart_trap_data = dplyr::bind_rows(lapply(0:total_pages, function(i){
 
-            data_req <- httr::GET(paste0(this_query, "&pageNumber=", i, "&pageSize=", page_size), httr::add_headers('authorization' = api_key))
-      tibble::as_tibble(jsonlite::fromJSON(httr::content(data_req, "text"))$samples)
+      data_req <- httr::GET(paste0(this_query, "&pageNumber=", i, "&pageSize=", page_size), httr::add_headers('authorization' = api_key))
+      if (httr::status_code(data_req) >= 300) {
+        stop(paste0("Senscape API request failed (", httr::status_code(data_req), "): ", httr::content(data_req, "text", encoding = "UTF-8")), call. = FALSE)
+      }
+      tibble::as_tibble(jsonlite::fromJSON(httr::content(data_req, "text", encoding = "UTF-8"))$samples)
     }))
 
 
     this_query_pulses = paste0("https://senscape.eu/api/data?", deviceId_query, "classification=Test%20pulse&sortOrder=asc&sortField=record_time&filterStart=", start, "&filterEnd=", end)
 
     data_req <- httr::GET(this_query_pulses, httr::add_headers('authorization' = api_key))
+    if (httr::status_code(data_req) >= 300) {
+      stop(paste0("Senscape API request failed (", httr::status_code(data_req), "): ", httr::content(data_req, "text", encoding = "UTF-8")), call. = FALSE)
+    }
 
-    sense_data_count = tibble::as_tibble(jsonlite::fromJSON(httr::content(data_req, "text"))$count)
+    sense_data_count = tibble::as_tibble(jsonlite::fromJSON(httr::content(data_req, "text", encoding = "UTF-8"))$count)
 
     total_pages = (as.integer(sense_data_count/page_size)+1)
 
     this_smart_trap_data_pulses = dplyr::bind_rows(lapply(0:total_pages, function(i){
 
-            data_req <- httr::GET(paste0(this_query_pulses, "&pageNumber=", i, "&pageSize=", page_size), httr::add_headers('authorization' = api_key))
-      tibble::as_tibble(jsonlite::fromJSON(httr::content(data_req, "text"))$samples)
+      data_req <- httr::GET(paste0(this_query_pulses, "&pageNumber=", i, "&pageSize=", page_size), httr::add_headers('authorization' = api_key))
+      if (httr::status_code(data_req) >= 300) {
+        stop(paste0("Senscape API request failed (", httr::status_code(data_req), "): ", httr::content(data_req, "text", encoding = "UTF-8")), call. = FALSE)
+      }
+      tibble::as_tibble(jsonlite::fromJSON(httr::content(data_req, "text", encoding = "UTF-8"))$samples)
     }))
 
     final_result = dplyr::bind_rows(final_result, this_smart_trap_data, this_smart_trap_data_pulses)

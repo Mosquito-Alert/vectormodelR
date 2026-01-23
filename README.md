@@ -1,11 +1,11 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# mosquitoR <a href="https://mosquito-alert.github.io/mosquitoR/"><img src="man/figures/logo.png" align="right" height="139" alt="mosquitoR website" /></a>
+# mosquitoR <a href="https://labs.mosquitoalert.com/mosquitoR/"><img src="man/figures/logo.png" align="right" height="139" alt="mosquitoR website" /></a>
 
 <!-- badges: start -->
 
-[![Documentation](https://img.shields.io/static/v1?label=Documentation&message=html&color=informational)](https://mosquito-alert.github.io/mosquitoR/)
+[![Documentation](https://img.shields.io/static/v1?label=Documentation&message=html&color=informational)](https://labs.mosquitoalert.com/mosquitoR/)
 [![R-CMD-check](https://github.com/Mosquito-Alert/mosquitoR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Mosquito-Alert/mosquitoR/actions/workflows/R-CMD-check.yaml)
 [![Lifecycle:
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
@@ -13,9 +13,9 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 
 The goal of mosquitoR is provide to set of tools for analyzing data
 associated with the Mosquito Alert citizen science system
-(<http://mosquitoalert.com>), including Mosquito Alert citizen science
-data, smart trap data from the Irideon Senscape API, and traditional
-mosquito trap data.
+(<https://www.mosquitoalert.com/>), including Mosquito Alert citizen
+science data, smart trap data from the Irideon Senscape API, and
+traditional mosquito trap data.
 
 IMPORTANT: This package is at an early stage of development, and we may
 introduce “breaking” changes. In addition, please note that while the
@@ -57,60 +57,25 @@ Download smart trap data from the Senscape server using an API key:
 ``` r
 library(mosquitoR)
 library(lubridate)
-#> 
-#> Attaching package: 'lubridate'
-#> The following objects are masked from 'package:base':
-#> 
-#>     date, intersect, setdiff, union
 library(dplyr)
-#> 
-#> Attaching package: 'dplyr'
-#> The following objects are masked from 'package:stats':
-#> 
-#>     filter, lag
-#> The following objects are masked from 'package:base':
-#> 
-#>     intersect, setdiff, setequal, union
 library(magrittr)
-library(keyring)
 
-# first set your API key:
-# key_set("SENSCAPE_API_KEY")
-SENSCAPE_API_KEY = key_get("SENSCAPE_API_KEY")
+# first set your API key in your environment (e.g. in ~/.Renviron):
+SENSCAPE_API_KEY = Sys.getenv("SENSCAPE_API_KEY")
 
 # get list of device IDs with names that start with ASPB
 ASPB_deviceIds = get_senscape_devices(api_key = SENSCAPE_API_KEY) %>% filter(startsWith(name, "ASPB")) %>% pull(`_id`)
 ASPB_deviceIds
-#> [1] "5f10762e98fda900151ff680" "5f10767c98fda900151ff681"
-#> [3] "5f1076c998fda900151ff683" "5f1076ae98fda900151ff682"
-#> [5] "5f1076e798fda900151ff684"
 
 # get all data from these devices within a specified interval
 my_data = get_senscape_data(api_key = SENSCAPE_API_KEY, start_datetime = as_datetime("2023-03-08"), end_datetime = as_datetime("2023-03-09"), deviceIds = ASPB_deviceIds)
-#> Getting Senscape Data from 2023-03-08 to 2023-03-09
-#>   |                                                                              |                                                                      |   0%  |                                                                              |======================================================================| 100%
 my_data
-#> # A tibble: 241 × 11
-#>    `_id`   temperature nice_name classification record_time humidity client_name
-#>    <chr>         <dbl> <chr>     <chr>          <chr>          <dbl> <chr>      
-#>  1 6408cd…        17.0 FILE_167… Culex female   2023-03-08…     61.1 ASPB 3 (Pe…
-#>  2 6407d7…        12.3 FILE_167… Test pulse     2023-03-08…     56.4 ASPB 2 (Ho…
-#>  3 6407d7…        12.8 FILE_167… Test pulse     2023-03-08…     61.3 ASPB 3 (Pe…
-#>  4 6407d7…        12.7 FILE_167… Test pulse     2023-03-08…     60.4 ASPB 1 (Sa…
-#>  5 6407d7…        14.0 FILE_167… Test pulse     2023-03-08…     61.1 ASPB 5 (Zo…
-#>  6 6407d7…        14.7 FILE_167… Test pulse     2023-03-08…     72.5 ASPB 4 (Le…
-#>  7 6407de…        12.6 FILE_167… Test pulse     2023-03-08…     60.3 ASPB 1 (Sa…
-#>  8 6407de…        12.8 FILE_167… Test pulse     2023-03-08…     61.4 ASPB 3 (Pe…
-#>  9 6407de…        12.2 FILE_167… Test pulse     2023-03-08…     56.5 ASPB 2 (Ho…
-#> 10 6407de…        14.1 FILE_167… Test pulse     2023-03-08…     61.1 ASPB 5 (Zo…
-#> # ℹ 231 more rows
-#> # ℹ 4 more variables: client_type <chr>, processed <chr>, lat <lgl>, lng <lgl>
 ```
 
 ## Documentation
 
 Online documentation can be found at
-<https://mosquito-alert.github.io/mosquitoR/>.
+<https://labs.mosquitoalert.com/mosquitoR/>.
 
 ## Contributing
 
@@ -118,6 +83,21 @@ If you want to contribute new functions, fix bugs, add documentation or
 tests, etc., please do so on the `dev` branch. We are developing this
 package using `devtools` and `testthat` and doing our best to follow the
 guidelines and styles laid out in <https://r-pkgs.org>.
+
+## Funding
+
+This work has been supported by the Plan Estatal de Investigación
+Científica, Técnica y de Innovación 2021-2023 funded by MCIN/AEI/EU -
+CNS2022-135646 and by the European Union’s NextGenerationEU/PRTR
+program, and by the European Union’s Horizon Europe programme (HORIZON
+Research and Innovation Actions) under Grant Agreement 101086640.
+
+<div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-top: 12px;">
+
+<img src="man/figures/funding/eu_funded_en.jpg" alt="Funded by the European Union" height="60" />
+<img src="man/figures/funding/MICIU+NextG+PRTR+AEI_page-0001.jpg" alt="MCIN/AEI/EU NextGenerationEU/PRTR" height="60" />
+
+</div>
 
 <!-- What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so: -->
 <!-- ```{r cars} -->
