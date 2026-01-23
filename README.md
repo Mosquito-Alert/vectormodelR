@@ -92,6 +92,13 @@ CNS2022-135646 and by the European Union’s NextGenerationEU/PRTR
 program, and by the European Union’s Horizon Europe programme (HORIZON
 Research and Innovation Actions) under Grant Agreement 101086640.
 
+<div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-top: 12px;">
+
+<img src="man/figures/funding/EN-Funded-by-the-EU-NEG-1024x215.png" alt="Funded by the European Union" height="60" />
+<img src="man/figures/funding/MICIU+NextG+PRTR+AEI_page-0001.jpg" alt="MCIN/AEI/EU NextGenerationEU/PRTR" height="60" />
+
+</div>
+
 <!-- What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so: -->
 <!-- ```{r cars} -->
 <!-- summary(cars) -->
