@@ -5,7 +5,7 @@
 \title{Fit a BYM2 Mosquito Alert occupancy model with brms}
 \usage{
 run_brms_bym2_model(
-  dataset,
+  dataset = NULL,
   cellsize_m = 800,
   adjacency = NULL,
   adjacency_args = list(),
@@ -20,6 +20,7 @@ run_brms_bym2_model(
   admin_name = NULL,
   write_output = TRUE,
   output_path = "data/proc",
+  input_dir = "data/proc",
   save_pars = TRUE,
   verbose = TRUE
 )

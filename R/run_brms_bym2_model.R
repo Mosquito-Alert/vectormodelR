@@ -37,7 +37,7 @@
 #' }
 #' @export
 run_brms_bym2_model <- function(
-  dataset,
+  dataset = NULL,
   cellsize_m = 800,
   adjacency = NULL,
   adjacency_args = list(),
@@ -52,6 +52,7 @@ run_brms_bym2_model <- function(
   admin_name = NULL,
   write_output = TRUE,
   output_path = "data/proc",
+  input_dir = "data/proc",
   save_pars = TRUE,
   verbose = TRUE
 ) {
@@ -91,140 +92,81 @@ run_brms_bym2_model <- function(
   }
 
   # ---- load dataset ----
-  dataset_is_path <- is.character(dataset) && length(dataset) == 1L && nzchar(dataset)
-  dataset_path <- NULL
-  if (dataset_is_path) {
-    dataset_path <- dataset
-    if (!file.exists(dataset_path)) stop("Dataset not found at ", dataset_path, call. = FALSE)
-    dataset <- readRDS(dataset_path)
-  }
-
-  if (!is.data.frame(dataset)) {
-    stop("`dataset` must be a data frame or a path to an RDS file containing one.", call. = FALSE)
-  }
-
-  # ---- slug ----
-  explicit_slug <- NULL
-  if (!all(vapply(list(iso3, admin_level, admin_name), is.null, logical(1)))) {
-    if (any(vapply(list(iso3, admin_level, admin_name), is.null, logical(1)))) {
-      stop("`iso3`, `admin_level`, and `admin_name` must be supplied together.", call. = FALSE)
-    }
-    ids <- build_location_identifiers(iso3, admin_level, admin_name)
-    explicit_slug <- ids$slug
-  }
-
-  location_slug <- attr(dataset, "location_slug", exact = TRUE)
-  if (is.null(location_slug) || !nzchar(location_slug)) location_slug <- explicit_slug
-  if (!is.null(location_slug) && nzchar(location_slug)) attr(dataset, "location_slug") <- location_slug
-
-  # ---- grid col ----
-  cellsize_token <- gsub("\\.", "_", format(cellsize_m, trim = TRUE, scientific = FALSE))
-  grid_col <- paste0("grid_id_", cellsize_token)
-
-  # ---- required cols ----
-  required_cols <- c(
-    "date", "sea_days", "presence", "year", "landcover_code",
-    "maxTM", "meanPPT24H", "ndvi_ddf_proximity", "elevation_m",
-    "popdensity_km2", "source", grid_col
-  )
-
-  missing_cols <- setdiff(required_cols, names(dataset))
-  if (length(missing_cols)) {
-    stop("Dataset is missing required columns: ", paste(missing_cols, collapse = ", "), call. = FALSE)
-  }
-
-  allowed_sources <- c("malert", "gbif")
-  src_vals <- unique(as.character(dataset$source))
-  bad_sources <- setdiff(src_vals, allowed_sources)
-
-  if (length(bad_sources)) {
-    stop(
-      "Invalid values in `source`: ",
-      paste(bad_sources, collapse = ", "),
-      ". Expected only: ", paste(allowed_sources, collapse = ", "),
-      call. = FALSE
-    )
-  }
-
-  # ---- model_data prep ----
-  model_data <- dataset
-  model_data[[grid_col]] <- as.character(model_data[[grid_col]])
-
-  model_data <- model_data |>
-    dplyr::filter(!is.na(.data[[grid_col]])) |>
-    dplyr::mutate(
-      year = factor(.data$year),
-      landcover_code = factor(.data$landcover_code),
-      source = factor(.data$source),
-      maxTM_z = as.numeric(scale(.data$maxTM)),
-      ppt_z   = as.numeric(scale(log1p(.data$meanPPT24H))),
-      ndvi_z  = as.numeric(scale(.data$ndvi_ddf_proximity)),
-      elev_z  = as.numeric(scale(.data$elevation_m)),
-      pop_z   = as.numeric(scale(log1p(.data$popdensity_km2)))
-    ) |>
-    dplyr::arrange(.data$source, .data[[grid_col]], .data$date) |>
-    dplyr::distinct(.data$source, .data[[grid_col]], .data$date, .data$presence, .keep_all = TRUE)
-
-  if (!nrow(model_data)) {
-    stop("No observations remain after filtering for valid grid identifiers.", call. = FALSE)
-  }
-
-  # ---- explicit NA filtering for variables used in formula ----
-  vars_used <- c(
-    "presence", "sea_days", "maxTM_z", "ppt_z", "ndvi_z", "elev_z", "pop_z",
-    "source", "year", "landcover_code", grid_col
-  )
-  model_data <- model_data |>
-    dplyr::filter(dplyr::if_all(dplyr::all_of(vars_used), ~ !is.na(.)))
-
-  if (!nrow(model_data)) {
-    stop("No observations remain after dropping rows with missing model variables.", call. = FALSE)
-  }
-
-  # ---- adjacency ----
-  grid_ids <- sort(unique(model_data[[grid_col]]))
-  if (anyNA(grid_ids)) stop("Grid identifier column contains missing values after filtering.", call. = FALSE)
-
-  # ---- adjacency ----
-  grid_ids <- sort(unique(model_data[[grid_col]]))
-
-  if (is.null(adjacency)) {
+  # 1. Automatic lookup if dataset is NULL
+  if (is.null(dataset)) {
     if (is.null(iso3) || is.null(admin_level) || is.null(admin_name)) {
-      stop("Building the adjacency matrix requires `iso3`, `admin_level`, and `admin_name`.", call. = FALSE)
+      stop("If `dataset` is NULL, you must provide `iso3`, `admin_level`, and `admin_name` to locate the prepared data.", call. = FALSE)
     }
-
-    adjacency_matrix <- build_grid_adjacency(
+    
+    # Reconstruct the expected slug and filename
+    ids <- build_location_identifiers(iso3, admin_level, admin_name)
+    slug <- ids$slug
+    
+    target_file <- file.path(input_dir, sprintf("model_prep_%s_data.rds", slug))
+    if (!file.exists(target_file)) {
+      stop(
+        "Prepared dataset not found at: ", target_file, 
+        "\nPlease ensure you have run `prepare_bym2_data(..., write = TRUE)` first.", 
+        call. = FALSE
+      )
+    }
+    
+    if (isTRUE(verbose)) message("Loading prepared dataset from: ", target_file)
+    dataset <- readRDS(target_file)
+    dataset_path <- target_file
+  } else {
+    # 2. Handle passed string path
+    if (is.character(dataset) && length(dataset) == 1L) {
+      if (!file.exists(dataset)) stop("Dataset file not found: ", dataset, call. = FALSE)
+      if (isTRUE(verbose)) message("Loading dataset from: ", dataset)
+      dataset_path <- dataset
+      dataset <- readRDS(dataset)
+    } else {
+      dataset_path <- NULL
+    }
+  }
+  
+  # ---- process dataset object ----
+  if (inherits(dataset, "bym2_data_prep")) {
+    # Use the pre-baked object
+    model_data        <- dataset$model_data
+    adjacency_aligned <- dataset$adjacency
+    grid_col          <- dataset$grid_col
+    location_slug     <- dataset$meta$slug
+    
+    # If explicit ISO/Admin provided, warn if mismatch? (skipped for now, trust user)
+    
+  } else if (is.data.frame(dataset)) {
+    if (isTRUE(verbose)) message("Raw dataframe provided; calling `prepare_bym2_data()` internally...")
+    
+    # Delegate to the preparation function
+    prep_obj <- prepare_bym2_data(
+      dataset = dataset,
+      cellsize_m = cellsize_m,
       iso3 = iso3,
       admin_level = admin_level,
       admin_name = admin_name,
-      cellsize_m = cellsize_m,
-      model = dataset,
-      sparse = TRUE
+      adjacency = adjacency,
+      adjacency_args = adjacency_args,
+      write = FALSE, # internal use only
+      verbose = verbose
     )
+    
+    model_data        <- prep_obj$model_data
+    adjacency_aligned <- prep_obj$adjacency
+    grid_col          <- prep_obj$grid_col
+    location_slug     <- prep_obj$meta$slug
+    
   } else {
-    adjacency_matrix <- adjacency
+    stop("`dataset` must be a path, a data frame, or a `bym2_data_prep` object.", call. = FALSE)
   }
 
-  if (!inherits(adjacency_matrix, "Matrix")) {
-    adjacency_matrix <- Matrix::Matrix(adjacency_matrix)
-  }
+  # Ensure everything is ready
+  grid_ids <- rownames(adjacency_aligned)
+  
+  if (!nrow(model_data)) stop("No observations available in the model data.", call. = FALSE)
 
-  if (is.null(rownames(adjacency_matrix)) || is.null(colnames(adjacency_matrix))) {
-    stop("Adjacency matrix must have row and column names matching the grid identifiers.", call. = FALSE)
-  }
 
-  rownames(adjacency_matrix) <- as.character(rownames(adjacency_matrix))
-  colnames(adjacency_matrix) <- as.character(colnames(adjacency_matrix))
-
-  missing_ids <- setdiff(grid_ids, rownames(adjacency_matrix))
-  if (length(missing_ids)) {
-    stop("Adjacency matrix is missing grid identifiers: ", paste(head(missing_ids, 10), collapse = ", "), call. = FALSE)
-  }
-
-  adjacency_aligned <- adjacency_matrix[grid_ids, grid_ids, drop = FALSE]
-  if (!Matrix::isSymmetric(adjacency_aligned)) {
-    adjacency_aligned <- (adjacency_aligned + Matrix::t(adjacency_aligned)) / 2
-  }
 
   default_priors <- c(
     # fixed effects (env + source)
@@ -253,16 +195,57 @@ run_brms_bym2_model <- function(
     }
   }
 
+  # ---- Determine if 'source' should be included ----
+  include_source <- FALSE
+
+  if ("source" %in% names(model_data) && length(unique(model_data$source)) > 1) {
+    
+    # Standardize presence to 0/1 for checking (handles logical TRUE/FALSE or numeric 0/1)
+    # If logical: FALSE->0, TRUE->1
+    check_presence <- as.integer(as.logical(model_data$presence))
+    
+    # Get counts of Presences (1) and Absences (0) for each source
+    source_counts <- table(model_data$source, check_presence)
+    
+    # Calculate total size of the smallest source group
+    min_group_size <- min(rowSums(source_counts))
+    min_group_prop <- min_group_size / nrow(model_data)
+    
+    # Check for minimum events: Does every source have at least 10 presences AND 10 absences?
+    has_0 <- "0" %in% colnames(source_counts) && all(source_counts[, "0"] >= 10)
+    has_1 <- "1" %in% colnames(source_counts) && all(source_counts[, "1"] >= 10)
+    has_enough_events <- has_0 && has_1
+    
+    # The Dynamic Rule: Needs enough events AND must be at least 1% of the dataset
+    if (has_enough_events && min_group_prop >= 0.01) {
+      include_source <- TRUE
+      if (isTRUE(verbose)) message("Validating sources: Multiple robust data streams detected. Adding 'source'.")
+    } else {
+      if (isTRUE(verbose)) message("Validating sources: Minority source too small or lacks variance. Dropping 'source'.")
+    }
+  } else if (isTRUE(verbose)) {
+    message("Validating sources: Only one source present. Dropping 'source'.")
+  }
+
   # ---- build formula with dynamic grid column ----
   car_term <- paste0("car(W, gr = ", grid_col, ", type = \"bym2\")")
-  formula_text <- paste(
-    "presence ~ s(sea_days, bs = \"cc\", k = 12) +",
-    "s(maxTM_z, k = 6) +",
-    "ppt_z + ndvi_z + elev_z + pop_z + source +",
-    "(1 | year) +",
-    "(1 | landcover_code) +",
+  
+  # Base formula
+  formula_parts <- c(
+    "presence ~ s(sea_days, bs = \"cc\", k = 12)",
+    "s(maxTM_z, k = 6)",
+    "ppt_z + ndvi_z + elev_z + s(pop_z, k = 5)",
+    "(1 | year)",
+    "(1 | landcover_code)",
     car_term
   )
+  
+  # Add source if validated
+  if (include_source) {
+    formula_parts <- append(formula_parts, "source", after = 3)
+  }
+  
+  formula_text <- paste(formula_parts, collapse = " + ")
   model_formula <- stats::as.formula(formula_text)
 
   # ensure brms functions are found when formula is evaluated
