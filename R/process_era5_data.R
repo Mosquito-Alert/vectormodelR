@@ -120,9 +120,16 @@ process_era5_data <- function(
   }
 
   bb <- sf::st_bbox(g)  # xmin, ymin, xmax, ymax
-  lon_min <- as.numeric(bb["xmin"]); lon_max <- as.numeric(bb["xmax"])
-  lat_min <- as.numeric(bb["ymin"]); lat_max <- as.numeric(bb["ymax"])
-  .say("Bounding box: lon[%.4f, %.4f], lat[%.4f, %.4f].", lon_min, lon_max, lat_min, lat_max)
+  
+  # Apply a safety margin to the initial READ filter.
+  read_margin <- 0.5 # degrees, approx 50km
+
+  lon_min <- as.numeric(bb["xmin"]) - read_margin
+  lon_max <- as.numeric(bb["xmax"]) + read_margin
+  lat_min <- as.numeric(bb["ymin"]) - read_margin
+  lat_max <- as.numeric(bb["ymax"]) + read_margin
+
+  .say("Bounding box: lon[%.4f, %.4f], lat[%.4f, %.4f] (with read margin).", lon_min, lon_max, lat_min, lat_max)
 
   # ---- read & prefilter by bbox/time/vars ----
   wanted <- c("10m_u_component_of_wind",
