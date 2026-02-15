@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">mosquitoR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.9.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -16,6 +16,10 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/mosquito_alert_modeling_pipeline.html">Mosquito Alert Modeling Pipeline</a></li>
+  </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/Mosquito-Alert/mosquitoR/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
@@ -41,6 +45,118 @@
 
       <dl><dt>
 
+          <code><a href="add_elevation_features.html">add_elevation_features()</a></code>
+
+        </dt>
+        <dd>Add elevation to Mosquito Alert model inputs</dd>
+
+        <dt>
+
+          <code><a href="add_features.html">add_features()</a></code>
+
+        </dt>
+        <dd>Sequentially enrich Mosquito Alert model-preparation datasets</dd>
+
+        <dt>
+
+          <code><a href="add_hex_grid.html">add_hex_grid()</a></code>
+
+        </dt>
+        <dd>Attach hex-grid identifiers to Mosquito Alert model inputs</dd>
+
+        <dt>
+
+          <code><a href="add_landcover_features.html">add_landcover_features()</a></code>
+
+        </dt>
+        <dd>Add land-cover codes and classes to Mosquito Alert model inputs</dd>
+
+        <dt>
+
+          <code><a href="add_ndvi_features.html">add_ndvi_features()</a></code>
+
+        </dt>
+        <dd>Add high-NDVI proximity metrics to Mosquito Alert model inputs</dd>
+
+        <dt>
+
+          <code><a href="add_popdensity_features.html">add_popdensity_features()</a></code>
+
+        </dt>
+        <dd>Add population density to Mosquito Alert model inputs</dd>
+
+        <dt>
+
+          <code><a href="add_pseudoabsences_se.html">add_pseudoabsences_se()</a></code>
+
+        </dt>
+        <dd>Generate pseudoabsences using TRS effort (Mosquito Alert) and TGB (GBIF)</dd>
+
+        <dt>
+
+          <code><a href="add_weather_features.html">add_weather_features()</a></code>
+
+        </dt>
+        <dd>Add ERA5 weather features to Mosquito Alert model inputs</dd>
+
+        <dt>
+
+          <code><a href="build_grid_adjacency.html">build_grid_adjacency()</a></code>
+
+        </dt>
+        <dd>Build adjacency matrix for a grid (global-safe)</dd>
+
+        <dt>
+
+          <code><a href="build_spatial_grid.html">build_spatial_grid()</a></code>
+
+        </dt>
+        <dd>Build a regular grid for a supplied polygon</dd>
+
+        <dt>
+
+          <code><a href="build_tgb_daily.html">build_tgb_daily()</a></code>
+
+        </dt>
+        <dd>Build GBIF target-group background daily weights on the TRS/Tigacell geometry</dd>
+
+        <dt>
+
+          <code><a href="build_tigacell_grid.html">build_tigacell_grid()</a></code>
+
+        </dt>
+        <dd>Build a TIGA-like grid over a GADM admin unit</dd>
+
+        <dt>
+
+          <code><a href="build_trs_daily.html">build_trs_daily()</a></code>
+
+        </dt>
+        <dd>Build TRS daily sampling effort surface for a location</dd>
+
+        <dt>
+
+          <code><a href="compile_era5_data_v2.html">compile_era5_data_v2()</a></code>
+
+        </dt>
+        <dd>Compile ERA5 monthly CSVs from GRIB files (terra-only)</dd>
+
+        <dt>
+
+          <code><a href="compile_era5_monthly.html">compile_era5_monthly()</a></code>
+
+        </dt>
+        <dd>Compile ERA5 monthly CSVs from GRIB/NetCDF files</dd>
+
+        <dt>
+
+          <code><a href="convert_to_utm.html">convert_to_utm()</a></code>
+
+        </dt>
+        <dd>Transform a geometry to its local UTM zone</dd>
+
+        <dt>
+
           <code><a href="decimal_places.html">decimal_places()</a></code>
 
         </dt>
@@ -55,10 +171,80 @@
 
         <dt>
 
+          <code><a href="get_adm_perimeter.html">get_adm_perimeter()</a></code>
+
+        </dt>
+        <dd>Compute ADM polygon perimeters using local UTM projections</dd>
+
+        <dt>
+
+          <code><a href="get_bounding_boxes.html">get_bounding_boxes()</a></code>
+
+        </dt>
+        <dd>Get country bounding boxes for climate data requests</dd>
+
+        <dt>
+
+          <code><a href="get_elevation_data.html">get_elevation_data()</a></code>
+
+        </dt>
+        <dd>Get ~30 m SRTM DEM for a GADM admin unit or full country</dd>
+
+        <dt>
+
+          <code><a href="get_era5_data.html">get_era5_data()</a></code>
+
+        </dt>
+        <dd>Download ERA5 climate data from the Copernicus Climate Data Store</dd>
+
+        <dt>
+
+          <code><a href="get_gadm_data.html">get_gadm_data()</a></code>
+
+        </dt>
+        <dd>Retrieve GADM polygons using geodata::gadm()</dd>
+
+        <dt>
+
+          <code><a href="get_gadm_names.html">get_gadm_names()</a></code>
+
+        </dt>
+        <dd>Get GADM attributes for a country/level</dd>
+
+        <dt>
+
+          <code><a href="get_gbif_data.html">get_gbif_data()</a></code>
+
+        </dt>
+        <dd>Download GBIF occurrence data for a taxon and country</dd>
+
+        <dt>
+
+          <code><a href="get_geopackage_data.html">get_geopackage_data()</a></code>
+
+        </dt>
+        <dd>Retrieves geopackage integration from GADM (https://gadm.org)</dd>
+
+        <dt>
+
+          <code><a href="get_malert_aggregates.html">get_malert_aggregates()</a></code>
+
+        </dt>
+        <dd>Aggregates mosquito alert report data by country or city</dd>
+
+        <dt>
+
           <code><a href="get_malert_data.html">get_malert_data()</a></code>
 
         </dt>
-        <dd>Download Mosquito Alert report data from GitHub</dd>
+        <dd>Download Mosquito Alert report data from GitHub or Zenodo</dd>
+
+        <dt>
+
+          <code><a href="get_malert_geopackage_data.html">get_malert_geopackage_data()</a></code>
+
+        </dt>
+        <dd>Retrieves mosquito alert reports with geopackage integration</dd>
 
         <dt>
 
@@ -73,6 +259,34 @@
 
         </dt>
         <dd>Download device information from Senscape server using http get request.</dd>
+
+        <dt>
+
+          <code><a href="get_vector_counts.html">get_vector_counts()</a></code>
+
+        </dt>
+        <dd>Aggregate Mosquito Alert + GBIF occurrence counts by GADM administrative level</dd>
+
+        <dt>
+
+          <code><a href="initialize_ma_dataset.html">initialize_ma_dataset()</a></code>
+
+        </dt>
+        <dd>Prepare Mosquito Alert reports for modelling</dd>
+
+        <dt>
+
+          <code><a href="initialize_vector_dataset.html">initialize_vector_dataset()</a></code>
+
+        </dt>
+        <dd>Build a unified vector presence dataset</dd>
+
+        <dt>
+
+          <code><a href="interpret_brms_model.html">interpret_brms_model()</a></code>
+
+        </dt>
+        <dd>Generate a diagnostic report for a fitted brms model</dd>
 
         <dt>
 
@@ -125,10 +339,66 @@
 
         <dt>
 
+          <code><a href="prepare_bym2_data.html">prepare_bym2_data()</a></code>
+
+        </dt>
+        <dd>Prepare data and adjacency matrix for BYM2 modelling</dd>
+
+        <dt>
+
+          <code><a href="process_era5_data.html">process_era5_data()</a></code>
+
+        </dt>
+        <dd>Build daily &amp; lagged weather features from processed ERA5 CSVs</dd>
+
+        <dt>
+
+          <code><a href="process_landcover_data.html">process_landcover_data()</a></code>
+
+        </dt>
+        <dd>Process land-cover raster by clipping to a GADM boundary</dd>
+
+        <dt>
+
+          <code><a href="process_ndvi_data.html">process_ndvi_data()</a></code>
+
+        </dt>
+        <dd>Process NDVI raster by clipping to an administrative boundary</dd>
+
+        <dt>
+
+          <code><a href="process_popdensity_data.html">process_popdensity_data()</a></code>
+
+        </dt>
+        <dd>Process population raster by clipping to a GADM boundary and computing density</dd>
+
+        <dt>
+
           <code><a href="round_down.html">round_down()</a></code>
 
         </dt>
         <dd>Round a given number x downward to the nearest n.</dd>
+
+        <dt>
+
+          <code><a href="run_brms_bym2_model.html">run_brms_bym2_model()</a></code>
+
+        </dt>
+        <dd>Fit a BYM2 Mosquito Alert occupancy model with brms</dd>
+
+        <dt>
+
+          <code><a href="run_brms_model.html">run_brms_model()</a></code>
+
+        </dt>
+        <dd>Fit a baseline Mosquito Alert occupancy model with brms</dd>
+
+        <dt>
+
+          <code><a href="run_maxent_model.html">run_maxent_model()</a></code>
+
+        </dt>
+        <dd>Fit a baseline Mosquito Alert MaxEnt model (maxnet)</dd>
 
         <dt>
 

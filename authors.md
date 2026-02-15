@@ -12,15 +12,14 @@
 Source:
 [`DESCRIPTION`](https://github.com/Mosquito-Alert/mosquitoR/blob/main/DESCRIPTION)
 
-Palmer J, Johnson O (2026). *mosquitoR: An R Toolkit for Analyzing
-Mosquito Data from Citizen Science and Traditional Surveillance*. R
-package version 0.0.0.9000,
-<https://github.com/Mosquito-Alert/mosquitoR>.
+Palmer J, Johnson O (2026). *mosquitoR: An R toolkit for analyzing
+mosquito data from citizen science and traditional surveillance*. R
+package version 1.9.0, <https://github.com/Mosquito-Alert/mosquitoR>.
 
     @Manual{,
-      title = {mosquitoR: An R Toolkit for Analyzing Mosquito Data from Citizen Science and Traditional Surveillance},
+      title = {mosquitoR: An R toolkit for analyzing mosquito data from citizen science and traditional surveillance},
       author = {John Palmer and Otis Johnson},
       year = {2026},
-      note = {R package version 0.0.0.9000},
+      note = {R package version 1.9.0},
       url = {https://github.com/Mosquito-Alert/mosquitoR},
     }
