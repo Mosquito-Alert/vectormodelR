@@ -12,3 +12,6 @@ README.html
 *.tar.gz
 *.Rcheck/
 docs
+
+data/
+data/*

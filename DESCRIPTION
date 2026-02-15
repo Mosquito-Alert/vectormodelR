@@ -1,6 +1,6 @@
 Package: mosquitoR
-Title: An R Toolkit for Analyzing Mosquito Data from Citizen Science and Traditional Surveillance
-Version: 0.0.0.9000
+Title: An R toolkit for analyzing mosquito data from citizen science and traditional surveillance
+Version: 1.9.0
 Authors@R: c(
     person("John", "Palmer", email="john.palmer@upf.edu", role = c("aut", "cre"), comment = c(ORCID = "0000-0002-2648-7860")),
     person("Otis", "Johnson", email="otis.johnson@upf.edu", role = "aut"))
@@ -14,21 +14,58 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Suggests: 
     covr,
+    DT,
+    knitr,
+    rmarkdown,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Imports:
-    httr,
-    lubridate,
-    jsonlite,
-    tibble,
-    dplyr,
-    stringr,
-    magrittr,
-    tidyr,
-    sf,
     assertthat,
-    utils,
-    stats,
     curl,
+    data.table,
+    dplyr,
+    ecmwfr,
+    geodata,
+    elevatr,
+    FNN,
+    httr,
+    jsonlite,
+    lubridate,
+    magrittr,
+    purrr,
+    RcppRoll,
+    readr,
+    rlang,
+    rnaturalearth,
+    rnaturalearthdata,
+    sf,
+    stars,
+    stats,
+    stringr,
+    terra,
+    tibble,
+    tidyr,
     tools,
-    RcppSimdJson
+    utils,
+    withr
+VignetteBuilder: 
+    knitr
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+
