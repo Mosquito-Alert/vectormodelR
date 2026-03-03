@@ -7,6 +7,6 @@
 # * https://testthat.r-lib.org/reference/test_package.html#special-files
 
 library(testthat)
-library(mosquitoR)
+library(vectormodelR)
 
-test_check("mosquitoR")
+test_check("vectormodelR")
