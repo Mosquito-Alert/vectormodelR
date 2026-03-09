@@ -11,11 +11,7 @@
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-The goal of mosquitoR is provide to set of tools for analyzing data
-associated with the Mosquito Alert citizen science system
-(<https://www.mosquitoalert.com/>), including Mosquito Alert citizen
-science data, smart trap data from the Irideon Senscape API, and
-traditional mosquito trap data.
+The goal of VectorModelR is to provide a set of tools for accessing global datasets, and combining them with Mosquito Alert citizen science data to generate Vector Models (<https://www.mosquitoalert.com/>), including Mosquito Alert citizen science data, smart trap data from the Irideon Senscape API, and traditional mosquito trap data.
 
 IMPORTANT: This package is at an early stage of development, and we may
 introduce “breaking” changes. In addition, please note that while the
@@ -24,52 +20,197 @@ is not developed by Irideon and is not an official Irideon package.
 
 ## Installation
 
-You can install the development version of mosquitoR from
-[GitHub](https://github.com/) as follows:
+You can install the development version of VectorModelR from [GitHub](https://github.com/) as follows:
 
 ``` r
 # install.packages("devtools")
-devtools::install_github("Mosquito-Alert/mosquitoR")
+devtools::install_github("Mosquito-Alert/vectormodelR")
 ```
 
 ## Example
 
-Turn a set of latitude and longitude coordinates into the standardized
-sampling cell IDs use to organize Mosquito Alert’s anonymous background
-tracks:
+The following example demonstrates a complete workflow for acquiring data, processing environmental covariates, and fitting a Bayesian spatial model.
 
-``` r
-library(mosquitoR)
-make_samplingcell_ids(lon=c(2.1686, 2.1032), lat=c(41.3874, 41.2098), mask=0.05)
-#> [1] "2.15_41.35" "2.1_41.2"
-```
+### 1. Setup
 
-Extract longitudes from a set of sampling cell IDs:
+First, load the package and define the target area and modeling parameters.
 
-``` r
-library(mosquitoR)
-make_lonlat_from_samplingcell_ids(ids=c("2.15_41.35", "2.10_41.20"), type="lon")
-#> [1] "2.15" "2.10"
-```
-
-Download smart trap data from the Senscape server using an API key:
-
-``` r
-library(mosquitoR)
-library(lubridate)
+```r
+library(VectorModelR)
+library(terra)
 library(dplyr)
-library(magrittr)
 
-# first set your API key in your environment (e.g. in ~/.Renviron):
-SENSCAPE_API_KEY = Sys.getenv("SENSCAPE_API_KEY")
+# targeted region
+target_country_iso3 <- "ESP"
+target_level        <- 2
+target_city         <- "Barcelona"
 
-# get list of device IDs with names that start with ASPB
-ASPB_deviceIds = get_senscape_devices(api_key = SENSCAPE_API_KEY) %>% filter(startsWith(name, "ASPB")) %>% pull(`_id`)
-ASPB_deviceIds
+# modelling parameters
+nchains             <- 4
+threads_per_chain   <- 1
+```
 
-# get all data from these devices within a specified interval
-my_data = get_senscape_data(api_key = SENSCAPE_API_KEY, start_datetime = as_datetime("2023-03-08"), end_datetime = as_datetime("2023-03-09"), deviceIds = ASPB_deviceIds)
-my_data
+### 2. Data Acquisition
+
+Download vector surveillance data and environmental covariates.
+
+```r
+# Get vector counts from Mosquito Alert and GBIF
+counts <- VectorModelR::get_vector_counts(
+  iso3 = target_country_iso3, 
+  level = target_level
+)
+
+# Inspect available administrative unit names
+# VectorModelR::get_gadm_names(
+#   country = target_country, 
+#   level = target_level, 
+#   view = "datatable"
+# )
+
+# Administrative boundaries
+map <- VectorModelR::get_gadm_data(
+  iso3 = target_country_iso3, 
+  name = target_city, 
+  level = target_level, 
+  perimeter = TRUE, 
+  rds = TRUE
+)
+
+# Download ERA5 weather data (requires ECMWF API key)
+# See ?ecmwfr::wf_set_key for setup instructions
+# VectorModelR::get_era5_data(
+#   country_iso3 = target_country_iso3,
+#   start_year = 2020, 
+#   end_year = 2021,
+#   write_key = TRUE
+# )
+
+# Compile downloaded ERA5 data
+# VectorModelR::compile_era5_data_v2(
+#   iso3 = target_country_iso3,
+#   recent_n = 12,
+#   verbose = TRUE
+# )
+```
+
+### 3. Spatial Grid & Environmental Features
+
+Build a hexagonal grid and process environmental layers (Landcover, Elevation, NDVI, Population).
+
+```r
+# Create hexagonal grids at different resolutions
+hex_grid400 <- VectorModelR::build_spatial_grid(
+  iso3 = target_country_iso3, 
+  admin_level = target_level, 
+  admin_name = target_city,
+  cellsize_m = 400
+)
+
+hex_grid800 <- VectorModelR::build_spatial_grid(
+  iso3 = target_country_iso3, 
+  admin_level = target_level, 
+  admin_name = target_city, 
+  cellsize_m = 800
+)
+
+hex_grid1200 <- VectorModelR::build_spatial_grid(
+  iso3 = target_country_iso3, 
+  admin_level = target_level, 
+  admin_name = target_city, 
+  cellsize_m = 1200
+)
+
+# Process ERA5 data (if downloaded)
+# VectorModelR::process_era5_data(
+#   iso3 = target_country_iso3,
+#   admin_level = target_level,
+#   admin_name = target_city,
+#   aggregation_unit = "cell"
+# )
+
+# Process Landcover (requires raw raster input)
+# lc <- terra::rast("path/to/landcover.tif")
+# processed_lc = VectorModelR::process_landcover_data( 
+#   lc,
+#   iso3 = target_country_iso3,
+#   admin_level = target_level,
+#   admin_name = target_city,
+#   proc_dir = "data/proc"
+# )
+
+# Get Elevation
+elevation <- VectorModelR::get_elevation_data(
+  target_country_iso3, 
+  level = target_level, 
+  name_value = target_city
+)
+```
+
+### 4. Initialize & Enrich Dataset
+
+Initialize the dataset structure and add processed features.
+
+```r
+# Initialize empty dataset structure
+initialized_data = VectorModelR::initialize_vector_dataset(
+  iso3 = target_country_iso3, 
+  admin_level = target_level,
+  admin_name = target_city
+)
+
+# Add features (Population, Weather, NDVI, etc.)
+enriched_data = VectorModelR::add_features(
+  target_country_iso3,
+  target_level,
+  target_city,
+  vector_sources = c("malert", "gbif"),
+  features = "se,el,ndvi,pd,wx,lc,hex,hex_800,hex_1200"
+)
+```
+
+### 5. Modeling
+
+Fit a Bayesian BYM2 model to account for spatial autocorrelation.
+
+```r
+# Run BYM2 model with brms
+brms_bym2_model <- VectorModelR::run_brms_bym2_model(
+  dataset = enriched_data,
+  iso3 = target_country_iso3,
+  admin_level = target_level,
+  admin_name = target_city,
+  nchains = nchains,
+  threads_per_chain = threads_per_chain,
+  adapt_delta = 0.95,
+  max_treedepth = 15
+)
+
+# Model summary and diagnostics
+summary(brms_bym2_model)
+brms::rhat(brms_bym2_model)
+brms::neff_ratio(brms_bym2_model)
+```
+
+### 6. Visualization
+
+Visualize the conditional effects of predictors, such as population density.
+
+```r
+library(ggplot2)
+library(brms)
+
+# Extract conditional effects for population density (standardized)
+ce_pop <- conditional_effects(brms_bym2_model, effects = "pop_z")
+
+plot(ce_pop, plot = FALSE)[[1]] + 
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "red") + 
+  labs(
+    title = "Effect of Population Density on Mosquito Presence",
+    x = "Population Density (Z-score)",
+    y = "Probability of Presence"
+  ) +
+  theme_minimal()
 ```
 
 ## Documentation
