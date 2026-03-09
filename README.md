@@ -36,7 +36,7 @@ The following example demonstrates a complete workflow for acquiring data, proce
 First, load the package and define the target area and modeling parameters.
 
 ```r
-library(VectorModelR)
+library(vectormodelR)
 library(terra)
 library(dplyr)
 
@@ -56,20 +56,20 @@ Download vector surveillance data and environmental covariates.
 
 ```r
 # Get vector counts from Mosquito Alert and GBIF
-counts <- VectorModelR::get_vector_counts(
+counts <- vectormodelR::get_vector_counts(
   iso3 = target_country_iso3, 
   level = target_level
 )
 
 # Inspect available administrative unit names
-# VectorModelR::get_gadm_names(
+# vectormodelR::get_gadm_names(
 #   country = target_country, 
 #   level = target_level, 
 #   view = "datatable"
 # )
 
 # Administrative boundaries
-map <- VectorModelR::get_gadm_data(
+map <- vectormodelR::get_gadm_data(
   iso3 = target_country_iso3, 
   name = target_city, 
   level = target_level, 
@@ -79,7 +79,7 @@ map <- VectorModelR::get_gadm_data(
 
 # Download ERA5 weather data (requires ECMWF API key)
 # See ?ecmwfr::wf_set_key for setup instructions
-# VectorModelR::get_era5_data(
+# vectormodelR::get_era5_data(
 #   country_iso3 = target_country_iso3,
 #   start_year = 2020, 
 #   end_year = 2021,
@@ -87,7 +87,7 @@ map <- VectorModelR::get_gadm_data(
 # )
 
 # Compile downloaded ERA5 data
-# VectorModelR::compile_era5_data_v2(
+# vectormodelR::compile_era5_data_v2(
 #   iso3 = target_country_iso3,
 #   recent_n = 12,
 #   verbose = TRUE
@@ -100,21 +100,21 @@ Build a hexagonal grid and process environmental layers (Landcover, Elevation, N
 
 ```r
 # Create hexagonal grids at different resolutions
-hex_grid400 <- VectorModelR::build_spatial_grid(
+hex_grid400 <- vectormodelR::build_spatial_grid(
   iso3 = target_country_iso3, 
   admin_level = target_level, 
   admin_name = target_city,
   cellsize_m = 400
 )
 
-hex_grid800 <- VectorModelR::build_spatial_grid(
+hex_grid800 <- vectormodelR::build_spatial_grid(
   iso3 = target_country_iso3, 
   admin_level = target_level, 
   admin_name = target_city, 
   cellsize_m = 800
 )
 
-hex_grid1200 <- VectorModelR::build_spatial_grid(
+hex_grid1200 <- vectormodelR::build_spatial_grid(
   iso3 = target_country_iso3, 
   admin_level = target_level, 
   admin_name = target_city, 
@@ -122,7 +122,7 @@ hex_grid1200 <- VectorModelR::build_spatial_grid(
 )
 
 # Process ERA5 data (if downloaded)
-# VectorModelR::process_era5_data(
+# vectormodelR::process_era5_data(
 #   iso3 = target_country_iso3,
 #   admin_level = target_level,
 #   admin_name = target_city,
@@ -131,7 +131,7 @@ hex_grid1200 <- VectorModelR::build_spatial_grid(
 
 # Process Landcover (requires raw raster input)
 # lc <- terra::rast("path/to/landcover.tif")
-# processed_lc = VectorModelR::process_landcover_data( 
+# processed_lc = vectormodelR::process_landcover_data( 
 #   lc,
 #   iso3 = target_country_iso3,
 #   admin_level = target_level,
@@ -140,7 +140,7 @@ hex_grid1200 <- VectorModelR::build_spatial_grid(
 # )
 
 # Get Elevation
-elevation <- VectorModelR::get_elevation_data(
+elevation <- vectormodelR::get_elevation_data(
   target_country_iso3, 
   level = target_level, 
   name_value = target_city
@@ -153,14 +153,14 @@ Initialize the dataset structure and add processed features.
 
 ```r
 # Initialize empty dataset structure
-initialized_data = VectorModelR::initialize_vector_dataset(
+initialized_data = vectormodelR::initialize_vector_dataset(
   iso3 = target_country_iso3, 
   admin_level = target_level,
   admin_name = target_city
 )
 
 # Add features (Population, Weather, NDVI, etc.)
-enriched_data = VectorModelR::add_features(
+enriched_data = vectormodelR::add_features(
   target_country_iso3,
   target_level,
   target_city,
@@ -175,7 +175,7 @@ Fit a Bayesian BYM2 model to account for spatial autocorrelation.
 
 ```r
 # Run BYM2 model with brms
-brms_bym2_model <- VectorModelR::run_brms_bym2_model(
+brms_bym2_model <- vectormodelR::run_brms_bym2_model(
   dataset = enriched_data,
   iso3 = target_country_iso3,
   admin_level = target_level,
