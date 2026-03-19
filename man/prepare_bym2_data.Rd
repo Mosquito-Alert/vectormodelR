@@ -18,20 +18,12 @@ prepare_bym2_data(
 )
 }
 \arguments{
-\item{dataset}{Either an in-memory data frame or the path to the RDS file
-containing the model-preparation dataset.}
+\item{dataset}{An in-memory modelling dataset (data.frame), a \code{bym2_data_prep} object,
+or a path to the enriched RDS file.}
 
 \item{cellsize_m}{Numeric cell size (meters). Defaults to 800.}
 
-\item{iso3}{Optional ISO3 country code used to derive the output filename
-via \code{build_location_identifiers()}. Must be supplied alongside
-\code{admin_level} and \code{admin_name} when provided.}
-
-\item{admin_level}{Administrative level corresponding to the modelling
-dataset. Used for output naming when paired with \code{iso3} and \code{admin_name}.}
-
-\item{admin_name}{Administrative unit name corresponding to the modelling
-dataset. Used for output naming when paired with \code{iso3} and \code{admin_level}.}
+\item{iso3, admin_level, admin_name}{Optional strings to locate the dataset if \code{dataset} is NULL.}
 
 \item{adjacency}{Optional pre-computed adjacency matrix. If NULL, one is built.}
 

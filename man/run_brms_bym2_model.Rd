@@ -6,6 +6,7 @@
 \usage{
 run_brms_bym2_model(
   dataset = NULL,
+  formula = NULL,
   cellsize_m = 800,
   adjacency = NULL,
   adjacency_args = list(),
@@ -26,8 +27,16 @@ run_brms_bym2_model(
 )
 }
 \arguments{
-\item{dataset}{Either an in-memory data frame or the path to the RDS file
-containing the model-preparation dataset.}
+\item{dataset}{An in-memory modelling dataset (data.frame), a \code{bym2_data_prep} object,
+or a path to the enriched RDS file.}
+
+\item{formula}{Optional character string or formula object specifying the fixed
+and random effects structure. If provided, it overrides the default base
+formula. The spatial BYM2 term \verb{+ car(W, gr = <grid_col>, type = "bym2")}
+will be automatically appended to this formula. If \code{NULL} (default), the
+function processes \code{source} validation and uses a set of default predictors
+including \code{sea_days}, \code{maxTM_z}, \code{ppt_z}, \code{ndvi_z}, \code{elev_z}, \code{pop_z},
+\code{year}, and \code{landcover_code}.}
 
 \item{cellsize_m}{Numeric cell size (meters) of the hex grid whose adjacency
 matrix will be used. Defaults to 800, expecting a \code{grid_id_800} column in
@@ -41,48 +50,29 @@ names match the grid identifier column. When \code{NULL}, the helper calls
 \code{\link[=build_grid_adjacency]{build_grid_adjacency()}} when \code{adjacency} is \code{NULL}. These values override
 the defaults assembled by the helper.}
 
-\item{priors}{Optional prior specification created with \code{brms::set_prior()}.
-Defaults to \code{NULL}, which uses the brms defaults.}
+\item{priors}{Optional \code{brms::set_prior} object. If \code{NULL}, default priors for
+intercepts, coefficients, and standard deviations are used.}
 
-\item{nchains}{Number of MCMC chains to run. Defaults to 4.}
+\item{nchains}{Integer. Number of MCMC chains. Default 4.}
 
-\item{threads_per_chain}{Number of within-chain threads (requires the
-\code{cmdstanr} backend). Defaults to 1 (single-threaded chains).}
+\item{threads_per_chain}{Integer. Number of threads per chain for within-chain parallelism.}
 
-\item{adapt_delta}{Target acceptance rate for the NUTS sampler. Defaults to
-0.99.}
+\item{adapt_delta}{Numeric. Target average proposal acceptance probability. Default 0.995.}
 
-\item{max_treedepth}{Maximum tree depth for the NUTS sampler. Defaults to 12.}
+\item{max_treedepth}{Integer. Max tree depth for NUTS. Default 20.}
 
-\item{backend}{Sampling backend passed to \code{brms::brm()}. Defaults to
-\code{"cmdstanr"} but \code{"rstan"} is supported as well.}
+\item{backend}{Character. "cmdstanr" (default) or "rstan".}
 
-\item{iso3}{Optional ISO3 country code used to derive the output filename
-via \code{build_location_identifiers()}. Must be supplied alongside
-\code{admin_level} and \code{admin_name} when provided.}
+\item{iso3, admin_level, admin_name}{Optional strings to locate the dataset if \code{dataset} is NULL.}
 
-\item{admin_level}{Administrative level corresponding to the modelling
-dataset. Used for output naming when paired with \code{iso3} and \code{admin_name}.}
+\item{write_output}{Logical. Whether to save the fitted model to disk.}
 
-\item{admin_name}{Administrative unit name corresponding to the modelling
-dataset. Used for output naming when paired with \code{iso3} and \code{admin_level}.}
-
-\item{write_output}{Logical; when \code{TRUE} the fitted model is saved to disk
-using either the supplied \code{output_path} (treated as a directory when it
-exists or lacks an extension) or the directory inferred from \code{dataset},
-with filenames of the form \verb{model_<slug>_brms.Rds} where possible. Defaults
-to \code{TRUE}.}
-
-\item{output_path}{Optional location where the fitted model should be
-written. Supply either a directory or a full file path. If \code{NULL} (default)
-and \code{write_output} is \code{TRUE}, the path is auto-derived from \code{dataset} when
-supplied as a file path.}
+\item{output_path, input_dir}{Paths for output/input.}
 
 \item{save_pars}{Logical; forwarded to \code{brms::brm()} as the \code{save_pars}
 argument. Defaults to \code{TRUE} to retain latent BYM2 parameters.}
 
-\item{verbose}{Logical; if \code{TRUE}, progress messages are emitted. Defaults to
-\code{TRUE}.}
+\item{verbose}{Logical.}
 }
 \value{
 The fitted \code{brmsfit} object with attributes for the modelling data,
