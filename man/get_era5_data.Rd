@@ -13,7 +13,7 @@ get_era5_data(
     "10m_v_component_of_wind", "surface_pressure", "total_precipitation"),
   start_year = as.integer(format(Sys.Date(), "\%Y")),
   end_year = as.integer(format(Sys.Date(), "\%Y")),
-  ecmwfr_key = NULL,
+  ecmwfr_key = Sys.getenv("ECMWFR_KEY"),
   ecmwfr_user = "ecmwfr",
   write_key = FALSE,
   data_format = c("grib", "netcdf"),

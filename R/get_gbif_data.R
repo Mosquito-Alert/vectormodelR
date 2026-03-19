@@ -77,7 +77,7 @@ get_gbif_data <- function(
 
   creds <- list(user = gbif_user, pwd = gbif_pwd, email = gbif_email)
   if (anyNA(unlist(creds))) {
-    stop("GBIF credentials (user, password, email) must be supplied either via arguments or environment variables.",
+    stop("GBIF credentials (user, password, email) missing or empty. Please ensure it is defined in your .Renviron file. You will need to restart your R session after adding them.",
       call. = FALSE
     )
   }
