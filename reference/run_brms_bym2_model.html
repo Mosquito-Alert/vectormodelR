@@ -61,6 +61,7 @@ prior to model fitting.</p>
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">run_brms_bym2_model</span><span class="op">(</span></span>
 <span>  dataset <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  formula <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cellsize_m <span class="op">=</span> <span class="fl">800</span>,</span>
 <span>  adjacency <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  adjacency_args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
@@ -86,8 +87,18 @@ prior to model fitting.</p>
 
 
 <dl><dt id="arg-dataset">dataset<a class="anchor" aria-label="anchor" href="#arg-dataset"></a></dt>
-<dd><p>Either an in-memory data frame or the path to the RDS file
-containing the model-preparation dataset.</p></dd>
+<dd><p>An in-memory modelling dataset (data.frame), a <code>bym2_data_prep</code> object,
+or a path to the enriched RDS file.</p></dd>
+
+
+<dt id="arg-formula">formula<a class="anchor" aria-label="anchor" href="#arg-formula"></a></dt>
+<dd><p>Optional character string or formula object specifying the fixed
+and random effects structure. If provided, it overrides the default base
+formula. The spatial BYM2 term <code>+ car(W, gr = &lt;grid_col&gt;, type = "bym2")</code>
+will be automatically appended to this formula. If <code>NULL</code> (default), the
+function processes <code>source</code> validation and uses a set of default predictors
+including <code>sea_days</code>, <code>maxTM_z</code>, <code>ppt_z</code>, <code>ndvi_z</code>, <code>elev_z</code>, <code>pop_z</code>,
+<code>year</code>, and <code>landcover_code</code>.</p></dd>
 
 
 <dt id="arg-cellsize-m">cellsize_m<a class="anchor" aria-label="anchor" href="#arg-cellsize-m"></a></dt>
@@ -109,62 +120,40 @@ the defaults assembled by the helper.</p></dd>
 
 
 <dt id="arg-priors">priors<a class="anchor" aria-label="anchor" href="#arg-priors"></a></dt>
-<dd><p>Optional prior specification created with <code>brms::set_prior()</code>.
-Defaults to <code>NULL</code>, which uses the brms defaults.</p></dd>
+<dd><p>Optional <code>brms::set_prior</code> object. If <code>NULL</code>, default priors for
+intercepts, coefficients, and standard deviations are used.</p></dd>
 
 
 <dt id="arg-nchains">nchains<a class="anchor" aria-label="anchor" href="#arg-nchains"></a></dt>
-<dd><p>Number of MCMC chains to run. Defaults to 4.</p></dd>
+<dd><p>Integer. Number of MCMC chains. Default 4.</p></dd>
 
 
 <dt id="arg-threads-per-chain">threads_per_chain<a class="anchor" aria-label="anchor" href="#arg-threads-per-chain"></a></dt>
-<dd><p>Number of within-chain threads (requires the
-<code>cmdstanr</code> backend). Defaults to 1 (single-threaded chains).</p></dd>
+<dd><p>Integer. Number of threads per chain for within-chain parallelism.</p></dd>
 
 
 <dt id="arg-adapt-delta">adapt_delta<a class="anchor" aria-label="anchor" href="#arg-adapt-delta"></a></dt>
-<dd><p>Target acceptance rate for the NUTS sampler. Defaults to
-0.99.</p></dd>
+<dd><p>Numeric. Target average proposal acceptance probability. Default 0.995.</p></dd>
 
 
 <dt id="arg-max-treedepth">max_treedepth<a class="anchor" aria-label="anchor" href="#arg-max-treedepth"></a></dt>
-<dd><p>Maximum tree depth for the NUTS sampler. Defaults to 12.</p></dd>
+<dd><p>Integer. Max tree depth for NUTS. Default 20.</p></dd>
 
 
 <dt id="arg-backend">backend<a class="anchor" aria-label="anchor" href="#arg-backend"></a></dt>
-<dd><p>Sampling backend passed to <code>brms::brm()</code>. Defaults to
-<code>"cmdstanr"</code> but <code>"rstan"</code> is supported as well.</p></dd>
+<dd><p>Character. "cmdstanr" (default) or "rstan".</p></dd>
 
 
-<dt id="arg-iso-">iso3<a class="anchor" aria-label="anchor" href="#arg-iso-"></a></dt>
-<dd><p>Optional ISO3 country code used to derive the output filename
-via <code>build_location_identifiers()</code>. Must be supplied alongside
-<code>admin_level</code> and <code>admin_name</code> when provided.</p></dd>
-
-
-<dt id="arg-admin-level">admin_level<a class="anchor" aria-label="anchor" href="#arg-admin-level"></a></dt>
-<dd><p>Administrative level corresponding to the modelling
-dataset. Used for output naming when paired with <code>iso3</code> and <code>admin_name</code>.</p></dd>
-
-
-<dt id="arg-admin-name">admin_name<a class="anchor" aria-label="anchor" href="#arg-admin-name"></a></dt>
-<dd><p>Administrative unit name corresponding to the modelling
-dataset. Used for output naming when paired with <code>iso3</code> and <code>admin_level</code>.</p></dd>
+<dt id="arg-iso-admin-level-admin-name">iso3, admin_level, admin_name<a class="anchor" aria-label="anchor" href="#arg-iso-admin-level-admin-name"></a></dt>
+<dd><p>Optional strings to locate the dataset if <code>dataset</code> is NULL.</p></dd>
 
 
 <dt id="arg-write-output">write_output<a class="anchor" aria-label="anchor" href="#arg-write-output"></a></dt>
-<dd><p>Logical; when <code>TRUE</code> the fitted model is saved to disk
-using either the supplied <code>output_path</code> (treated as a directory when it
-exists or lacks an extension) or the directory inferred from <code>dataset</code>,
-with filenames of the form <code>model_&lt;slug&gt;_brms.Rds</code> where possible. Defaults
-to <code>TRUE</code>.</p></dd>
+<dd><p>Logical. Whether to save the fitted model to disk.</p></dd>
 
 
-<dt id="arg-output-path">output_path<a class="anchor" aria-label="anchor" href="#arg-output-path"></a></dt>
-<dd><p>Optional location where the fitted model should be
-written. Supply either a directory or a full file path. If <code>NULL</code> (default)
-and <code>write_output</code> is <code>TRUE</code>, the path is auto-derived from <code>dataset</code> when
-supplied as a file path.</p></dd>
+<dt id="arg-output-path-input-dir">output_path, input_dir<a class="anchor" aria-label="anchor" href="#arg-output-path-input-dir"></a></dt>
+<dd><p>Paths for output/input.</p></dd>
 
 
 <dt id="arg-save-pars">save_pars<a class="anchor" aria-label="anchor" href="#arg-save-pars"></a></dt>
@@ -173,8 +162,7 @@ argument. Defaults to <code>TRUE</code> to retain latent BYM2 parameters.</p></d
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
-<dd><p>Logical; if <code>TRUE</code>, progress messages are emitted. Defaults to
-<code>TRUE</code>.</p></dd>
+<dd><p>Logical.</p></dd>
 
 </dl></div>
     <div class="section level2">

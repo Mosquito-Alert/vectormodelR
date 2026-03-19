@@ -79,6 +79,6 @@
 - [`run_brms_bym2_model()`](https://labs.mosquitoalert.com/mosquitoR/reference/run_brms_bym2_model.md)
   : Fit a BYM2 Mosquito Alert occupancy model with brms
 - [`run_brms_model()`](https://labs.mosquitoalert.com/mosquitoR/reference/run_brms_model.md)
-  : Fit a baseline Mosquito Alert occupancy model with brms
+  : Fit a Standard Mosquito Alert occupancy model with brms
 - [`run_maxent_model()`](https://labs.mosquitoalert.com/mosquitoR/reference/run_maxent_model.md)
   : Fit a baseline Mosquito Alert MaxEnt model (maxnet)

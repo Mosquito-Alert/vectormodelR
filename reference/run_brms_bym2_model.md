@@ -15,6 +15,7 @@ to model fitting.
 ``` r
 run_brms_bym2_model(
   dataset = NULL,
+  formula = NULL,
   cellsize_m = 800,
   adjacency = NULL,
   adjacency_args = list(),
@@ -39,8 +40,19 @@ run_brms_bym2_model(
 
 - dataset:
 
-  Either an in-memory data frame or the path to the RDS file containing
-  the model-preparation dataset.
+  An in-memory modelling dataset (data.frame), a `bym2_data_prep`
+  object, or a path to the enriched RDS file.
+
+- formula:
+
+  Optional character string or formula object specifying the fixed and
+  random effects structure. If provided, it overrides the default base
+  formula. The spatial BYM2 term
+  `+ car(W, gr = <grid_col>, type = "bym2")` will be automatically
+  appended to this formula. If `NULL` (default), the function processes
+  `source` validation and uses a set of default predictors including
+  `sea_days`, `maxTM_z`, `ppt_z`, `ndvi_z`, `elev_z`, `pop_z`, `year`,
+  and `landcover_code`.
 
 - cellsize_m:
 
@@ -63,61 +75,41 @@ run_brms_bym2_model(
 
 - priors:
 
-  Optional prior specification created with `brms::set_prior()`.
-  Defaults to `NULL`, which uses the brms defaults.
+  Optional `brms::set_prior` object. If `NULL`, default priors for
+  intercepts, coefficients, and standard deviations are used.
 
 - nchains:
 
-  Number of MCMC chains to run. Defaults to 4.
+  Integer. Number of MCMC chains. Default 4.
 
 - threads_per_chain:
 
-  Number of within-chain threads (requires the `cmdstanr` backend).
-  Defaults to 1 (single-threaded chains).
+  Integer. Number of threads per chain for within-chain parallelism.
 
 - adapt_delta:
 
-  Target acceptance rate for the NUTS sampler. Defaults to 0.99.
+  Numeric. Target average proposal acceptance probability. Default
+  0.995.
 
 - max_treedepth:
 
-  Maximum tree depth for the NUTS sampler. Defaults to 12.
+  Integer. Max tree depth for NUTS. Default 20.
 
 - backend:
 
-  Sampling backend passed to `brms::brm()`. Defaults to `"cmdstanr"` but
-  `"rstan"` is supported as well.
+  Character. "cmdstanr" (default) or "rstan".
 
-- iso3:
+- iso3, admin_level, admin_name:
 
-  Optional ISO3 country code used to derive the output filename via
-  `build_location_identifiers()`. Must be supplied alongside
-  `admin_level` and `admin_name` when provided.
-
-- admin_level:
-
-  Administrative level corresponding to the modelling dataset. Used for
-  output naming when paired with `iso3` and `admin_name`.
-
-- admin_name:
-
-  Administrative unit name corresponding to the modelling dataset. Used
-  for output naming when paired with `iso3` and `admin_level`.
+  Optional strings to locate the dataset if `dataset` is NULL.
 
 - write_output:
 
-  Logical; when `TRUE` the fitted model is saved to disk using either
-  the supplied `output_path` (treated as a directory when it exists or
-  lacks an extension) or the directory inferred from `dataset`, with
-  filenames of the form `model_<slug>_brms.Rds` where possible. Defaults
-  to `TRUE`.
+  Logical. Whether to save the fitted model to disk.
 
-- output_path:
+- output_path, input_dir:
 
-  Optional location where the fitted model should be written. Supply
-  either a directory or a full file path. If `NULL` (default) and
-  `write_output` is `TRUE`, the path is auto-derived from `dataset` when
-  supplied as a file path.
+  Paths for output/input.
 
 - save_pars:
 
@@ -126,7 +118,7 @@ run_brms_bym2_model(
 
 - verbose:
 
-  Logical; if `TRUE`, progress messages are emitted. Defaults to `TRUE`.
+  Logical.
 
 ## Value
 

@@ -25,28 +25,16 @@ prepare_bym2_data(
 
 - dataset:
 
-  Either an in-memory data frame or the path to the RDS file containing
-  the model-preparation dataset.
+  An in-memory modelling dataset (data.frame), a `bym2_data_prep`
+  object, or a path to the enriched RDS file.
 
 - cellsize_m:
 
   Numeric cell size (meters). Defaults to 800.
 
-- iso3:
+- iso3, admin_level, admin_name:
 
-  Optional ISO3 country code used to derive the output filename via
-  `build_location_identifiers()`. Must be supplied alongside
-  `admin_level` and `admin_name` when provided.
-
-- admin_level:
-
-  Administrative level corresponding to the modelling dataset. Used for
-  output naming when paired with `iso3` and `admin_name`.
-
-- admin_name:
-
-  Administrative unit name corresponding to the modelling dataset. Used
-  for output naming when paired with `iso3` and `admin_level`.
+  Optional strings to locate the dataset if `dataset` is NULL.
 
 - adjacency:
 

@@ -66,28 +66,16 @@ saves the prepared object to disk.</p>
 
 
 <dl><dt id="arg-dataset">dataset<a class="anchor" aria-label="anchor" href="#arg-dataset"></a></dt>
-<dd><p>Either an in-memory data frame or the path to the RDS file
-containing the model-preparation dataset.</p></dd>
+<dd><p>An in-memory modelling dataset (data.frame), a <code>bym2_data_prep</code> object,
+or a path to the enriched RDS file.</p></dd>
 
 
 <dt id="arg-cellsize-m">cellsize_m<a class="anchor" aria-label="anchor" href="#arg-cellsize-m"></a></dt>
 <dd><p>Numeric cell size (meters). Defaults to 800.</p></dd>
 
 
-<dt id="arg-iso-">iso3<a class="anchor" aria-label="anchor" href="#arg-iso-"></a></dt>
-<dd><p>Optional ISO3 country code used to derive the output filename
-via <code>build_location_identifiers()</code>. Must be supplied alongside
-<code>admin_level</code> and <code>admin_name</code> when provided.</p></dd>
-
-
-<dt id="arg-admin-level">admin_level<a class="anchor" aria-label="anchor" href="#arg-admin-level"></a></dt>
-<dd><p>Administrative level corresponding to the modelling
-dataset. Used for output naming when paired with <code>iso3</code> and <code>admin_name</code>.</p></dd>
-
-
-<dt id="arg-admin-name">admin_name<a class="anchor" aria-label="anchor" href="#arg-admin-name"></a></dt>
-<dd><p>Administrative unit name corresponding to the modelling
-dataset. Used for output naming when paired with <code>iso3</code> and <code>admin_level</code>.</p></dd>
+<dt id="arg-iso-admin-level-admin-name">iso3, admin_level, admin_name<a class="anchor" aria-label="anchor" href="#arg-iso-admin-level-admin-name"></a></dt>
+<dd><p>Optional strings to locate the dataset if <code>dataset</code> is NULL.</p></dd>
 
 
 <dt id="arg-adjacency">adjacency<a class="anchor" aria-label="anchor" href="#arg-adjacency"></a></dt>
