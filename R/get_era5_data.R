@@ -41,7 +41,7 @@ get_era5_data <- function(
                 "surface_pressure","total_precipitation"),
   start_year = as.integer(format(Sys.Date(), "%Y")),
   end_year   = as.integer(format(Sys.Date(), "%Y")),
-  ecmwfr_key = NULL,
+  ecmwfr_key = Sys.getenv("ECMWFR_KEY"),
   ecmwfr_user = "ecmwfr",
   write_key = FALSE,
   data_format = c("grib","netcdf"),
@@ -52,6 +52,10 @@ get_era5_data <- function(
   verbose = FALSE
 ) {
   # ---- validate & normalize ----
+  if (is.null(ecmwfr_key) || !nzchar(ecmwfr_key)) {
+    stop("ECMWFR_KEY is missing or empty. Please ensure it is defined in your .Renviron file. You will need to restart your R session after adding it.")
+  }
+
   data_format <- match.arg(tolower(data_format), c("grib","netcdf"))
   if (is.null(country_iso3) && is.null(bounding_box)) {
     stop("Either `country_iso3` or `bounding_box` must be provided.")
