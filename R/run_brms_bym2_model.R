@@ -9,6 +9,13 @@
 #' prior to model fitting.
 #'
 #' @inheritParams run_brms_model
+#' @param formula Optional character string or formula object specifying the fixed
+#'   and random effects structure. If provided, it overrides the default base
+#'   formula. The spatial BYM2 term `+ car(W, gr = <grid_col>, type = "bym2")`
+#'   will be automatically appended to this formula. If `NULL` (default), the
+#'   function processes `source` validation and uses a set of default predictors
+#'   including `sea_days`, `maxTM_z`, `ppt_z`, `ndvi_z`, `elev_z`, `pop_z`,
+#'   `year`, and `landcover_code`.
 #' @param cellsize_m Numeric cell size (meters) of the hex grid whose adjacency
 #'   matrix will be used. Defaults to 800, expecting a `grid_id_800` column in
 #'   the dataset.
@@ -38,6 +45,7 @@
 #' @export
 run_brms_bym2_model <- function(
   dataset = NULL,
+  formula = NULL,
   cellsize_m = 800,
   adjacency = NULL,
   adjacency_args = list(),
@@ -230,22 +238,36 @@ run_brms_bym2_model <- function(
   # ---- build formula with dynamic grid column ----
   car_term <- paste0("car(W, gr = ", grid_col, ", type = \"bym2\")")
   
-  # Base formula
-  formula_parts <- c(
-    "presence ~ s(sea_days, bs = \"cc\", k = 12)",
-    "s(maxTM_z, k = 6)",
-    "ppt_z + ndvi_z + elev_z + s(pop_z, k = 5)",
-    "(1 | year)",
-    "(1 | landcover_code)",
-    car_term
-  )
-  
-  # Add source if validated
-  if (include_source) {
-    formula_parts <- append(formula_parts, "source", after = 3)
+  if (!is.null(formula)) {
+    if (is.character(formula) && length(formula) > 1) {
+      base_formula_str <- paste(formula, collapse = " + ")
+    } else if (inherits(formula, "formula")) {
+      base_formula_str <- paste(deparse(formula), collapse = " ")
+    } else if (is.character(formula)) {
+      base_formula_str <- formula
+    } else {
+      stop("`formula` must be a string or formula object.", call. = FALSE)
+    }
+    formula_text <- paste(base_formula_str, "+", car_term)
+  } else {
+    # Base formula
+    formula_parts <- c(
+      "presence ~ s(sea_days, bs = \"cc\", k = 12)",
+      "s(maxTM_z, k = 6)",
+      "ppt_z + ndvi_z + elev_z + s(pop_z, k = 5)",
+      "(1 | year)",
+      "(1 | landcover_code)",
+      car_term
+    )
+    
+    # Add source if validated
+    if (include_source) {
+      formula_parts <- append(formula_parts, "source", after = 3)
+    }
+    
+    formula_text <- paste(formula_parts, collapse = " + ")
   }
   
-  formula_text <- paste(formula_parts, collapse = " + ")
   model_formula <- stats::as.formula(formula_text)
 
   # ensure brms functions are found when formula is evaluated

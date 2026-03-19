@@ -9,16 +9,16 @@
 #' @param iso3 Character ISO3 code (e.g., "MEX", "JAM").
 #' @param level Integer requested GADM level (0 = country, 1 = region, 2 = district, ...).
 #' @param gadm Optional sf polygon layer for the chosen GADM level. If NULL, fetched via
-#'   \code{mosquitoR::get_gadm_data(iso3, level)}.
+#'   \code{vectormodelR::get_gadm_data(iso3, level)}.
 #' @param gbif_tbl Optional data.frame/tibble of GBIF occurrences. If NULL, fetched via
-#'   \code{mosquitoR::get_gbif_data()}.
+#'   \code{vectormodelR::get_gbif_data()}.
 #' @param malert_sf Optional sf POINT layer for Mosquito Alert occurrences. If NULL, fetched via
-#'   \code{mosquitoR::get_malert_data()}.
-#' @param malert_source Character passed to \code{mosquitoR::get_malert_data(source = ...)}.
+#'   \code{vectormodelR::get_malert_data()}.
+#' @param malert_source Character passed to \code{vectormodelR::get_malert_data(source = ...)}.
 #'   Default: "github".
-#' @param taxon_key Optional vector of GBIF taxon key passed to \code{mosquitoR::get_gbif_data()}.
-#' @param gbif_clip_to_perimeter Logical passed to \code{mosquitoR::get_gbif_data()}.
-#' @param gbif_save_outputs Logical passed to \code{mosquitoR::get_gbif_data()}.
+#' @param taxon_key Optional vector of GBIF taxon key passed to \code{vectormodelR::get_gbif_data()}.
+#' @param gbif_clip_to_perimeter Logical passed to \code{vectormodelR::get_gbif_data()}.
+#' @param gbif_save_outputs Logical passed to \code{vectormodelR::get_gbif_data()}.
 #' @param crs Integer EPSG for point creation / joining. Default 4326 (WGS84).
 #' @param join_predicate Spatial predicate for join. Default \code{sf::st_within}.
 #'   You can set \code{sf::st_intersects} if you prefer edge-inclusion.
@@ -68,7 +68,7 @@ get_vector_counts <- function(
   # ---- helper: attempt to get the highest available gadm level ----
   get_gadm_with_fallback <- function(iso3, level) {
     # First try requested level
-    gadm_try <- try(mosquitoR::get_gadm_data(iso3 = iso3, level = level), silent = TRUE)
+    gadm_try <- try(vectormodelR::get_gadm_data(iso3 = iso3, level = level), silent = TRUE)
     if (!inherits(gadm_try, "try-error") && inherits(gadm_try, "sf")) {
       return(list(gadm = gadm_try, level_used = level))
     }
@@ -78,7 +78,7 @@ get_vector_counts <- function(
     # Strategy:
     # 1) If requested level fails, try levels from (level-1) down to 0
     for (lv in seq.int(from = level - 1L, to = 0L, by = -1L)) {
-      gadm_try <- try(mosquitoR::get_gadm_data(iso3 = iso3, level = lv), silent = TRUE)
+      gadm_try <- try(vectormodelR::get_gadm_data(iso3 = iso3, level = lv), silent = TRUE)
       if (!inherits(gadm_try, "try-error") && inherits(gadm_try, "sf")) {
         return(list(gadm = gadm_try, level_used = lv))
       }
@@ -86,7 +86,7 @@ get_vector_counts <- function(
 
     # 2) If even 0 fails (rare, but handle), try a small upward probe (some datasets might not support low?)
     for (lv in seq.int(from = 0L, to = 6L, by = 1L)) {
-      gadm_try <- try(mosquitoR::get_gadm_data(iso3 = iso3, level = lv), silent = TRUE)
+      gadm_try <- try(vectormodelR::get_gadm_data(iso3 = iso3, level = lv), silent = TRUE)
       if (!inherits(gadm_try, "try-error") && inherits(gadm_try, "sf")) {
         return(list(gadm = gadm_try, level_used = lv))
       }
@@ -122,7 +122,7 @@ get_vector_counts <- function(
 
   # ---- get gbif / malert data if needed ----
   if (is.null(gbif_tbl)) {
-    gbif_tbl <- mosquitoR::get_gbif_data(
+    gbif_tbl <- vectormodelR::get_gbif_data(
       taxon_key = taxon_key,
       iso3 = iso3,
       clip_to_perimeter = gbif_clip_to_perimeter,
@@ -131,7 +131,7 @@ get_vector_counts <- function(
   }
 
   if (is.null(malert_sf)) {
-    malert_sf <- mosquitoR::get_malert_data(source = malert_source)
+    malert_sf <- vectormodelR::get_malert_data(source = malert_source)
   }
 
   # ---- make sf points (GBIF) ----

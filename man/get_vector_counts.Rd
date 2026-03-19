@@ -25,22 +25,22 @@ get_vector_counts(
 \item{level}{Integer requested GADM level (0 = country, 1 = region, 2 = district, ...).}
 
 \item{gadm}{Optional sf polygon layer for the chosen GADM level. If NULL, fetched via
-\code{mosquitoR::get_gadm_data(iso3, level)}.}
+\code{vectormodelR::get_gadm_data(iso3, level)}.}
 
 \item{gbif_tbl}{Optional data.frame/tibble of GBIF occurrences. If NULL, fetched via
-\code{mosquitoR::get_gbif_data()}.}
+\code{vectormodelR::get_gbif_data()}.}
 
 \item{malert_sf}{Optional sf POINT layer for Mosquito Alert occurrences. If NULL, fetched via
-\code{mosquitoR::get_malert_data()}.}
+\code{vectormodelR::get_malert_data()}.}
 
-\item{malert_source}{Character passed to \code{mosquitoR::get_malert_data(source = ...)}.
+\item{malert_source}{Character passed to \code{vectormodelR::get_malert_data(source = ...)}.
 Default: "github".}
 
-\item{taxon_key}{Optional vector of GBIF taxon key passed to \code{mosquitoR::get_gbif_data()}.}
+\item{taxon_key}{Optional vector of GBIF taxon key passed to \code{vectormodelR::get_gbif_data()}.}
 
-\item{gbif_clip_to_perimeter}{Logical passed to \code{mosquitoR::get_gbif_data()}.}
+\item{gbif_clip_to_perimeter}{Logical passed to \code{vectormodelR::get_gbif_data()}.}
 
-\item{gbif_save_outputs}{Logical passed to \code{mosquitoR::get_gbif_data()}.}
+\item{gbif_save_outputs}{Logical passed to \code{vectormodelR::get_gbif_data()}.}
 
 \item{crs}{Integer EPSG for point creation / joining. Default 4326 (WGS84).}
 
