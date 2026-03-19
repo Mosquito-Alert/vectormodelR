@@ -3,7 +3,7 @@
 ## Overview
 
 This vignette walks through the end-to-end Mosquito Alert modeling
-pipeline implemented in the **mosquitoR** package. It covers required
+pipeline implemented in the **vectormodelR** package. It covers required
 inputs, intermediate artifacts, helper functions, file naming
 conventions, and the final reporting step so you can reproduce or adapt
 the workflow for a new location.
@@ -12,7 +12,7 @@ The canonical pipeline generates a feature-enriched dataset, fits a
 Bernoulli occupancy model with `brms`, and renders a diagnostic report:
 
 ``` r
-library(mosquitoR)
+library(vectormodelR)
 
 # Location configuration
 iso3 <- "ITA"

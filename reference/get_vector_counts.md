@@ -37,38 +37,38 @@ get_vector_counts(
 - gadm:
 
   Optional sf polygon layer for the chosen GADM level. If NULL, fetched
-  via `mosquitoR::get_gadm_data(iso3, level)`.
+  via `vectormodelR::get_gadm_data(iso3, level)`.
 
 - gbif_tbl:
 
   Optional data.frame/tibble of GBIF occurrences. If NULL, fetched via
-  [`mosquitoR::get_gbif_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_gbif_data.md).
+  [`vectormodelR::get_gbif_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_gbif_data.md).
 
 - malert_sf:
 
   Optional sf POINT layer for Mosquito Alert occurrences. If NULL,
   fetched via
-  [`mosquitoR::get_malert_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_malert_data.md).
+  [`vectormodelR::get_malert_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_malert_data.md).
 
 - malert_source:
 
-  Character passed to `mosquitoR::get_malert_data(source = ...)`.
+  Character passed to `vectormodelR::get_malert_data(source = ...)`.
   Default: "github".
 
 - taxon_key:
 
   Optional vector of GBIF taxon key passed to
-  [`mosquitoR::get_gbif_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_gbif_data.md).
+  [`vectormodelR::get_gbif_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_gbif_data.md).
 
 - gbif_clip_to_perimeter:
 
   Logical passed to
-  [`mosquitoR::get_gbif_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_gbif_data.md).
+  [`vectormodelR::get_gbif_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_gbif_data.md).
 
 - gbif_save_outputs:
 
   Logical passed to
-  [`mosquitoR::get_gbif_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_gbif_data.md).
+  [`vectormodelR::get_gbif_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_gbif_data.md).
 
 - crs:
 

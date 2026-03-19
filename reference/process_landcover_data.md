@@ -69,4 +69,4 @@ A
 [`terra::SpatRaster`](https://rspatial.github.io/terra/reference/SpatRaster-class.html)
 representing the cropped and masked land-cover layer with ESA WorldCover
 class metadata attached via
-[`levels()`](https://rdrr.io/r/base/levels.html).
+[`levels()`](https://rspatial.github.io/terra/reference/factors.html).

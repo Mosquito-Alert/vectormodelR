@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Mosquito Alert Modeling Pipeline • mosquitoR</title>
+<title>Mosquito Alert Modeling Pipeline • vectormodelR</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -23,9 +23,9 @@
 
     <nav class="navbar navbar-expand-lg fixed-top bg-light" data-bs-theme="light" aria-label="Site navigation"><div class="container">
 
-    <a class="navbar-brand me-2" href="../index.html">mosquitoR</a>
+    <a class="navbar-brand me-2" href="../index.html">vectormodelR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.9.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -46,7 +46,7 @@
 <li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
 </form></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/Mosquito-Alert/mosquitoR/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/Mosquito-Alert/vectormodelR/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul>
 </div>
 
@@ -62,7 +62,7 @@
       <img src="../logo.png" class="logo" alt=""><h1>Mosquito Alert Modeling Pipeline</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/Mosquito-Alert/mosquitoR/blob/main/vignettes/mosquito_alert_modeling_pipeline.Rmd" class="external-link"><code>vignettes/mosquito_alert_modeling_pipeline.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/Mosquito-Alert/vectormodelR/blob/main/vignettes/mosquito_alert_modeling_pipeline.Rmd" class="external-link"><code>vignettes/mosquito_alert_modeling_pipeline.Rmd</code></a></small>
       <div class="d-none name"><code>mosquito_alert_modeling_pipeline.Rmd</code></div>
     </div>
 
@@ -72,7 +72,7 @@
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
 <p>This vignette walks through the end-to-end Mosquito Alert modeling
-pipeline implemented in the <strong>mosquitoR</strong> package. It
+pipeline implemented in the <strong>vectormodelR</strong> package. It
 covers required inputs, intermediate artifacts, helper functions, file
 naming conventions, and the final reporting step so you can reproduce or
 adapt the workflow for a new location.</p>
@@ -80,7 +80,7 @@ adapt the workflow for a new location.</p>
 Bernoulli occupancy model with <code>brms</code>, and renders a
 diagnostic report:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/Mosquito-Alert/mosquitoR" class="external-link">mosquitoR</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/Mosquito-Alert/vectormodelR" class="external-link">vectormodelR</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Location configuration</span></span>
 <span><span class="va">iso3</span> <span class="op">&lt;-</span> <span class="st">"ITA"</span></span>
@@ -423,7 +423,7 @@ fit.</li>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by John Palmer, Otis Johnson.</p>
+  <p>Developed by Otis Johnson, John Palmer.</p>
 </div>
 
 <div class="pkgdown-footer-right">

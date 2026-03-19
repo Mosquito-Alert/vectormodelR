@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>An R toolkit for analyzing mosquito data from citizen science and traditional surveillance • mosquitoR</title>
+<title>An R toolkit for sourcing global data and using it to generate mosquito various models • vectormodelR</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
@@ -15,9 +15,9 @@
 <link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="An R toolkit for analyzing mosquito data from citizen science and traditional surveillance">
-<meta name="description" content="A set of tools for analyzing data associated with the Mosquito Alert citizen science system (&lt;https://www.mosquitoalert.com/&gt;), including Mosquito Alert citizen science data, smart trap data from the Irideon Senscape API, and traditional mosquito trap data.">
-<meta property="og:description" content="A set of tools for analyzing data associated with the Mosquito Alert citizen science system (&lt;https://www.mosquitoalert.com/&gt;), including Mosquito Alert citizen science data, smart trap data from the Irideon Senscape API, and traditional mosquito trap data.">
+<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="An R toolkit for sourcing global data and using it to generate mosquito various models">
+<meta name="description" content="A set of tools for accessing global datasets, and combining them with Mosquito Alert citizen science data to generate Vector Models (&lt;https://www.mosquitoalert.com/&gt;), including Mosquito Alert citizen science data, smart trap data from the Irideon Senscape API, and traditional mosquito trap data.">
+<meta property="og:description" content="A set of tools for accessing global datasets, and combining them with Mosquito Alert citizen science data to generate Vector Models (&lt;https://www.mosquitoalert.com/&gt;), including Mosquito Alert citizen science data, smart trap data from the Irideon Senscape API, and traditional mosquito trap data.">
 <meta property="og:image" content="https://labs.mosquitoalert.com/mosquitoR/logo.png">
 </head>
 <body>
@@ -26,9 +26,9 @@
 
     <nav class="navbar navbar-expand-lg fixed-top bg-light" data-bs-theme="light" aria-label="Site navigation"><div class="container">
 
-    <a class="navbar-brand me-2" href="index.html">mosquitoR</a>
+    <a class="navbar-brand me-2" href="index.html">vectormodelR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.9.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -49,7 +49,7 @@
 <li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json">
 </form></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/Mosquito-Alert/mosquitoR/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/Mosquito-Alert/vectormodelR/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul>
 </div>
 
@@ -65,46 +65,196 @@
 </div>
 <!-- badges: start -->
 
-<p>The goal of mosquitoR is provide to set of tools for analyzing data associated with the Mosquito Alert citizen science system (<a href="https://www.mosquitoalert.com/" class="external-link uri">https://www.mosquitoalert.com/</a>), including Mosquito Alert citizen science data, smart trap data from the Irideon Senscape API, and traditional mosquito trap data.</p>
+<p>The goal of VectorModelR is to provide a set of tools for accessing global datasets, and combining them with Mosquito Alert citizen science data to generate Vector Models (<a href="https://www.mosquitoalert.com/" class="external-link uri">https://www.mosquitoalert.com/</a>), including Mosquito Alert citizen science data, smart trap data from the Irideon Senscape API, and traditional mosquito trap data.</p>
 <p>IMPORTANT: This package is at an early stage of development, and we may introduce “breaking” changes. In addition, please note that while the package contains functions for working with the Irideon Senscape API, it is not developed by Irideon and is not an official Irideon package.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>You can install the development version of mosquitoR from <a href="https://github.com/" class="external-link">GitHub</a> as follows:</p>
+<p>You can install the development version of VectorModelR from <a href="https://github.com/" class="external-link">GitHub</a> as follows:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("devtools")</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"Mosquito-Alert/mosquitoR"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"Mosquito-Alert/vectormodelR"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
 </h2>
-<p>Turn a set of latitude and longitude coordinates into the standardized sampling cell IDs use to organize Mosquito Alert’s anonymous background tracks:</p>
+<p>The following example demonstrates a complete workflow for acquiring data, processing environmental covariates, and fitting a Bayesian spatial model.</p>
+<div class="section level3">
+<h3 id="id_1-setup">1. Setup<a class="anchor" aria-label="anchor" href="#id_1-setup"></a>
+</h3>
+<p>First, load the package and define the target area and modeling parameters.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/Mosquito-Alert/mosquitoR" class="external-link">mosquitoR</a></span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/make_samplingcell_ids.html">make_samplingcell_ids</a></span><span class="op">(</span>lon<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2.1686</span>, <span class="fl">2.1032</span><span class="op">)</span>, lat<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">41.3874</span>, <span class="fl">41.2098</span><span class="op">)</span>, mask<span class="op">=</span><span class="fl">0.05</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "2.15_41.35" "2.1_41.2"</span></span></code></pre></div>
-<p>Extract longitudes from a set of sampling cell IDs:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/Mosquito-Alert/mosquitoR" class="external-link">mosquitoR</a></span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/make_lonlat_from_samplingcell_ids.html">make_lonlat_from_samplingcell_ids</a></span><span class="op">(</span>ids<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2.15_41.35"</span>, <span class="st">"2.10_41.20"</span><span class="op">)</span>, type<span class="op">=</span><span class="st">"lon"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "2.15" "2.10"</span></span></code></pre></div>
-<p>Download smart trap data from the Senscape server using an API key:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/Mosquito-Alert/mosquitoR" class="external-link">mosquitoR</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://lubridate.tidyverse.org" class="external-link">lubridate</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/Mosquito-Alert/vectormodelR" class="external-link">vectormodelR</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://rspatial.org/" class="external-link">terra</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://magrittr.tidyverse.org" class="external-link">magrittr</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># first set your API key in your environment (e.g. in ~/.Renviron):</span></span>
-<span><span class="va">SENSCAPE_API_KEY</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"SENSCAPE_API_KEY"</span><span class="op">)</span></span>
+<span><span class="co"># targeted region</span></span>
+<span><span class="va">target_country_iso3</span> <span class="op">&lt;-</span> <span class="st">"ESP"</span></span>
+<span><span class="va">target_level</span>        <span class="op">&lt;-</span> <span class="fl">2</span></span>
+<span><span class="va">target_city</span>         <span class="op">&lt;-</span> <span class="st">"Barcelona"</span></span>
 <span></span>
-<span><span class="co"># get list of device IDs with names that start with ASPB</span></span>
-<span><span class="va">ASPB_deviceIds</span> <span class="op">=</span> <span class="fu"><a href="reference/get_senscape_devices.html">get_senscape_devices</a></span><span class="op">(</span>api_key <span class="op">=</span> <span class="va">SENSCAPE_API_KEY</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/startsWith.html" class="external-link">startsWith</a></span><span class="op">(</span><span class="va">name</span>, <span class="st">"ASPB"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">`_id`</span><span class="op">)</span></span>
-<span><span class="va">ASPB_deviceIds</span></span>
+<span><span class="co"># modelling parameters</span></span>
+<span><span class="va">nchains</span>             <span class="op">&lt;-</span> <span class="fl">4</span></span>
+<span><span class="va">threads_per_chain</span>   <span class="op">&lt;-</span> <span class="fl">1</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="id_2-data-acquisition">2. Data Acquisition<a class="anchor" aria-label="anchor" href="#id_2-data-acquisition"></a>
+</h3>
+<p>Download vector surveillance data and environmental covariates.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Get vector counts from Mosquito Alert and GBIF</span></span>
+<span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu">vectormodelR</span><span class="fu">::</span><span class="fu"><a href="reference/get_vector_counts.html">get_vector_counts</a></span><span class="op">(</span></span>
+<span>  iso3 <span class="op">=</span> <span class="va">target_country_iso3</span>, </span>
+<span>  level <span class="op">=</span> <span class="va">target_level</span></span>
+<span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># get all data from these devices within a specified interval</span></span>
-<span><span class="va">my_data</span> <span class="op">=</span> <span class="fu"><a href="reference/get_senscape_data.html">get_senscape_data</a></span><span class="op">(</span>api_key <span class="op">=</span> <span class="va">SENSCAPE_API_KEY</span>, start_datetime <span class="op">=</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/as_date.html" class="external-link">as_datetime</a></span><span class="op">(</span><span class="st">"2023-03-08"</span><span class="op">)</span>, end_datetime <span class="op">=</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/as_date.html" class="external-link">as_datetime</a></span><span class="op">(</span><span class="st">"2023-03-09"</span><span class="op">)</span>, deviceIds <span class="op">=</span> <span class="va">ASPB_deviceIds</span><span class="op">)</span></span>
-<span><span class="va">my_data</span></span></code></pre></div>
+<span><span class="co"># Inspect available administrative unit names</span></span>
+<span><span class="co"># vectormodelR::get_gadm_names(</span></span>
+<span><span class="co">#   country = target_country, </span></span>
+<span><span class="co">#   level = target_level, </span></span>
+<span><span class="co">#   view = "datatable"</span></span>
+<span><span class="co"># )</span></span>
+<span></span>
+<span><span class="co"># Administrative boundaries</span></span>
+<span><span class="va">map</span> <span class="op">&lt;-</span> <span class="fu">vectormodelR</span><span class="fu">::</span><span class="fu"><a href="reference/get_gadm_data.html">get_gadm_data</a></span><span class="op">(</span></span>
+<span>  iso3 <span class="op">=</span> <span class="va">target_country_iso3</span>, </span>
+<span>  name <span class="op">=</span> <span class="va">target_city</span>, </span>
+<span>  level <span class="op">=</span> <span class="va">target_level</span>, </span>
+<span>  perimeter <span class="op">=</span> <span class="cn">TRUE</span>, </span>
+<span>  rds <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Download ERA5 weather data (requires ECMWF API key)</span></span>
+<span><span class="co"># See ?ecmwfr::wf_set_key for setup instructions</span></span>
+<span><span class="co"># vectormodelR::get_era5_data(</span></span>
+<span><span class="co">#   country_iso3 = target_country_iso3,</span></span>
+<span><span class="co">#   start_year = 2020, </span></span>
+<span><span class="co">#   end_year = 2021,</span></span>
+<span><span class="co">#   write_key = TRUE</span></span>
+<span><span class="co"># )</span></span>
+<span></span>
+<span><span class="co"># Compile downloaded ERA5 data</span></span>
+<span><span class="co"># vectormodelR::compile_era5_data_v2(</span></span>
+<span><span class="co">#   iso3 = target_country_iso3,</span></span>
+<span><span class="co">#   recent_n = 12,</span></span>
+<span><span class="co">#   verbose = TRUE</span></span>
+<span><span class="co"># )</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="id_3-spatial-grid--environmental-features">3. Spatial Grid &amp; Environmental Features<a class="anchor" aria-label="anchor" href="#id_3-spatial-grid--environmental-features"></a>
+</h3>
+<p>Build a hexagonal grid and process environmental layers (Landcover, Elevation, NDVI, Population).</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Create hexagonal grids at different resolutions</span></span>
+<span><span class="va">hex_grid400</span> <span class="op">&lt;-</span> <span class="fu">vectormodelR</span><span class="fu">::</span><span class="fu"><a href="reference/build_spatial_grid.html">build_spatial_grid</a></span><span class="op">(</span></span>
+<span>  iso3 <span class="op">=</span> <span class="va">target_country_iso3</span>, </span>
+<span>  admin_level <span class="op">=</span> <span class="va">target_level</span>, </span>
+<span>  admin_name <span class="op">=</span> <span class="va">target_city</span>,</span>
+<span>  cellsize_m <span class="op">=</span> <span class="fl">400</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">hex_grid800</span> <span class="op">&lt;-</span> <span class="fu">vectormodelR</span><span class="fu">::</span><span class="fu"><a href="reference/build_spatial_grid.html">build_spatial_grid</a></span><span class="op">(</span></span>
+<span>  iso3 <span class="op">=</span> <span class="va">target_country_iso3</span>, </span>
+<span>  admin_level <span class="op">=</span> <span class="va">target_level</span>, </span>
+<span>  admin_name <span class="op">=</span> <span class="va">target_city</span>, </span>
+<span>  cellsize_m <span class="op">=</span> <span class="fl">800</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">hex_grid1200</span> <span class="op">&lt;-</span> <span class="fu">vectormodelR</span><span class="fu">::</span><span class="fu"><a href="reference/build_spatial_grid.html">build_spatial_grid</a></span><span class="op">(</span></span>
+<span>  iso3 <span class="op">=</span> <span class="va">target_country_iso3</span>, </span>
+<span>  admin_level <span class="op">=</span> <span class="va">target_level</span>, </span>
+<span>  admin_name <span class="op">=</span> <span class="va">target_city</span>, </span>
+<span>  cellsize_m <span class="op">=</span> <span class="fl">1200</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Process ERA5 data (if downloaded)</span></span>
+<span><span class="co"># vectormodelR::process_era5_data(</span></span>
+<span><span class="co">#   iso3 = target_country_iso3,</span></span>
+<span><span class="co">#   admin_level = target_level,</span></span>
+<span><span class="co">#   admin_name = target_city,</span></span>
+<span><span class="co">#   aggregation_unit = "cell"</span></span>
+<span><span class="co"># )</span></span>
+<span></span>
+<span><span class="co"># Process Landcover (requires raw raster input)</span></span>
+<span><span class="co"># lc &lt;- terra::rast("path/to/landcover.tif")</span></span>
+<span><span class="co"># processed_lc = vectormodelR::process_landcover_data( </span></span>
+<span><span class="co">#   lc,</span></span>
+<span><span class="co">#   iso3 = target_country_iso3,</span></span>
+<span><span class="co">#   admin_level = target_level,</span></span>
+<span><span class="co">#   admin_name = target_city,</span></span>
+<span><span class="co">#   proc_dir = "data/proc"</span></span>
+<span><span class="co"># )</span></span>
+<span></span>
+<span><span class="co"># Get Elevation</span></span>
+<span><span class="va">elevation</span> <span class="op">&lt;-</span> <span class="fu">vectormodelR</span><span class="fu">::</span><span class="fu"><a href="reference/get_elevation_data.html">get_elevation_data</a></span><span class="op">(</span></span>
+<span>  <span class="va">target_country_iso3</span>, </span>
+<span>  level <span class="op">=</span> <span class="va">target_level</span>, </span>
+<span>  name_value <span class="op">=</span> <span class="va">target_city</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="id_4-initialize--enrich-dataset">4. Initialize &amp; Enrich Dataset<a class="anchor" aria-label="anchor" href="#id_4-initialize--enrich-dataset"></a>
+</h3>
+<p>Initialize the dataset structure and add processed features.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Initialize empty dataset structure</span></span>
+<span><span class="va">initialized_data</span> <span class="op">=</span> <span class="fu">vectormodelR</span><span class="fu">::</span><span class="fu"><a href="reference/initialize_vector_dataset.html">initialize_vector_dataset</a></span><span class="op">(</span></span>
+<span>  iso3 <span class="op">=</span> <span class="va">target_country_iso3</span>, </span>
+<span>  admin_level <span class="op">=</span> <span class="va">target_level</span>,</span>
+<span>  admin_name <span class="op">=</span> <span class="va">target_city</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Add features (Population, Weather, NDVI, etc.)</span></span>
+<span><span class="va">enriched_data</span> <span class="op">=</span> <span class="fu">vectormodelR</span><span class="fu">::</span><span class="fu"><a href="reference/add_features.html">add_features</a></span><span class="op">(</span></span>
+<span>  <span class="va">target_country_iso3</span>,</span>
+<span>  <span class="va">target_level</span>,</span>
+<span>  <span class="va">target_city</span>,</span>
+<span>  vector_sources <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"malert"</span>, <span class="st">"gbif"</span><span class="op">)</span>,</span>
+<span>  features <span class="op">=</span> <span class="st">"se,el,ndvi,pd,wx,lc,hex,hex_800,hex_1200"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="id_5-modeling">5. Modeling<a class="anchor" aria-label="anchor" href="#id_5-modeling"></a>
+</h3>
+<p>Fit a Bayesian BYM2 model to account for spatial autocorrelation.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Run BYM2 model with brms</span></span>
+<span><span class="va">brms_bym2_model</span> <span class="op">&lt;-</span> <span class="fu">vectormodelR</span><span class="fu">::</span><span class="fu"><a href="reference/run_brms_bym2_model.html">run_brms_bym2_model</a></span><span class="op">(</span></span>
+<span>  dataset <span class="op">=</span> <span class="va">enriched_data</span>,</span>
+<span>  iso3 <span class="op">=</span> <span class="va">target_country_iso3</span>,</span>
+<span>  admin_level <span class="op">=</span> <span class="va">target_level</span>,</span>
+<span>  admin_name <span class="op">=</span> <span class="va">target_city</span>,</span>
+<span>  nchains <span class="op">=</span> <span class="va">nchains</span>,</span>
+<span>  threads_per_chain <span class="op">=</span> <span class="va">threads_per_chain</span>,</span>
+<span>  adapt_delta <span class="op">=</span> <span class="fl">0.95</span>,</span>
+<span>  max_treedepth <span class="op">=</span> <span class="fl">15</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Model summary and diagnostics</span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">brms_bym2_model</span><span class="op">)</span></span>
+<span><span class="fu">brms</span><span class="fu">::</span><span class="fu">rhat</span><span class="op">(</span><span class="va">brms_bym2_model</span><span class="op">)</span></span>
+<span><span class="fu">brms</span><span class="fu">::</span><span class="fu">neff_ratio</span><span class="op">(</span><span class="va">brms_bym2_model</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="id_6-visualization">6. Visualization<a class="anchor" aria-label="anchor" href="#id_6-visualization"></a>
+</h3>
+<p>Visualize the conditional effects of predictors, such as population density.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/paul-buerkner/brms" class="external-link">brms</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Extract conditional effects for population density (standardized)</span></span>
+<span><span class="va">ce_pop</span> <span class="op">&lt;-</span> <span class="fu">conditional_effects</span><span class="op">(</span><span class="va">brms_bym2_model</span>, effects <span class="op">=</span> <span class="st">"pop_z"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rspatial.github.io/terra/reference/plot.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">ce_pop</span>, plot <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="op">+</span> </span>
+<span>  <span class="fu">geom_hline</span><span class="op">(</span>yintercept <span class="op">=</span> <span class="fl">0.5</span>, linetype <span class="op">=</span> <span class="st">"dashed"</span>, color <span class="op">=</span> <span class="st">"red"</span><span class="op">)</span> <span class="op">+</span> </span>
+<span>  <span class="fu">labs</span><span class="op">(</span></span>
+<span>    title <span class="op">=</span> <span class="st">"Effect of Population Density on Mosquito Presence"</span>,</span>
+<span>    x <span class="op">=</span> <span class="st">"Population Density (Z-score)"</span>,</span>
+<span>    y <span class="op">=</span> <span class="st">"Probability of Presence"</span></span>
+<span>  <span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">theme_minimal</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+</div>
 </div>
 <div class="section level2">
 <h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a>
@@ -138,8 +288,8 @@
   </main><aside class="col-md-3"><div class="links">
 <h2 data-toc-skip>Links</h2>
 <ul class="list-unstyled">
-<li><a href="https://github.com/Mosquito-Alert/mosquitoR/" class="external-link">Browse source code</a></li>
-<li><a href="https://github.com/Mosquito-Alert/mosquitoR/issues" class="external-link">Report a bug</a></li>
+<li><a href="https://github.com/Mosquito-Alert/vectormodelR/" class="external-link">Browse source code</a></li>
+<li><a href="https://github.com/Mosquito-Alert/vectormodelR/issues" class="external-link">Report a bug</a></li>
 </ul>
 </div>
 
@@ -155,15 +305,15 @@
 <div class="citation">
 <h2 data-toc-skip>Citation</h2>
 <ul class="list-unstyled">
-<li><a href="authors.html#citation">Citing mosquitoR</a></li>
+<li><a href="authors.html#citation">Citing vectormodelR</a></li>
 </ul>
 </div>
 
 <div class="developers">
 <h2 data-toc-skip>Developers</h2>
 <ul class="list-unstyled">
-<li>John Palmer <br><small class="roles"> Author, maintainer </small> <a href="https://orcid.org/0000-0002-2648-7860" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>  </li>
-<li>Otis Johnson <br><small class="roles"> Author </small>   </li>
+<li>Otis Johnson <br><small class="roles"> Author, maintainer </small> <a href="https://orcid.org/0009-0009-7229-8751" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>  </li>
+<li>John Palmer <br><small class="roles"> Author </small> <a href="https://orcid.org/0000-0002-2648-7860" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>  </li>
 </ul>
 </div>
 
@@ -181,7 +331,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by John Palmer, Otis Johnson.</p>
+  <p>Developed by Otis Johnson, John Palmer.</p>
 </div>
 
 <div class="pkgdown-footer-right">
