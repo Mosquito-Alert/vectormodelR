@@ -12,13 +12,14 @@
 #'   perimeter file.
 #' @param desired_cols Optional character vector (or list) of column names to
 #'   retain after spatial filtering. When `NULL`, all available columns are kept.
+#' @param filters Optional named list of values to filter by. Each element name
+#'   should correspond to a column in the dataset, and the value describes what to
+#'   keep (e.g., `list(type = "adult")`).
 #'
 #' The function always writes the raw combined download to
 #' `data/vector/vector_global_malert.Rds`. When a perimeter is supplied, the
 #' filtered output (after column selection) is persisted to
 #' `data/proc/vector_<iso3>_<admin_level>_<admin_name>_malert.Rds`.
-#' When spatial filtering is applied, records are further restricted to
-#' `type == "adult"` when that column is available.
 #'
 #' @returns A tibble of Mosquito Alert reports (filtered and column-selected if
 #'   the optional perimeter inputs are supplied).
@@ -35,7 +36,8 @@ get_malert_data <- function(source = "zenodo",
                             iso3 = NULL,
                             admin_level = NULL,
                             admin_name = NULL,
-                            desired_cols = NULL) {
+                            desired_cols = NULL,
+                            filters = NULL) {
 
   if (!requireNamespace("dplyr", quietly = TRUE)) {
     stop("Package 'dplyr' is required. Install it with install.packages('dplyr').", call. = FALSE)
@@ -79,6 +81,21 @@ get_malert_data <- function(source = "zenodo",
   message("Saved raw Mosquito Alert reports to ", global_path)
 
   final_data <- reports
+
+  # --- Apply generic filters -------------------------------------------------
+  if (!is.null(filters)) {
+    for (col in names(filters)) {
+      if (col %in% names(final_data)) {
+        val <- filters[[col]]
+        message("Filtering on ", col, " (keeping matching records)")
+        # This handles vector values (e.g. class_id = c(3, 4))
+        final_data <- final_data[final_data[[col]] %in% val, , drop = FALSE]
+      } else {
+        warning("Filter column '", col, "' not found in dataset. Skipping.", call. = FALSE)
+      }
+    }
+  }
+
   filtered_path <- NULL
 
   apply_spatial <- !is.null(iso3) && !is.null(admin_level) && !is.null(admin_name)
@@ -139,13 +156,6 @@ get_malert_data <- function(source = "zenodo",
       within_idx <- logical(nrow(final_data))
       within_idx[coord_complete] <- lengths(sf::st_within(points_sf, perimeter_sf)) > 0
       final_data <- final_data[within_idx, , drop = FALSE]
-    }
-
-    if ("type" %in% names(final_data)) {
-      message("Filtering to records with type == 'adult'.")
-      final_data <- final_data[final_data$type == "adult", , drop = FALSE]
-    } else {
-      warning("Column `type` not found; adult-only filter skipped.", call. = FALSE)
     }
 
     filtered_path <- file.path(
