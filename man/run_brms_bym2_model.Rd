@@ -27,9 +27,6 @@ run_brms_bym2_model(
 )
 }
 \arguments{
-\item{dataset}{An in-memory modelling dataset (data.frame), a \code{bym2_data_prep} object,
-or a path to the enriched RDS file.}
-
 \item{formula}{Optional character string or formula object specifying the fixed
 and random effects structure. If provided, it overrides the default base
 formula. The spatial BYM2 term \verb{+ car(W, gr = <grid_col>, type = "bym2")}
@@ -50,29 +47,8 @@ names match the grid identifier column. When \code{NULL}, the helper calls
 \code{\link[=build_grid_adjacency]{build_grid_adjacency()}} when \code{adjacency} is \code{NULL}. These values override
 the defaults assembled by the helper.}
 
-\item{priors}{Optional \code{brms::set_prior} object. If \code{NULL}, default priors for
-intercepts, coefficients, and standard deviations are used.}
-
-\item{nchains}{Integer. Number of MCMC chains. Default 4.}
-
-\item{threads_per_chain}{Integer. Number of threads per chain for within-chain parallelism.}
-
-\item{adapt_delta}{Numeric. Target average proposal acceptance probability. Default 0.995.}
-
-\item{max_treedepth}{Integer. Max tree depth for NUTS. Default 20.}
-
-\item{backend}{Character. "cmdstanr" (default) or "rstan".}
-
-\item{iso3, admin_level, admin_name}{Optional strings to locate the dataset if \code{dataset} is NULL.}
-
-\item{write_output}{Logical. Whether to save the fitted model to disk.}
-
-\item{output_path, input_dir}{Paths for output/input.}
-
 \item{save_pars}{Logical; forwarded to \code{brms::brm()} as the \code{save_pars}
 argument. Defaults to \code{TRUE} to retain latent BYM2 parameters.}
-
-\item{verbose}{Logical.}
 }
 \value{
 The fitted \code{brmsfit} object with attributes for the modelling data,

@@ -10,7 +10,8 @@ get_malert_data(
   iso3 = NULL,
   admin_level = NULL,
   admin_name = NULL,
-  desired_cols = NULL
+  desired_cols = NULL,
+  filters = NULL
 )
 }
 \arguments{
@@ -30,14 +31,16 @@ perimeter file.}
 perimeter file.}
 
 \item{desired_cols}{Optional character vector (or list) of column names to
-retain after spatial filtering. When \code{NULL}, all available columns are kept.
+retain after spatial filtering. When \code{NULL}, all available columns are kept.}
+
+\item{filters}{Optional named list of values to filter by. Each element name
+should correspond to a column in the dataset, and the value describes what to
+keep (e.g., \code{list(type = "adult")}).
 
 The function always writes the raw combined download to
 \code{data/vector/vector_global_malert.Rds}. When a perimeter is supplied, the
 filtered output (after column selection) is persisted to
-\verb{data/proc/vector_<iso3>_<admin_level>_<admin_name>_malert.Rds}.
-When spatial filtering is applied, records are further restricted to
-\code{type == "adult"} when that column is available.}
+\verb{data/proc/vector_<iso3>_<admin_level>_<admin_name>_malert.Rds}.}
 }
 \value{
 A tibble of Mosquito Alert reports (filtered and column-selected if

@@ -5,7 +5,6 @@
 #' processed data structure as `run_brms_bym2_model()` but ignores the adjacency
 #' matrix.
 #'
-#' @inheritParams run_brms_bym2_model
 #' 
 #' @param dataset An in-memory modelling dataset (data.frame), a `bym2_data_prep` object,
 #'   or a path to the enriched RDS file.

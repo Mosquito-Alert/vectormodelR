@@ -8,7 +8,6 @@
 #' duplicate observations per grid-date-source-presence combination are dropped
 #' prior to model fitting.
 #'
-#' @inheritParams run_brms_model
 #' @param formula Optional character string or formula object specifying the fixed
 #'   and random effects structure. If provided, it overrides the default base
 #'   formula. The spatial BYM2 term `+ car(W, gr = <grid_col>, type = "bym2")`
