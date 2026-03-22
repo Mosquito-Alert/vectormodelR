@@ -86,12 +86,7 @@ prior to model fitting.</p>
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-dataset">dataset<a class="anchor" aria-label="anchor" href="#arg-dataset"></a></dt>
-<dd><p>An in-memory modelling dataset (data.frame), a <code>bym2_data_prep</code> object,
-or a path to the enriched RDS file.</p></dd>
-
-
-<dt id="arg-formula">formula<a class="anchor" aria-label="anchor" href="#arg-formula"></a></dt>
+<dl><dt id="arg-formula">formula<a class="anchor" aria-label="anchor" href="#arg-formula"></a></dt>
 <dd><p>Optional character string or formula object specifying the fixed
 and random effects structure. If provided, it overrides the default base
 formula. The spatial BYM2 term <code>+ car(W, gr = &lt;grid_col&gt;, type = "bym2")</code>
@@ -119,50 +114,9 @@ names match the grid identifier column. When <code>NULL</code>, the helper calls
 the defaults assembled by the helper.</p></dd>
 
 
-<dt id="arg-priors">priors<a class="anchor" aria-label="anchor" href="#arg-priors"></a></dt>
-<dd><p>Optional <code>brms::set_prior</code> object. If <code>NULL</code>, default priors for
-intercepts, coefficients, and standard deviations are used.</p></dd>
-
-
-<dt id="arg-nchains">nchains<a class="anchor" aria-label="anchor" href="#arg-nchains"></a></dt>
-<dd><p>Integer. Number of MCMC chains. Default 4.</p></dd>
-
-
-<dt id="arg-threads-per-chain">threads_per_chain<a class="anchor" aria-label="anchor" href="#arg-threads-per-chain"></a></dt>
-<dd><p>Integer. Number of threads per chain for within-chain parallelism.</p></dd>
-
-
-<dt id="arg-adapt-delta">adapt_delta<a class="anchor" aria-label="anchor" href="#arg-adapt-delta"></a></dt>
-<dd><p>Numeric. Target average proposal acceptance probability. Default 0.995.</p></dd>
-
-
-<dt id="arg-max-treedepth">max_treedepth<a class="anchor" aria-label="anchor" href="#arg-max-treedepth"></a></dt>
-<dd><p>Integer. Max tree depth for NUTS. Default 20.</p></dd>
-
-
-<dt id="arg-backend">backend<a class="anchor" aria-label="anchor" href="#arg-backend"></a></dt>
-<dd><p>Character. "cmdstanr" (default) or "rstan".</p></dd>
-
-
-<dt id="arg-iso-admin-level-admin-name">iso3, admin_level, admin_name<a class="anchor" aria-label="anchor" href="#arg-iso-admin-level-admin-name"></a></dt>
-<dd><p>Optional strings to locate the dataset if <code>dataset</code> is NULL.</p></dd>
-
-
-<dt id="arg-write-output">write_output<a class="anchor" aria-label="anchor" href="#arg-write-output"></a></dt>
-<dd><p>Logical. Whether to save the fitted model to disk.</p></dd>
-
-
-<dt id="arg-output-path-input-dir">output_path, input_dir<a class="anchor" aria-label="anchor" href="#arg-output-path-input-dir"></a></dt>
-<dd><p>Paths for output/input.</p></dd>
-
-
 <dt id="arg-save-pars">save_pars<a class="anchor" aria-label="anchor" href="#arg-save-pars"></a></dt>
 <dd><p>Logical; forwarded to <code>brms::brm()</code> as the <code>save_pars</code>
 argument. Defaults to <code>TRUE</code> to retain latent BYM2 parameters.</p></dd>
-
-
-<dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
-<dd><p>Logical.</p></dd>
 
 </dl></div>
     <div class="section level2">

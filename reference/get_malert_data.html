@@ -47,7 +47,8 @@
 <span>  iso3 <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  admin_level <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  admin_name <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  desired_cols <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  desired_cols <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  filters <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -82,13 +83,17 @@ perimeter file.</p></dd>
 
 <dt id="arg-desired-cols">desired_cols<a class="anchor" aria-label="anchor" href="#arg-desired-cols"></a></dt>
 <dd><p>Optional character vector (or list) of column names to
-retain after spatial filtering. When <code>NULL</code>, all available columns are kept.</p>
+retain after spatial filtering. When <code>NULL</code>, all available columns are kept.</p></dd>
+
+
+<dt id="arg-filters">filters<a class="anchor" aria-label="anchor" href="#arg-filters"></a></dt>
+<dd><p>Optional named list of values to filter by. Each element name
+should correspond to a column in the dataset, and the value describes what to
+keep (e.g., <code>list(type = "adult")</code>).</p>
 <p>The function always writes the raw combined download to
 <code>data/vector/vector_global_malert.Rds</code>. When a perimeter is supplied, the
 filtered output (after column selection) is persisted to
-<code>data/proc/vector_&lt;iso3&gt;_&lt;admin_level&gt;_&lt;admin_name&gt;_malert.Rds</code>.
-When spatial filtering is applied, records are further restricted to
-<code>type == "adult"</code> when that column is available.</p></dd>
+<code>data/proc/vector_&lt;iso3&gt;_&lt;admin_level&gt;_&lt;admin_name&gt;_malert.Rds</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

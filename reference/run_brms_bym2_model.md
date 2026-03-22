@@ -38,11 +38,6 @@ run_brms_bym2_model(
 
 ## Arguments
 
-- dataset:
-
-  An in-memory modelling dataset (data.frame), a `bym2_data_prep`
-  object, or a path to the enriched RDS file.
-
 - formula:
 
   Optional character string or formula object specifying the fixed and
@@ -73,52 +68,10 @@ run_brms_bym2_model(
   when `adjacency` is `NULL`. These values override the defaults
   assembled by the helper.
 
-- priors:
-
-  Optional `brms::set_prior` object. If `NULL`, default priors for
-  intercepts, coefficients, and standard deviations are used.
-
-- nchains:
-
-  Integer. Number of MCMC chains. Default 4.
-
-- threads_per_chain:
-
-  Integer. Number of threads per chain for within-chain parallelism.
-
-- adapt_delta:
-
-  Numeric. Target average proposal acceptance probability. Default
-  0.995.
-
-- max_treedepth:
-
-  Integer. Max tree depth for NUTS. Default 20.
-
-- backend:
-
-  Character. "cmdstanr" (default) or "rstan".
-
-- iso3, admin_level, admin_name:
-
-  Optional strings to locate the dataset if `dataset` is NULL.
-
-- write_output:
-
-  Logical. Whether to save the fitted model to disk.
-
-- output_path, input_dir:
-
-  Paths for output/input.
-
 - save_pars:
 
   Logical; forwarded to `brms::brm()` as the `save_pars` argument.
   Defaults to `TRUE` to retain latent BYM2 parameters.
-
-- verbose:
-
-  Logical.
 
 ## Value
 

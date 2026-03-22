@@ -11,7 +11,8 @@ get_malert_data(
   iso3 = NULL,
   admin_level = NULL,
   admin_name = NULL,
-  desired_cols = NULL
+  desired_cols = NULL,
+  filters = NULL
 )
 ```
 
@@ -44,12 +45,16 @@ get_malert_data(
   Optional character vector (or list) of column names to retain after
   spatial filtering. When `NULL`, all available columns are kept.
 
+- filters:
+
+  Optional named list of values to filter by. Each element name should
+  correspond to a column in the dataset, and the value describes what to
+  keep (e.g., `list(type = "adult")`).
+
   The function always writes the raw combined download to
   `data/vector/vector_global_malert.Rds`. When a perimeter is supplied,
   the filtered output (after column selection) is persisted to
-  `data/proc/vector_<iso3>_<admin_level>_<admin_name>_malert.Rds`. When
-  spatial filtering is applied, records are further restricted to
-  `type == "adult"` when that column is available.
+  `data/proc/vector_<iso3>_<admin_level>_<admin_name>_malert.Rds`.
 
 ## Value
 
