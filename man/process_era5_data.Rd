@@ -52,7 +52,8 @@ polygon-wide means, "cell" for per-ERA5-cell summaries, or "hourly" to return th
 raw per-cell hourly series without further aggregation.}
 
 \item{polygon_buffer_km}{Numeric. If no ERA5 centroids fall inside the admin
-polygon, expand it by this distance (kilometers) and retry. Default 10.}
+polygon (or too few are captured for stable summaries), expand it by this
+distance (kilometers) and retry. Default 10.}
 }
 \value{
 For \code{aggregation_unit = "region"} or \code{"cell"}, (invisibly) a list with:

@@ -24,7 +24,8 @@
 #'   polygon-wide means, "cell" for per-ERA5-cell summaries, or "hourly" to return the
 #'   raw per-cell hourly series without further aggregation.
 #' @param polygon_buffer_km Numeric. If no ERA5 centroids fall inside the admin
-#'   polygon, expand it by this distance (kilometers) and retry. Default 10.
+#'   polygon (or too few are captured for stable summaries), expand it by this
+#'   distance (kilometers) and retry. Default 10.
 #'
 #' @return For `aggregation_unit = "region"` or `"cell"`, (invisibly) a list with:
 #'   `daily`, `lags_7d`, `lags_14d`, `lags_30d`, `lags_21d_lag7`, `ppt_lags`, and
@@ -174,10 +175,23 @@ process_era5_data <- function(
       if (!length(keep_bbox_idx)) return(data.table::data.table()) # Return empty DT
       dt <- dt[keep_bbox_idx, , drop = FALSE]
 
-      # Parse time directly in DT
-      # Some ERA5 exports append " UTC"
-      time_char <- gsub(" UTC$", "", dt[["time"]])
-      time_vals <- lubridate::ymd_hms(time_char, tz = "UTC", quiet = TRUE)
+      # Normalize time to POSIXct UTC.
+      # NOTE: Our processed CSVs may already store `time` as POSIXct; re-parsing
+      # it as character can drop midnight values (printed as YYYY-MM-DD).
+      time_vals <- dt[["time"]]
+      if (inherits(time_vals, "POSIXct")) {
+        attr(time_vals, "tzone") <- "UTC"
+      } else {
+        time_char <- gsub(" UTC$", "", as.character(time_vals))
+        time_vals <- lubridate::parse_date_time(
+          time_char,
+          orders = c("ymd HMS", "ymd HM", "ymd"),
+          tz = "UTC",
+          exact = FALSE,
+          quiet = TRUE
+        )
+        time_vals <- as.POSIXct(time_vals, tz = "UTC")
+      }
       data.table::set(dt, j = "time", value = time_vals)
       
       utils::setTxtProgressBar(pb, i)
@@ -202,42 +216,62 @@ process_era5_data <- function(
   if (!nrow(DT)) stop("No rows after time filtering. Check date window.")
   .say("After time filter: %s rows.", .fmtI(nrow(DT)))
 
-  # ---- polygon mask (exact clip) [FIXED SECTION] ----
+  # ---- polygon mask (exact clip) ----
   .say("Applying exact polygon mask ...")
   poly <- g |> sf::st_make_valid() |> sf::st_union()
 
-  # 1. Create a temporary SF object for spatial matching ONLY
-  # We do this to find the indices, then we'll throw it away to free memory
-  temp_sf <- sf::st_as_sf(DT, coords = c("longitude", "latitude"), crs = 4326, remove = FALSE)
+  # Compute mask on unique ERA5 centroids to keep memory bounded, then join
+  # back to all rows.
+  cells <- unique(DT[, .(longitude, latitude)])
+  pts_sf <- sf::st_as_sf(cells, coords = c("longitude", "latitude"), crs = 4326)
 
-  # 2. Get logical vector of points inside
-  # sparse = FALSE returns a simple logical vector
-  inside_idx <- as.logical(sf::st_intersects(temp_sf, poly, sparse = FALSE))
-  inside_idx[is.na(inside_idx)] <- FALSE # Safety for coordinate edge cases
+  inside_cells <- as.logical(sf::st_intersects(pts_sf, poly, sparse = FALSE))
+  inside_cells[is.na(inside_cells)] <- FALSE
+  n_inside <- sum(inside_cells)
 
-  # 3. Handle buffering if no points found
-  if (!any(inside_idx) && polygon_buffer_km > 0) {
-    .say("No points inside polygon; buffering by %.1f km and retrying ...", polygon_buffer_km)
+  # Buffering logic:
+  # - historical behavior: buffer only if 0 inside
+  # - practical fix for small admin units: if very few cells are inside,
+  #   try buffering and use it if it increases coverage.
+  min_cells_no_buffer <- 2L
+  use_buffer <- FALSE
+  poly_for_mask <- poly
+
+  if (polygon_buffer_km > 0) {
     poly_buffer <- poly |>
       sf::st_transform(3857) |>
       sf::st_buffer(polygon_buffer_km * 1000) |>
       sf::st_transform(4326)
-    inside_idx <- as.logical(sf::st_intersects(temp_sf, poly_buffer, sparse = FALSE))
-    inside_idx[is.na(inside_idx)] <- FALSE
-    
-    if (any(inside_idx)) {
-      .say("Buffer captured %s rows.", .fmtI(sum(inside_idx)))
+    inside_cells_buf <- as.logical(sf::st_intersects(pts_sf, poly_buffer, sparse = FALSE))
+    inside_cells_buf[is.na(inside_cells_buf)] <- FALSE
+    n_inside_buf <- sum(inside_cells_buf)
+
+    if (n_inside == 0L && n_inside_buf > 0L) {
+      use_buffer <- TRUE
+    } else if (n_inside > 0L && n_inside < min_cells_no_buffer && n_inside_buf > n_inside) {
+      use_buffer <- TRUE
+    }
+
+    if (isTRUE(use_buffer)) {
+      poly_for_mask <- poly_buffer
+      inside_cells <- inside_cells_buf
+      n_inside <- n_inside_buf
+      .say(
+        "Using buffered polygon (%.1f km): %s ERA5 centroids selected.",
+        polygon_buffer_km,
+        .fmtI(n_inside)
+      )
     }
   }
 
-  if (!any(inside_idx)) stop("No rows inside the polygon. Check coordinates.")
+  if (n_inside == 0L) {
+    stop("No ERA5 centroids inside polygon (or its buffer). Check coordinates / buffer size.")
+  }
 
-  # 4. THE CRITICAL FIX: Subset the data.table 'DT' using which() integer indices
-  # This avoids the 'undefined columns' error triggered by sf/data.frame methods
-  DT <- DT[which(inside_idx), ]
+  keep_cells <- cells[inside_cells, .(longitude, latitude)]
+  DT <- DT[keep_cells, on = .(longitude, latitude), nomatch = 0L]
 
-  # 5. Cleanup memory immediately
-  rm(temp_sf, inside_idx); gc()
+  rm(cells, pts_sf, inside_cells, keep_cells); gc()
   .say("Points inside polygon: %s rows kept.", .fmtI(nrow(DT)))
 
   # ---- round lon/lat (stabilize keys for dcast) ----
