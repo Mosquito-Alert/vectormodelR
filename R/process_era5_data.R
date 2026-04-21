@@ -1,16 +1,16 @@
 #' Build daily & lagged weather features from processed ERA5 CSVs
 #'
-#' Reads monthly CSV.GZ files created by your ERA5 compiler (one file per
-#' month with multiple variables named like `era5_<iso3>_YYYY_MM_all_variables.csv.gz`), clips by a GADM admin polygon, aggregates
+#' Reads monthly CSV.GZ files created by compile_era5_data_v2 from the appropriate
+#' dataset-specific subdirectory, clips by a GADM admin polygon, aggregates
 #' to hourly area means, derives daily summaries and rolling-window features,
 #' and saves RDS outputs with informative names.
 #'
-#' @param processed_dir Character. Root dir containing `processed/YYYY/era5_<iso3>_YYYY_MM_all_variables.csv.gz`.
-#'   If NULL, defaults to `file.path("data/weather/grib", tolower(iso3), "processed")`.
 #' @param iso3 Character. ISO3 code for the country (e.g., "ESP").
 #' @param admin_level Integer. GADM administrative level (0=country, 1=region, 2=province, ...).
 #' @param admin_name Character or NULL. Exact `NAME_<level>` to match (e.g., "Barcelona").
 #'   If NULL, the whole level geometry is used (unioned).
+#' @param dataset Character. ERA5 dataset: "reanalysis-era5-single-levels" or "reanalysis-era5-land".
+#'   Required. Determines which processed folder to read from (processed/single-levels/ or processed/land/).
 #' @param out_dir Character. Directory to write RDS outputs. Created if missing.
 #' @param start_date Date. Earliest date to include (UTC). Default "2014-01-01".
 #' @param end_date Date. Latest date to include (UTC). Default is today.
@@ -33,6 +33,14 @@
 #'   with `hourly` (raw per-cell series) and `paths`.
 #'
 #' @details
+#' Automatically reads from the appropriate directory based on `dataset`:
+#' - ERA5 Single Levels: `data/weather/grib/<iso3>/processed/single-levels/`
+#' - ERA5-Land: `data/weather/grib/<iso3>/processed/land/`
+#' 
+#' When `admin_name` is provided, uses admin-specific paths via `build_location_identifiers()`.
+#' 
+#' Output files include dataset identifier (e.g., `weather_esp_2_barcelona_land_daily.Rds`).
+#' 
 #' Expects variables in the CSVs:
 #' - "10m_u_component_of_wind", "10m_v_component_of_wind"
 #' - "2m_temperature", "2m_dewpoint_temperature"
@@ -50,11 +58,32 @@
 #' @importFrom readr write_rds
 #' @importFrom data.table fread setDT setnames as.data.table rbindlist dcast copy setorder set
 #' @export
+#' @examples
+#' \dontrun{
+#' # Process ERA5-Land data for Barcelona province
+#' result <- process_era5_data(
+#'   iso3 = "ESP",
+#'   admin_level = 2,
+#'   admin_name = "Barcelona",
+#'   dataset = "reanalysis-era5-land",
+#'   aggregation_unit = "region"
+#' )
+#' 
+#' # Process ERA5 Single Levels for entire country
+#' result <- process_era5_data(
+#'   iso3 = "ITA",
+#'   admin_level = 0,
+#'   admin_name = NULL,
+#'   dataset = "reanalysis-era5-single-levels",
+#'   start_date = as.Date("2020-01-01"),
+#'   end_date = as.Date("2023-12-31")
+#' )
+#' }
 process_era5_data <- function(
-  processed_dir = NULL,
   iso3,
   admin_level,
   admin_name,
+  dataset,
   out_dir = "data/proc",
   start_date = NULL,
   end_date   = NULL,
@@ -75,20 +104,56 @@ process_era5_data <- function(
   }
   iso3_upper   <- toupper(iso3)
   iso_fragment <- tolower(iso3_upper)
-
-  if (is.null(processed_dir) || !nzchar(processed_dir)) {
-    processed_dir <- file.path("data/weather/grib", iso_fragment, "processed")
+  
+  # Validate dataset
+  if (is.null(dataset) || !nzchar(dataset)) {
+    stop("`dataset` is required. Use 'reanalysis-era5-single-levels' or 'reanalysis-era5-land'.")
   }
+  valid_datasets <- c("reanalysis-era5-single-levels", "reanalysis-era5-land")
+  if (!dataset %in% valid_datasets) {
+    stop("`dataset` must be one of: ", paste(valid_datasets, collapse = ", "))
+  }
+  
+  # Determine dataset subdirectory
+  dataset_subdir <- if (dataset == "reanalysis-era5-land") "land" else "single-levels"
+  
+  # Build admin fragment if needed
+  admin_fragment <- NULL
+  if (!is.null(admin_name) && nzchar(admin_name)) {
+    if (is.null(admin_level) || is.na(admin_level)) {
+      stop("When `admin_name` is provided, `admin_level` must be specified.")
+    }
+    ids <- build_location_identifiers(iso3, admin_level, admin_name)
+    admin_fragment <- paste0(ids$admin_level, "_", ids$admin_name)
+    # Use admin-specific path
+    processed_dir <- file.path("data/weather/grib", ids$slug, "processed", dataset_subdir)
+  } else {
+    # Use country-level path
+    processed_dir <- file.path("data/weather/grib", iso_fragment, "processed", dataset_subdir)
+  }
+  
   processed_dir <- path.expand(processed_dir)
   if (!dir.exists(processed_dir)) {
     stop("Processed directory not found: ", processed_dir)
   }
-  out_dir       <- path.expand(out_dir)
+  .say("Reading from: %s", processed_dir)
+  
+  out_dir <- path.expand(out_dir)
   dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
   # helper: list monthlies
-  list_month_files <- function(dir, iso_slug) {
-    pat <- sprintf("^era5_%s_\\d{4}_\\d{2}_all_variables\\.csv\\.gz$", iso_slug)
+  list_month_files <- function(dir, iso_slug, admin_frag = NULL, ds = NULL) {
+    # Determine file prefix based on dataset
+    prefix <- if (!is.null(ds) && ds == "reanalysis-era5-land") "era5land" else "era5"
+    
+    # Build pattern based on admin fragment
+    if (!is.null(admin_frag) && nzchar(admin_frag)) {
+      pat <- sprintf("^%s_%s_%s_\\d{4}_\\d{2}_all_variables\\.csv\\.gz$", 
+                     prefix, iso_slug, admin_frag)
+    } else {
+      pat <- sprintf("^%s_%s_\\d{4}_\\d{2}_all_variables\\.csv\\.gz$", 
+                     prefix, iso_slug)
+    }
     list.files(dir, pattern = pat, full.names = TRUE, recursive = TRUE, ignore.case = FALSE)
   }
 
@@ -100,9 +165,12 @@ process_era5_data <- function(
     100 * exp((a*TDc/(b + TDc)) - (a*Tc/(b + Tc)))
   }
 
-  files <- list_month_files(processed_dir, iso_fragment)
-  if (!length(files)) stop("No processed monthly CSVs found for ISO '", iso_fragment, "' under: ", processed_dir)
-  .say("Found %s monthly files.", .fmtI(length(files)))
+  files <- list_month_files(processed_dir, iso_fragment, admin_fragment, dataset)
+  if (!length(files)) {
+    stop("No processed monthly CSVs found for ISO '", iso_fragment, 
+         "' dataset '", dataset, "' under: ", processed_dir)
+  }
+  .say("Found %s monthly files (%s).", .fmtI(length(files)), dataset_subdir)
 
 
   # ---- admin geometry & bbox window ----
@@ -531,7 +599,8 @@ process_era5_data <- function(
     # ---- write outputs with informative names ----
     admin_tokens <- sanitize_slug(admin_name)
     if (!length(admin_tokens)) admin_tokens <- "all"
-    base_prefix <- paste0("weather_", iso_fragment, "_", admin_level, "_", paste(admin_tokens, collapse = "-"))
+    dataset_token <- dataset_subdir  # "land" or "single-levels"
+    base_prefix <- paste0("weather_", iso_fragment, "_", admin_level, "_", paste(admin_tokens, collapse = "-"), "_", dataset_token)
     prefix <- if (identical(aggregation_unit, "cell")) paste0(base_prefix, "_cell") else paste0(base_prefix, "_region")
 
     p_daily         <- file.path(out_dir, paste0(prefix, "_daily.Rds"))
@@ -580,7 +649,8 @@ process_era5_data <- function(
   } else {
     admin_tokens <- sanitize_slug(admin_name)
     if (!length(admin_tokens)) admin_tokens <- "all"
-    base_prefix <- paste0("weather_", iso_fragment, "_", admin_level, "_", paste(admin_tokens, collapse = "-"))
+    dataset_token <- dataset_subdir  # "land" or "single-levels"
+    base_prefix <- paste0("weather_", iso_fragment, "_", admin_level, "_", paste(admin_tokens, collapse = "-"), "_", dataset_token)
     prefix <- paste0(base_prefix, "_hourly")
     p_hourly <- file.path(out_dir, paste0(prefix, ".Rds"))
 

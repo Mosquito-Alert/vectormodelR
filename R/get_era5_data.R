@@ -1,9 +1,19 @@
 #' Download ERA5 climate data from the Copernicus Climate Data Store
 #'
-#' @param country_iso3 character. ISO3 country code (e.g., "BGD", "ESP", "USA"). Takes precedence over `bounding_box`.
-#' @param bounding_box numeric(4). c(north, west, south, east) in decimal degrees. Ignored if `country_iso3` is provided.
-#' @param output_dir character. Directory where downloaded files will be saved. Default NULL uses
-#'   "data/weather/grib/<iso3>" when `country_iso3` supplied.
+#' @param iso3 character. ISO3 country code (e.g., "BGD", "ESP", "USA").
+#'   When `admin_level`/`admin_name` are also supplied, the download bbox is
+#'   derived from the matching GADM unit.
+#' @param admin_level integer. GADM administrative level (0=country, 1=region, 2=province, ...).
+#'   Used only when `admin_name` is supplied.
+#' @param admin_name character. Exact `NAME_<level>` value to select within GADM.
+#'   When provided, `get_era5_data()` downloads a bbox around that admin unit.
+#' @param bbox_margin_deg numeric. Margin (in degrees) added on each side of the
+#'   derived bbox. Defaults to 0.5.
+#' @param bounding_box numeric(4). c(north, west, south, east) in decimal degrees. Ignored if `iso3` is provided.
+#' @param output_dir character. Directory where downloaded files will be saved.
+#'   Default NULL uses `data/weather/grib/<iso3>` for country-wide downloads, or
+#'   `data/weather/grib/<iso3>_<admin_level>_<admin_name>` when `admin_name` is
+#'   provided.
 #' @param dataset character. One of "reanalysis-era5-single-levels" or "reanalysis-era5-land".
 #' @param variables character(). ERA5 variable short names. Default common surface vars.
 #' @param start_year integer. Starting year. Default = current year.
@@ -25,14 +35,21 @@
 #' @examples
 #' \dontrun{
 #' # Using a country code (tries Natural Earth if get_bounding_boxes() not available)
-#' get_era5_data(country_iso3 = "BGD", start_year = 2024, end_year = 2024)
+#' get_era5_data(iso3 = "BGD", start_year = 2024, end_year = 2024)
+#'
+#' # Using an admin unit bbox from GADM
+#' get_era5_data(iso3 = "ITA", admin_level = 3, admin_name = "Firenze",
+#'               start_year = 2014, end_year = 2014)
 #'
 #' # Using a custom bounding box
 #' get_era5_data(bounding_box = c(26.995, 86.950, 20.204, 93.500),
 #'               variables = "2m_temperature", start_year = 2024, end_year = 2024)
 #' }
 get_era5_data <- function(
-  country_iso3 = NULL,
+  iso3 = NULL,
+  admin_level = NULL,
+  admin_name = NULL,
+  bbox_margin_deg = 0.5,
   bounding_box = NULL,
   output_dir = NULL,
   dataset = "reanalysis-era5-single-levels",
@@ -57,8 +74,34 @@ get_era5_data <- function(
   }
 
   data_format <- match.arg(tolower(data_format), c("grib","netcdf"))
-  if (is.null(country_iso3) && is.null(bounding_box)) {
-    stop("Either `country_iso3` or `bounding_box` must be provided.")
+
+  if (!is.null(iso3) && nzchar(iso3)) {
+    iso3 <- toupper(as.character(iso3))
+    if (length(iso3) != 1L || nchar(iso3) != 3L || !grepl("^[A-Z]{3}$", iso3)) {
+      stop("`iso3` must be a single three-letter ISO3 code (e.g., 'ITA').")
+    }
+  } else {
+    iso3 <- NULL
+  }
+
+  if (!is.null(admin_name) && !nzchar(admin_name)) admin_name <- NULL
+  if (is.null(admin_name)) {
+    admin_level <- NULL
+  } else {
+    if (is.null(iso3)) {
+      stop("When `admin_name` is supplied, you must also supply `iso3`.")
+    }
+    if (is.null(admin_level) || length(admin_level) != 1L || is.na(admin_level)) {
+      stop("When `admin_name` is supplied, `admin_level` must be a single non-missing value.")
+    }
+    admin_level <- as.integer(admin_level)
+    if (!is.finite(bbox_margin_deg) || length(bbox_margin_deg) != 1L || bbox_margin_deg < 0) {
+      stop("`bbox_margin_deg` must be a single non-negative number.")
+    }
+  }
+
+  if (is.null(iso3) && is.null(bounding_box)) {
+    stop("Provide either `iso3` or `bounding_box`.")
   }
   cy <- as.integer(format(Sys.Date(), "%Y"))
   if (start_year > end_year) stop("`start_year` must be <= `end_year`.")
@@ -73,12 +116,43 @@ get_era5_data <- function(
   }
 
   # ---- resolve bounding box ----
-  if (!is.null(country_iso3)) {
+  if (!is.null(admin_name)) {
+    if (!requireNamespace("geodata", quietly = TRUE) || !requireNamespace("sf", quietly = TRUE)) {
+      stop("Packages {geodata} and {sf} are required to derive an admin-unit bbox. Install them or provide `bounding_box`.")
+    }
+    g <- geodata::gadm(country = iso3, level = admin_level, path = file.path("data/proc", "gadm")) |>
+      sf::st_as_sf()
+    nmcol <- paste0("NAME_", admin_level)
+    if (!nmcol %in% names(g)) {
+      stop("GADM geometry is missing expected name column ", nmcol, " for level ", admin_level, ".")
+    }
+    g <- g[g[[nmcol]] == admin_name, , drop = FALSE]
+    if (nrow(g) == 0) {
+      stop("Admin name '", admin_name, "' not found at level ", admin_level, " for ", iso3)
+    }
+    bb <- sf::st_bbox(sf::st_union(sf::st_make_valid(g)))
+    bounding_box <- c(
+      north = as.numeric(bb[["ymax"]]) + bbox_margin_deg,
+      west  = as.numeric(bb[["xmin"]]) - bbox_margin_deg,
+      south = as.numeric(bb[["ymin"]]) - bbox_margin_deg,
+      east  = as.numeric(bb[["xmax"]]) + bbox_margin_deg
+    )
+    message(
+      sprintf(
+        "Using GADM bbox for %s level %d '%s' (margin %.3f°): [N=%.4f, W=%.4f, S=%.4f, E=%.4f]",
+        iso3,
+        admin_level,
+        admin_name,
+        bbox_margin_deg,
+        bounding_box[1], bounding_box[2], bounding_box[3], bounding_box[4]
+      )
+    )
+  } else if (!is.null(iso3)) {
     # Try user-provided helper if present
     if (exists("get_bounding_boxes", mode = "function")) {
-      bbox_result <- get_bounding_boxes(countries = country_iso3, format = "vector")
+      bbox_result <- get_bounding_boxes(countries = iso3, format = "vector")
       if (is.null(bbox_result) || length(bbox_result) == 0) {
-        stop(sprintf("Country code '%s' not found by get_bounding_boxes().", country_iso3))
+        stop(sprintf("Country code '%s' not found by get_bounding_boxes().", iso3))
       }
       bounding_box <- bbox_result[[1]]
     } else {
@@ -88,8 +162,8 @@ get_era5_data <- function(
         stop("Provide `bounding_box` or install {rnaturalearth} and {sf} to look up ISO3 bounding boxes.")
       }
       world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
-      row <- world[world$iso_a3 == country_iso3, ]
-      if (nrow(row) == 0) stop(sprintf("ISO3 '%s' not found in Natural Earth.", country_iso3))
+      row <- world[world$iso_a3 == iso3, ]
+      if (nrow(row) == 0) stop(sprintf("ISO3 '%s' not found in Natural Earth.", iso3))
       bb <- sf::st_bbox(row$geometry)
       # CDS expects N/W/S/E
       bounding_box <- c(north = as.numeric(bb["ymax"]),
@@ -98,17 +172,19 @@ get_era5_data <- function(
                         east  = as.numeric(bb["xmax"]))
     }
     message(sprintf("Using bounding box for %s: [N=%.4f, W=%.4f, S=%.4f, E=%.4f]",
-                    country_iso3, bounding_box[1], bounding_box[2], bounding_box[3], bounding_box[4]))
+                    iso3, bounding_box[1], bounding_box[2], bounding_box[3], bounding_box[4]))
   } else {
     if (length(bounding_box) != 4 || !is.numeric(bounding_box))
       stop("`bounding_box` must be numeric(4): c(north, west, south, east).")
   }
   area_str <- paste(as.numeric(bounding_box), collapse = "/") # N/W/S/E
 
-  iso_fragment <- if (!is.null(country_iso3)) {
-    tolower(country_iso3)
-  } else {
-    "bbox"
+  iso_fragment <- if (!is.null(iso3)) tolower(iso3) else "bbox"
+
+  admin_fragment <- NULL
+  if (!is.null(admin_name)) {
+    ids <- build_location_identifiers(iso3, admin_level, admin_name)
+    admin_fragment <- paste0(ids$admin_level, "_", ids$admin_name)
   }
 
   # ---- auth: env -> optional persist -> ensure key exists ----
@@ -135,10 +211,11 @@ get_era5_data <- function(
 
   # ---- paths & helpers ----
   if (is.null(output_dir) || !nzchar(output_dir)) {
-    if (is.null(country_iso3)) {
-      output_dir <- file.path("data/weather/grib", iso_fragment)
+    if (!is.null(admin_name)) {
+      ids <- build_location_identifiers(iso3, admin_level, admin_name)
+      output_dir <- file.path("data/weather/grib", ids$slug)
     } else {
-      output_dir <- file.path("data/weather/grib", tolower(country_iso3))
+      output_dir <- file.path("data/weather/grib", iso_fragment)
     }
   }
   output_dir <- path.expand(output_dir)
@@ -168,7 +245,12 @@ get_era5_data <- function(
       day_vec <- days_in_month(yy, mm)
 
       for (var in variables) {
-        filename <- sprintf("era5_%s_%d_%s_%s.%s", iso_fragment, yy, mm_str, var, ext)
+        file_prefix <- if (!is.null(admin_fragment)) {
+          sprintf("era5_%s_%s", iso_fragment, admin_fragment)
+        } else {
+          sprintf("era5_%s", iso_fragment)
+        }
+        filename <- sprintf("%s_%d_%s_%s.%s", file_prefix, yy, mm_str, var, ext)
         filepath <- file.path(output_dir, filename)
         total <- total + 1L
 
@@ -230,8 +312,10 @@ get_era5_data <- function(
             request_id = rid, stringsAsFactors = FALSE
           )
           if (verbose && inherits(res, "try-error")) {
-            message(sprintf("Failure detail for %s: %s", filename, tryCatch(conditionMessage(res), error = function(...) "No message")))
-          }
+  message(sprintf("Failure detail for %s", filename))
+  print(res)
+  print(attr(res, "condition"))
+}
         }
       }
     }

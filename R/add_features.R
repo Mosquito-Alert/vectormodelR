@@ -16,9 +16,10 @@
 #'   values: "malert", "gbif". Determines the filename suffix that is located.
 #' @param features Character vector (or comma-separated string) indicating which
 #'   feature steps to run. Accepted values: `"hex"`,
-#'   `"hex_<cellsize>"` (for example `hex_800`), `"wx"`/`"weather"`,
+#'   `"hex_<cellsize>"` (for example `hex_800`), `"wx_land"`/`"wx_single"`/`"weather_land"`/`"weather_single"`,
 #'   `"lc"`/`"landcover"`, `"ndvi"`, `"el"`/`"elevation"`,
-#'   `"pd"`/`"popdensity"`, `"se"`/`"pseudoabsence"`.
+#'   `"pd"`/`"popdensity"`, `"se"`/`"pseudoabsence"`. For weather features,
+#'   specify the dataset: `wx_land` for ERA5-Land or `wx_single` for ERA5 Single Levels.
 #' @param data_dir Directory containing the model-preparation datasets and
 #'   derived artefacts. Defaults to `"data/proc"`.
 #' @param grid_cellsize_m Numeric cell size (meters) corresponding to the stored
@@ -29,6 +30,24 @@
 #'   object retains the `output_path` attribute referencing the file written by
 #'   that helper.
 #' @export
+#' @examples
+#' \dontrun{
+#' # Add ERA5-Land weather and landcover features
+#' add_features(
+#'   iso3 = "ESP",
+#'   admin_level = 2,
+#'   admin_name = "Barcelona",
+#'   features = "wx_land,lc"
+#' )
+#' 
+#' # Add ERA5 Single Levels weather with hex grid
+#' add_features(
+#'   iso3 = "ITA",
+#'   admin_level = 1,
+#'   admin_name = "Lombardia",
+#'   features = "hex_800,wx_single,ndvi,el"
+#' )
+#' }
 add_features <- function(
   iso3,
   admin_level,
@@ -79,8 +98,10 @@ add_features <- function(
     hexgrid = "hex",
     grid = "hex",
     grid_id = "hex",
-    wx = "wx",
-    weather = "wx",
+    wx_land = "wx_land",
+    weather_land = "wx_land",
+    wx_single = "wx_single",
+    weather_single = "wx_single",
     lc = "lc",
     landcover = "lc",
     land_cover = "lc",
@@ -121,7 +142,8 @@ add_features <- function(
     if (is.na(alias)) {
       stop(
         "Unsupported feature code: ", raw_code,
-        ". Allowed values include hex, wx, lc, ndvi, el, pd, se (hex can optionally include a cell size, e.g. hex_800).",
+        ". Allowed values include hex, wx_land, wx_single, lc, ndvi, el, pd, se ",
+        "(hex can optionally include a cell size, e.g. hex_800).",
         call. = FALSE
       )
     }
@@ -152,7 +174,8 @@ add_features <- function(
 
   feature_labels <- list(
     hex = "hex-grid",
-    wx = "ERA5 weather",
+    wx_land = "ERA5-Land weather",
+    wx_single = "ERA5 Single Levels weather",
     lc = "land-cover",
     ndvi = "NDVI proximity",
     el = "elevation",
@@ -177,12 +200,17 @@ add_features <- function(
 
     current <- switch(
       code,
-      wx = add_weather_features(
-        dataset = current,
-        data_dir = data_dir,
-        write_output = write_current,
-        verbose = verbose
-      ),
+      wx_land = ,
+      wx_single = {
+        dataset_type <- if (code == "wx_land") "reanalysis-era5-land" else "reanalysis-era5-single-levels"
+        add_weather_features(
+          dataset = current,
+          dataset_type = dataset_type,
+          data_dir = data_dir,
+          write_output = write_current,
+          verbose = verbose
+        )
+      },
       hex = add_hex_grid(
         dataset = current,
         iso3 = iso3,
