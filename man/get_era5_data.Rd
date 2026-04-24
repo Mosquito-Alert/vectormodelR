@@ -5,7 +5,10 @@
 \title{Download ERA5 climate data from the Copernicus Climate Data Store}
 \usage{
 get_era5_data(
-  country_iso3 = NULL,
+  iso3 = NULL,
+  admin_level = NULL,
+  admin_name = NULL,
+  bbox_margin_deg = 0.5,
   bounding_box = NULL,
   output_dir = NULL,
   dataset = "reanalysis-era5-single-levels",
@@ -18,60 +21,95 @@ get_era5_data(
   write_key = FALSE,
   data_format = c("grib", "netcdf"),
   hours = sprintf("\%02d:00", 0:23),
-  skip_if_exists_mb = 1,
-  retry = 2,
-  pause_sec = 10,
+  retry = 1,
+  pause_between_requests_sec = 15,
+  pause_sec = 120,
   verbose = FALSE
 )
 }
 \arguments{
-\item{country_iso3}{character. ISO3 country code (e.g., "BGD", "ESP", "USA"). Takes precedence over \code{bounding_box}.}
+\item{iso3}{character. ISO3 country code (e.g., "BGD", "ESP", "USA").
+When \code{admin_level}/\code{admin_name} are also supplied, the download bbox is
+derived from the matching GADM unit.}
 
-\item{bounding_box}{numeric(4). c(north, west, south, east) in decimal degrees. Ignored if \code{country_iso3} is provided.}
+\item{admin_level}{integer. GADM administrative level
+(0=country, 1=region, 2=province, ...). Used only when \code{admin_name}
+is supplied.}
 
-\item{output_dir}{character. Directory where downloaded files will be saved. Default NULL uses
-"data/weather/grib/\if{html}{\out{<iso3>}}" when \code{country_iso3} supplied.}
+\item{admin_name}{character. Exact \verb{NAME_<level>} value to select within
+GADM. When provided, \code{get_era5_data()} downloads a bbox around that
+admin unit.}
 
-\item{dataset}{character. One of "reanalysis-era5-single-levels" or "reanalysis-era5-land".}
+\item{bbox_margin_deg}{numeric. Margin (in degrees) added on each side of
+the derived bbox. Defaults to 0.5.}
 
-\item{variables}{character(). ERA5 variable short names. Default common surface vars.}
+\item{bounding_box}{numeric(4). c(north, west, south, east) in decimal
+degrees. Ignored if \code{iso3} is provided.}
+
+\item{output_dir}{character. Directory where downloaded files will be
+saved. Default NULL uses \verb{data/weather/grib/<iso3>} for country-wide
+downloads, or \verb{data/weather/grib/<iso3>_<admin_level>_<admin_name>}
+when \code{admin_name} is provided.}
+
+\item{dataset}{character. One of "reanalysis-era5-single-levels" or
+"reanalysis-era5-land".}
+
+\item{variables}{character(). ERA5 variable short names. Default common
+surface vars.}
 
 \item{start_year}{integer. Starting year. Default = current year.}
 
 \item{end_year}{integer. Ending year. Default = current year.}
 
-\item{ecmwfr_key}{character or NULL. If provided and \code{write_key = TRUE}, it will be saved via \code{wf_set_key()}.
-If NULL, will try \code{Sys.getenv("CDS_API_KEY")}. Otherwise requires a pre-existing keyring entry.}
+\item{ecmwfr_key}{character or NULL. If provided and \code{write_key = TRUE},
+it will be saved via \code{wf_set_key()}. If NULL, will try
+\code{Sys.getenv("CDS_API_KEY")}. Otherwise requires a pre-existing keyring
+entry.}
 
-\item{ecmwfr_user}{character. Keyring label to use with ecmwfr. Default "ecmwfr".}
+\item{ecmwfr_user}{character. Keyring label to use with ecmwfr.
+Default "ecmwfr".}
 
-\item{write_key}{logical. Persist \code{ecmwfr_key} to the keyring (off by default for public packages).}
+\item{write_key}{logical. Persist \code{ecmwfr_key} to the keyring
+(off by default for public packages).}
 
 \item{data_format}{character. "grib" or "netcdf". Default "grib".}
 
 \item{hours}{character(). Hours like "00:00"…"23:00". Default all 24 hours.}
 
-\item{skip_if_exists_mb}{numeric. Skip downloads if an existing file is larger than this size (MB). Default 1.}
+\item{retry}{integer. Retries per file on transient errors. Default 1.}
 
-\item{retry}{integer. Retries per file on transient errors. Default 2.}
+\item{pause_between_requests_sec}{numeric. Seconds to wait after a
+successful download before sending the next request.}
 
-\item{pause_sec}{numeric. Seconds to wait between retries. Default 10.}
+\item{pause_sec}{numeric. Seconds to wait between retries for non-rate-limit
+errors. Default 120.}
 
 \item{verbose}{logical. Pass to \code{wf_request(verbose=)}. Default FALSE.}
 }
 \value{
-A list with \code{summary} (counts/paths) and \code{files} (data.frame of per-file results).
+A list with \code{summary} (counts/paths) and \code{files} (data.frame of
+per-file results).
 }
 \description{
 Download ERA5 climate data from the Copernicus Climate Data Store
 }
 \examples{
 \dontrun{
-# Using a country code (tries Natural Earth if get_bounding_boxes() not available)
-get_era5_data(country_iso3 = "BGD", start_year = 2024, end_year = 2024)
+get_era5_data(iso3 = "BGD", start_year = 2024, end_year = 2024)
 
-# Using a custom bounding box
-get_era5_data(bounding_box = c(26.995, 86.950, 20.204, 93.500),
-              variables = "2m_temperature", start_year = 2024, end_year = 2024)
+get_era5_data(
+  iso3 = "ITA",
+  admin_level = 3,
+  admin_name = "Firenze",
+  start_year = 2014,
+  end_year = 2014
+)
+
+get_era5_data(
+  bounding_box = c(26.995, 86.950, 20.204, 93.500),
+  variables = "2m_temperature",
+  start_year = 2024,
+  end_year = 2024
+)
 }
 }

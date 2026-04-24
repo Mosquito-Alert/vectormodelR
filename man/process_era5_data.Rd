@@ -5,10 +5,10 @@
 \title{Build daily & lagged weather features from processed ERA5 CSVs}
 \usage{
 process_era5_data(
-  processed_dir = NULL,
   iso3,
   admin_level,
   admin_name,
+  dataset,
   out_dir = "data/proc",
   start_date = NULL,
   end_date = NULL,
@@ -21,15 +21,15 @@ process_era5_data(
 )
 }
 \arguments{
-\item{processed_dir}{Character. Root dir containing \verb{processed/YYYY/era5_<iso3>_YYYY_MM_all_variables.csv.gz}.
-If NULL, defaults to \code{file.path("data/weather/grib", tolower(iso3), "processed")}.}
-
 \item{iso3}{Character. ISO3 code for the country (e.g., "ESP").}
 
 \item{admin_level}{Integer. GADM administrative level (0=country, 1=region, 2=province, ...).}
 
 \item{admin_name}{Character or NULL. Exact \verb{NAME_<level>} to match (e.g., "Barcelona").
 If NULL, the whole level geometry is used (unioned).}
+
+\item{dataset}{Character. ERA5 dataset: "reanalysis-era5-single-levels" or "reanalysis-era5-land".
+Required. Determines which processed folder to read from (processed/single-levels/ or processed/land/).}
 
 \item{out_dir}{Character. Directory to write RDS outputs. Created if missing.}
 
@@ -62,12 +62,22 @@ For \code{aggregation_unit = "region"} or \code{"cell"}, (invisibly) a list with
 with \code{hourly} (raw per-cell series) and \code{paths}.
 }
 \description{
-Reads monthly CSV.GZ files created by your ERA5 compiler (one file per
-month with multiple variables named like \verb{era5_<iso3>_YYYY_MM_all_variables.csv.gz}), clips by a GADM admin polygon, aggregates
+Reads monthly CSV.GZ files created by compile_era5_data_v2 from the appropriate
+dataset-specific subdirectory, clips by a GADM admin polygon, aggregates
 to hourly area means, derives daily summaries and rolling-window features,
 and saves RDS outputs with informative names.
 }
 \details{
+Automatically reads from the appropriate directory based on \code{dataset}:
+\itemize{
+\item ERA5 Single Levels: \verb{data/weather/grib/<iso3>/processed/single-levels/}
+\item ERA5-Land: \verb{data/weather/grib/<iso3>/processed/land/}
+}
+
+When \code{admin_name} is provided, uses admin-specific paths via \code{build_location_identifiers()}.
+
+Output files include dataset identifier (e.g., \code{weather_esp_2_barcelona_land_daily.Rds}).
+
 Expects variables in the CSVs:
 \itemize{
 \item "10m_u_component_of_wind", "10m_v_component_of_wind"
@@ -77,4 +87,26 @@ Expects variables in the CSVs:
 
 Units assumed (ERA5 defaults): temperature in Kelvin, precipitation in meters
 per step; wind components in m/s.
+}
+\examples{
+\dontrun{
+# Process ERA5-Land data for Barcelona province
+result <- process_era5_data(
+  iso3 = "ESP",
+  admin_level = 2,
+  admin_name = "Barcelona",
+  dataset = "reanalysis-era5-land",
+  aggregation_unit = "region"
+)
+
+# Process ERA5 Single Levels for entire country
+result <- process_era5_data(
+  iso3 = "ITA",
+  admin_level = 0,
+  admin_name = NULL,
+  dataset = "reanalysis-era5-single-levels",
+  start_date = as.Date("2020-01-01"),
+  end_date = as.Date("2023-12-31")
+)
+}
 }
