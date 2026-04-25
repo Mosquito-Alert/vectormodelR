@@ -33,80 +33,35 @@ Required. Determines which processed folder to read from (processed/single-level
 
 \item{out_dir}{Character. Directory to write RDS outputs. Created if missing.}
 
-\item{start_date}{Date. Earliest date to include (UTC). Default "2014-01-01".}
+\item{start_date}{Date. Earliest date to include (UTC). Default NULL, inferred from data.}
 
-\item{end_date}{Date. Latest date to include (UTC). Default is today.}
+\item{end_date}{Date. Latest date to include (UTC). Default NULL, inferred from data.}
 
 \item{wind_calm_kmh}{Numeric. Calm-wind threshold in km/h for MWI logic. Default 6.}
 
 \item{round_ll}{Integer. Rounding (decimal places) applied to lon/lat before
-reshaping to wide. Default 3 (≈100–120 m grid at mid-latitudes).}
+reshaping to wide. Default 3.}
 
 \item{verbose}{Logical. If TRUE, prints progress messages. Default TRUE.}
 
-\item{attach_to_global}{Logical. If TRUE, assigns output data.frames to .GlobalEnv
-with names based on the file prefix (e.g., \code{weather_esp_lvl2_barcelona_daily}). Default FALSE.}
+\item{attach_to_global}{Logical. If TRUE, assigns output data.frames to .GlobalEnv.}
 
-\item{aggregation_unit}{Character. Choose "region" (default) to produce
-polygon-wide means, "cell" for per-ERA5-cell summaries, or "hourly" to return the
-raw per-cell hourly series without further aggregation.}
+\item{aggregation_unit}{Character. Choose "region", "cell", or "hourly".}
 
 \item{polygon_buffer_km}{Numeric. If no ERA5 centroids fall inside the admin
-polygon (or too few are captured for stable summaries), expand it by this
-distance (kilometers) and retry. Default 10.}
+polygon, or too few are captured, expand it by this distance in kilometers.}
 }
 \value{
-For \code{aggregation_unit = "region"} or \code{"cell"}, (invisibly) a list with:
+For \code{aggregation_unit = "region"} or \code{"cell"}, invisibly returns a list with:
 \code{daily}, \code{lags_7d}, \code{lags_14d}, \code{lags_30d}, \code{lags_21d_lag7}, \code{ppt_lags}, and
-\code{paths} (written file paths). For \code{aggregation_unit = "hourly"}, returns a list
-with \code{hourly} (raw per-cell series) and \code{paths}.
+\code{paths}. For \code{aggregation_unit = "hourly"}, returns a list with \code{hourly} and \code{paths}.
+
+ERA5-Land columns are renamed after \code{dcast()} to match \code{era5_single_level},
+so downstream calculations use one standard variable schema.
 }
 \description{
 Reads monthly CSV.GZ files created by compile_era5_data_v2 from the appropriate
 dataset-specific subdirectory, clips by a GADM admin polygon, aggregates
 to hourly area means, derives daily summaries and rolling-window features,
 and saves RDS outputs with informative names.
-}
-\details{
-Automatically reads from the appropriate directory based on \code{dataset}:
-\itemize{
-\item ERA5 Single Levels: \verb{data/weather/grib/<iso3>/processed/single-levels/}
-\item ERA5-Land: \verb{data/weather/grib/<iso3>/processed/land/}
-}
-
-When \code{admin_name} is provided, uses admin-specific paths via \code{build_location_identifiers()}.
-
-Output files include dataset identifier (e.g., \code{weather_esp_2_barcelona_land_daily.Rds}).
-
-Expects variables in the CSVs:
-\itemize{
-\item "10m_u_component_of_wind", "10m_v_component_of_wind"
-\item "2m_temperature", "2m_dewpoint_temperature"
-\item "surface_pressure", "total_precipitation"
-}
-
-Units assumed (ERA5 defaults): temperature in Kelvin, precipitation in meters
-per step; wind components in m/s.
-}
-\examples{
-\dontrun{
-# Process ERA5-Land data for Barcelona province
-result <- process_era5_data(
-  iso3 = "ESP",
-  admin_level = 2,
-  admin_name = "Barcelona",
-  dataset = "reanalysis-era5-land",
-  aggregation_unit = "region"
-)
-
-# Process ERA5 Single Levels for entire country
-result <- process_era5_data(
-  iso3 = "ITA",
-  admin_level = 0,
-  admin_name = NULL,
-  dataset = "reanalysis-era5-single-levels",
-  start_date = as.Date("2020-01-01"),
-  end_date = as.Date("2023-12-31")
-)
-}
 }
