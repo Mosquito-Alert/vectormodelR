@@ -39,8 +39,7 @@ Required. Determines which processed folder to read from (processed/single-level
 
 \item{wind_calm_kmh}{Numeric. Calm-wind threshold in km/h for MWI logic. Default 6.}
 
-\item{round_ll}{Integer. Rounding (decimal places) applied to lon/lat before
-reshaping to wide. Default 3.}
+\item{round_ll}{Integer. Rounding decimal places applied to lon/lat before reshaping to wide.}
 
 \item{verbose}{Logical. If TRUE, prints progress messages. Default TRUE.}
 
@@ -55,13 +54,44 @@ polygon, or too few are captured, expand it by this distance in kilometers.}
 For \code{aggregation_unit = "region"} or \code{"cell"}, invisibly returns a list with:
 \code{daily}, \code{lags_7d}, \code{lags_14d}, \code{lags_30d}, \code{lags_21d_lag7}, \code{ppt_lags}, and
 \code{paths}. For \code{aggregation_unit = "hourly"}, returns a list with \code{hourly} and \code{paths}.
-
-ERA5-Land columns are renamed after \code{dcast()} to match \code{era5_single_level},
-so downstream calculations use one standard variable schema.
 }
 \description{
 Reads monthly CSV.GZ files created by compile_era5_data_v2 from the appropriate
 dataset-specific subdirectory, clips by a GADM admin polygon, aggregates
 to hourly area means, derives daily summaries and rolling-window features,
 and saves RDS outputs with informative names.
+}
+\details{
+ERA5-Land columns are renamed after \code{dcast()} to match \code{era5_single_level},
+so downstream calculations use one standard variable schema.
+
+Temperature and dewpoint values are treated as Kelvin and converted to Celsius
+with \code{x - 273.15}. This is intentional: in some GRIBs, \code{terra} may label the
+layers as \verb{[C]}, but the values can still be Kelvin, e.g. 272–295.
+
+Requires helper objects:
+\itemize{
+\item \code{era5_single_level}
+\item \code{era5_land_to_single_level}
+}
+}
+\examples{
+\dontrun{
+result <- process_era5_data(
+  iso3 = "ESP",
+  admin_level = 2,
+  admin_name = "Barcelona",
+  dataset = "reanalysis-era5-land",
+  aggregation_unit = "region"
+)
+
+result <- process_era5_data(
+  iso3 = "ITA",
+  admin_level = 0,
+  admin_name = NULL,
+  dataset = "reanalysis-era5-single-levels",
+  start_date = as.Date("2020-01-01"),
+  end_date = as.Date("2023-12-31")
+)
+}
 }
