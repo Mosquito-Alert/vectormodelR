@@ -14,8 +14,8 @@ get_era5_data(
   dataset = "reanalysis-era5-single-levels",
   variables = c("2m_dewpoint_temperature", "2m_temperature", "10m_u_component_of_wind",
     "10m_v_component_of_wind", "surface_pressure", "total_precipitation"),
-  start_year = as.integer(format(Sys.Date(), "\%Y")),
-  end_year = as.integer(format(Sys.Date(), "\%Y")),
+  start_ym = format(Sys.Date(), "\%Y_\%m"),
+  end_ym = format(Sys.Date(), "\%Y_\%m"),
   ecmwfr_key = Sys.getenv("ECMWFR_KEY"),
   ecmwfr_user = "ecmwfr",
   write_key = FALSE,
@@ -57,9 +57,11 @@ when \code{admin_name} is provided.}
 \item{variables}{character(). ERA5 variable short names. Default common
 surface vars.}
 
-\item{start_year}{integer. Starting year. Default = current year.}
+\item{start_ym}{character. Starting year-month in "YYYY_MM" format,
+e.g. "2024_05". Default = current year-month.}
 
-\item{end_year}{integer. Ending year. Default = current year.}
+\item{end_ym}{character. Ending year-month in "YYYY_MM" format,
+e.g. "2024_11". Default = current year-month.}
 
 \item{ecmwfr_key}{character or NULL. If provided and \code{write_key = TRUE},
 it will be saved via \code{wf_set_key()}. If NULL, will try
@@ -76,7 +78,7 @@ Default "ecmwfr".}
 
 \item{hours}{character(). Hours like "00:00"…"23:00". Default all 24 hours.}
 
-\item{retry}{integer. Retries per file on transient errors. Default 1.}
+\item{retry}{integer. Number of retries after the first attempt. Default 1.}
 
 \item{pause_between_requests_sec}{numeric. Seconds to wait after a
 successful download before sending the next request.}
@@ -95,21 +97,21 @@ Download ERA5 climate data from the Copernicus Climate Data Store
 }
 \examples{
 \dontrun{
-get_era5_data(iso3 = "BGD", start_year = 2024, end_year = 2024)
+get_era5_data(iso3 = "BGD", start_ym = "2024_01", end_ym = "2024_12")
 
 get_era5_data(
   iso3 = "ITA",
   admin_level = 3,
   admin_name = "Firenze",
-  start_year = 2014,
-  end_year = 2014
+  start_ym = "2024_05",
+  end_ym = "2024_11"
 )
 
 get_era5_data(
   bounding_box = c(26.995, 86.950, 20.204, 93.500),
   variables = "2m_temperature",
-  start_year = 2024,
-  end_year = 2024
+  start_ym = "2024_05",
+  end_ym = "2024_05"
 )
 }
 }
