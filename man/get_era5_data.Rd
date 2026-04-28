@@ -19,11 +19,10 @@ get_era5_data(
   ecmwfr_key = Sys.getenv("ECMWFR_KEY"),
   ecmwfr_user = "ecmwfr",
   write_key = FALSE,
-  data_format = c("grib", "netcdf"),
   hours = sprintf("\%02d:00", 0:23),
-  retry = 1,
-  pause_between_requests_sec = 15,
-  pause_sec = 120,
+  retry = 2,
+  pause_between_requests_sec = 30,
+  pause_sec = 600,
   verbose = FALSE
 )
 }
@@ -74,8 +73,6 @@ Default "ecmwfr".}
 \item{write_key}{logical. Persist \code{ecmwfr_key} to the keyring
 (off by default for public packages).}
 
-\item{data_format}{character. "grib" or "netcdf". Default "grib".}
-
 \item{hours}{character(). Hours like "00:00"…"23:00". Default all 24 hours.}
 
 \item{retry}{integer. Number of retries after the first attempt. Default 1.}
@@ -83,10 +80,11 @@ Default "ecmwfr".}
 \item{pause_between_requests_sec}{numeric. Seconds to wait after a
 successful download before sending the next request.}
 
-\item{pause_sec}{numeric. Seconds to wait between retries for non-rate-limit
-errors. Default 120.}
+\item{pause_sec}{numeric. Seconds to wait between failed attempts. Default 600.}
 
 \item{verbose}{logical. Pass to \code{wf_request(verbose=)}. Default FALSE.}
+
+\item{data_format}{character. "grib" or "netcdf". Default "grib".}
 }
 \value{
 A list with \code{summary} (counts/paths) and \code{files} (data.frame of

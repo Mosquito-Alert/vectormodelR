@@ -38,8 +38,7 @@
 #' @param retry integer. Number of retries after the first attempt. Default 1.
 #' @param pause_between_requests_sec numeric. Seconds to wait after a
 #'   successful download before sending the next request.
-#' @param pause_sec numeric. Seconds to wait between retries for non-rate-limit
-#'   errors. Default 120.
+#' @param pause_sec numeric. Seconds to wait between failed attempts. Default 600.
 #' @param verbose logical. Pass to `wf_request(verbose=)`. Default FALSE.
 #'
 #' @return A list with `summary` (counts/paths) and `files` (data.frame of
@@ -86,11 +85,10 @@ get_era5_data <- function(
     ecmwfr_key = Sys.getenv("ECMWFR_KEY"),
     ecmwfr_user = "ecmwfr",
     write_key = FALSE,
-    data_format = c("grib", "netcdf"),
     hours = sprintf("%02d:00", 0:23),
-    retry = 1,
-    pause_between_requests_sec = 15,
-    pause_sec = 120,
+    retry = 2,
+    pause_between_requests_sec = 30,
+    pause_sec = 600,
     verbose = FALSE
 ) {
   sanitize_slug <- function(x) {
@@ -132,18 +130,6 @@ get_era5_data <- function(
     )
   }
 
-  parse_wait_seconds <- function(err_text) {
-    m <- regexpr("Please wait\\s+([0-9]+)\\s+seconds", err_text, perl = TRUE)
-    if (m[1] == -1) return(NA_real_)
-
-    hit <- regmatches(err_text, m)
-    as.numeric(sub(".*Please wait\\s+([0-9]+)\\s+seconds.*", "\\1", hit))
-  }
-
-  is_rate_limit_error <- function(err_text) {
-    grepl("429|rate limit exceeded|Please wait", err_text, ignore.case = TRUE)
-  }
-
   # ---- validate & normalize ----
   if (is.null(ecmwfr_key) || !nzchar(ecmwfr_key)) {
     stop(
@@ -151,8 +137,6 @@ get_era5_data <- function(
       ".Renviron file. You may need to restart your R session."
     )
   }
-
-  data_format <- match.arg(tolower(data_format), c("grib", "netcdf"))
 
   valid_datasets <- c("reanalysis-era5-single-levels", "reanalysis-era5-land")
   if (!dataset %in% valid_datasets) {
@@ -162,6 +146,20 @@ get_era5_data <- function(
   retry <- as.integer(retry)
   if (length(retry) != 1L || is.na(retry) || retry < 0L) {
     stop("`retry` must be a single non-negative integer.")
+  }
+
+  pause_sec <- as.numeric(pause_sec)
+  if (length(pause_sec) != 1L || is.na(pause_sec) || pause_sec < 0) {
+    stop("`pause_sec` must be a single non-negative number.")
+  }
+
+  pause_between_requests_sec <- as.numeric(pause_between_requests_sec)
+  if (
+    length(pause_between_requests_sec) != 1L ||
+      is.na(pause_between_requests_sec) ||
+      pause_between_requests_sec < 0
+  ) {
+    stop("`pause_between_requests_sec` must be a single non-negative number.")
   }
 
   if (!is.null(iso3) && nzchar(iso3)) {
@@ -411,12 +409,10 @@ get_era5_data <- function(
 
   requires_product_type <- identical(dataset, "reanalysis-era5-single-levels")
 
-  ext <- if (dataset == "reanalysis-era5-land" && data_format == "grib") {
+  ext <- if (dataset == "reanalysis-era5-land") {
     "zip"
-  } else if (data_format == "grib") {
-    "grib"
   } else {
-    "nc"
+    "grib"
   }
 
   base_prefix <- if (dataset == "reanalysis-era5-land") {
@@ -429,13 +425,12 @@ get_era5_data <- function(
   rows <- list()
 
   message(sprintf(
-    "Starting ERA5 downloads %04d_%02d–%04d_%02d (%s, %s)",
+    "Starting ERA5 downloads %04d_%02d–%04d_%02d (%s)",
     start_year,
     start_month,
     end_year,
     end_month,
-    dataset,
-    data_format
+    dataset
   ))
 
   # ---- main loop ----
@@ -483,6 +478,7 @@ get_era5_data <- function(
           bytes = file.size(filepath),
           request_id = NA_character_,
           attempts = 0L,
+          error = NA_character_,
           stringsAsFactors = FALSE
         )
 
@@ -497,7 +493,7 @@ get_era5_data <- function(
         day = day_vec,
         time = hours,
         area = area_str,
-        data_format = data_format,
+        data_format = "grib",
         target = filename
       )
 
@@ -508,7 +504,7 @@ get_era5_data <- function(
       attempt <- 0L
       ok <- FALSE
       rid <- NA_character_
-      last_error <- NULL
+      last_error <- NA_character_
       max_attempts <- retry + 1L
 
       repeat {
@@ -532,41 +528,29 @@ get_era5_data <- function(
           break
         }
 
-        err_text <- paste(capture.output(print(res)), collapse = " ")
+        err_text <- paste(capture.output(print(res)), collapse = "\n")
         last_error <- err_text
+
+        message(sprintf(
+          paste0(
+            "Request failed for %s on attempt %d of %d.\n",
+            "Raw error from CDS/ecmwfr:\n%s"
+          ),
+          filename,
+          attempt,
+          max_attempts,
+          err_text
+        ))
 
         if (attempt >= max_attempts) {
           message(sprintf("Giving up on %s after %d attempts.", filename, attempt))
           break
         }
 
-        if (is_rate_limit_error(err_text)) {
-          wait_sec <- parse_wait_seconds(err_text)
-
-          if (is.na(wait_sec) || !is.finite(wait_sec)) {
-            wait_sec <- 300
-          } else {
-            wait_sec <- max(wait_sec + 30, 300)
-          }
-
-          message(sprintf(
-            "CDS rate limit hit for %s. Waiting %.0f seconds before retry %d of %d.",
-            filename,
-            wait_sec,
-            attempt,
-            max_attempts - 1L
-          ))
-
-          Sys.sleep(wait_sec)
-          next
-        }
-
         message(sprintf(
-          "Request failed for %s. Waiting %.0f seconds before retry %d of %d.",
-          filename,
+          "Waiting %.0f seconds before retrying %s.",
           pause_sec,
-          attempt,
-          max_attempts - 1L
+          filename
         ))
 
         Sys.sleep(pause_sec)
@@ -586,7 +570,7 @@ get_era5_data <- function(
           bytes = file.size(filepath),
           request_id = rid,
           attempts = attempt,
-          error = if (is.null(last_error)) NA_character_ else last_error,
+          error = if (is.na(last_error)) NA_character_ else last_error,
           stringsAsFactors = FALSE
         )
 
@@ -603,7 +587,7 @@ get_era5_data <- function(
           bytes = NA_integer_,
           request_id = rid,
           attempts = attempt,
-          error = if (is.null(last_error)) NA_character_ else last_error,
+          error = if (is.na(last_error)) NA_character_ else last_error,
           stringsAsFactors = FALSE
         )
       }
@@ -622,6 +606,7 @@ get_era5_data <- function(
       bytes = integer(),
       request_id = character(),
       attempts = integer(),
+      error = character(),
       stringsAsFactors = FALSE
     )
   }
