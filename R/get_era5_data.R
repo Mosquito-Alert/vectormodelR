@@ -87,7 +87,7 @@ get_era5_data <- function(
     write_key = FALSE,
     hours = sprintf("%02d:00", 0:23),
     retry = 2,
-    pause_between_requests_sec = 30,
+    pause_between_requests_sec = 60,
     pause_sec = 600,
     verbose = FALSE
 ) {
