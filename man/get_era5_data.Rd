@@ -21,7 +21,7 @@ get_era5_data(
   write_key = FALSE,
   hours = sprintf("\%02d:00", 0:23),
   retry = 2,
-  pause_between_requests_sec = 30,
+  pause_between_requests_sec = 90,
   pause_sec = 600,
   verbose = FALSE
 )
@@ -75,7 +75,7 @@ Default "ecmwfr".}
 
 \item{hours}{character(). Hours like "00:00"…"23:00". Default all 24 hours.}
 
-\item{retry}{integer. Number of retries after the first attempt. Default 1.}
+\item{retry}{integer. Number of retries after the first attempt. Default 2.}
 
 \item{pause_between_requests_sec}{numeric. Seconds to wait after a
 successful download before sending the next request.}
@@ -83,33 +83,10 @@ successful download before sending the next request.}
 \item{pause_sec}{numeric. Seconds to wait between failed attempts. Default 600.}
 
 \item{verbose}{logical. Pass to \code{wf_request(verbose=)}. Default FALSE.}
-
-\item{data_format}{character. "grib" or "netcdf". Default "grib".}
 }
 \value{
-A list with \code{summary} (counts/paths) and \code{files} (data.frame of
-per-file results).
+A list with \code{summary} and \code{files}.
 }
 \description{
 Download ERA5 climate data from the Copernicus Climate Data Store
-}
-\examples{
-\dontrun{
-get_era5_data(iso3 = "BGD", start_ym = "2024_01", end_ym = "2024_12")
-
-get_era5_data(
-  iso3 = "ITA",
-  admin_level = 3,
-  admin_name = "Firenze",
-  start_ym = "2024_05",
-  end_ym = "2024_11"
-)
-
-get_era5_data(
-  bounding_box = c(26.995, 86.950, 20.204, 93.500),
-  variables = "2m_temperature",
-  start_ym = "2024_05",
-  end_ym = "2024_05"
-)
-}
 }

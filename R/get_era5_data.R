@@ -33,37 +33,16 @@
 #'   Default "ecmwfr".
 #' @param write_key logical. Persist `ecmwfr_key` to the keyring
 #'   (off by default for public packages).
-#' @param data_format character. "grib" or "netcdf". Default "grib".
 #' @param hours character(). Hours like "00:00"…"23:00". Default all 24 hours.
-#' @param retry integer. Number of retries after the first attempt. Default 1.
+#' @param retry integer. Number of retries after the first attempt. Default 2.
 #' @param pause_between_requests_sec numeric. Seconds to wait after a
 #'   successful download before sending the next request.
 #' @param pause_sec numeric. Seconds to wait between failed attempts. Default 600.
 #' @param verbose logical. Pass to `wf_request(verbose=)`. Default FALSE.
 #'
-#' @return A list with `summary` (counts/paths) and `files` (data.frame of
-#'   per-file results).
+#' @return A list with `summary` and `files`.
 #' @importFrom ecmwfr wf_request wf_set_key wf_get_key wf_datasets
 #' @export
-#' @examples
-#' \dontrun{
-#' get_era5_data(iso3 = "BGD", start_ym = "2024_01", end_ym = "2024_12")
-#'
-#' get_era5_data(
-#'   iso3 = "ITA",
-#'   admin_level = 3,
-#'   admin_name = "Firenze",
-#'   start_ym = "2024_05",
-#'   end_ym = "2024_11"
-#' )
-#'
-#' get_era5_data(
-#'   bounding_box = c(26.995, 86.950, 20.204, 93.500),
-#'   variables = "2m_temperature",
-#'   start_ym = "2024_05",
-#'   end_ym = "2024_05"
-#' )
-#' }
 get_era5_data <- function(
     iso3 = NULL,
     admin_level = NULL,
@@ -87,7 +66,7 @@ get_era5_data <- function(
     write_key = FALSE,
     hours = sprintf("%02d:00", 0:23),
     retry = 2,
-    pause_between_requests_sec = 60,
+    pause_between_requests_sec = 90,
     pause_sec = 600,
     verbose = FALSE
 ) {
@@ -97,12 +76,12 @@ get_era5_data <- function(
     x <- gsub("^_+|_+$", "", x)
     x
   }
-
+  
   build_location_identifiers_local <- function(iso3, admin_level, admin_name) {
     iso3 <- tolower(iso3)
     admin_name_slug <- sanitize_slug(admin_name)
     slug <- paste0(iso3, "_", admin_level, "_", admin_name_slug)
-
+    
     list(
       iso3 = iso3,
       admin_level = admin_level,
@@ -110,26 +89,28 @@ get_era5_data <- function(
       slug = slug
     )
   }
-
+  
   days_in_month <- function(yy, mm) {
     start <- as.Date(sprintf("%04d-%02d-01", yy, mm))
     end <- seq(start, by = "month", length.out = 2)[2] - 1
     format(seq(start, end, by = "day"), "%d")
   }
-
+  
   parse_ym <- function(x, arg_name = "ym") {
-    if (!is.character(x) ||
-        length(x) != 1L ||
-        !grepl("^\\d{4}_(0[1-9]|1[0-2])$", x)) {
+    if (
+      !is.character(x) ||
+      length(x) != 1L ||
+      !grepl("^\\d{4}_(0[1-9]|1[0-2])$", x)
+    ) {
       stop(sprintf("`%s` must be a string like '2024_05'.", arg_name))
     }
-
+    
     list(
       year = as.integer(substr(x, 1, 4)),
       month = as.integer(substr(x, 6, 7))
     )
   }
-
+  
   # ---- validate & normalize ----
   if (is.null(ecmwfr_key) || !nzchar(ecmwfr_key)) {
     stop(
@@ -137,107 +118,119 @@ get_era5_data <- function(
       ".Renviron file. You may need to restart your R session."
     )
   }
-
+  
   valid_datasets <- c("reanalysis-era5-single-levels", "reanalysis-era5-land")
   if (!dataset %in% valid_datasets) {
     stop("`dataset` must be one of: ", paste(valid_datasets, collapse = ", "))
   }
-
+  
   retry <- as.integer(retry)
   if (length(retry) != 1L || is.na(retry) || retry < 0L) {
     stop("`retry` must be a single non-negative integer.")
   }
-
+  
   pause_sec <- as.numeric(pause_sec)
   if (length(pause_sec) != 1L || is.na(pause_sec) || pause_sec < 0) {
     stop("`pause_sec` must be a single non-negative number.")
   }
-
+  
   pause_between_requests_sec <- as.numeric(pause_between_requests_sec)
   if (
     length(pause_between_requests_sec) != 1L ||
-      is.na(pause_between_requests_sec) ||
-      pause_between_requests_sec < 0
+    is.na(pause_between_requests_sec) ||
+    pause_between_requests_sec < 0
   ) {
     stop("`pause_between_requests_sec` must be a single non-negative number.")
   }
-
+  
   if (!is.null(iso3) && nzchar(iso3)) {
     iso3 <- toupper(as.character(iso3))
-
-    if (length(iso3) != 1L ||
-        nchar(iso3) != 3L ||
-        !grepl("^[A-Z]{3}$", iso3)) {
+    
+    if (
+      length(iso3) != 1L ||
+      nchar(iso3) != 3L ||
+      !grepl("^[A-Z]{3}$", iso3)
+    ) {
       stop("`iso3` must be a single three-letter ISO3 code, e.g. 'ITA'.")
     }
   } else {
     iso3 <- NULL
   }
-
+  
   if (!is.null(admin_name) && !nzchar(admin_name)) {
     admin_name <- NULL
   }
-
+  
   if (is.null(admin_name)) {
     admin_level <- NULL
   } else {
     if (is.null(iso3)) {
       stop("When `admin_name` is supplied, you must also supply `iso3`.")
     }
-
-    if (is.null(admin_level) ||
-        length(admin_level) != 1L ||
-        is.na(admin_level)) {
+    
+    if (
+      is.null(admin_level) ||
+      length(admin_level) != 1L ||
+      is.na(admin_level)
+    ) {
       stop(
         "When `admin_name` is supplied, `admin_level` must be a single ",
         "non-missing value."
       )
     }
-
+    
     admin_level <- as.integer(admin_level)
-
-    if (!is.finite(bbox_margin_deg) ||
-        length(bbox_margin_deg) != 1L ||
-        bbox_margin_deg < 0) {
+    
+    if (
+      !is.finite(bbox_margin_deg) ||
+      length(bbox_margin_deg) != 1L ||
+      bbox_margin_deg < 0
+    ) {
       stop("`bbox_margin_deg` must be a single non-negative number.")
     }
   }
-
+  
   if (is.null(iso3) && is.null(bounding_box)) {
     stop("Provide either `iso3` or `bounding_box`.")
   }
-
+  
   # ---- resolve year-month range ----
   start_parsed <- parse_ym(start_ym, "start_ym")
   end_parsed <- parse_ym(end_ym, "end_ym")
-
+  
   start_year <- start_parsed$year
   start_month <- start_parsed$month
   end_year <- end_parsed$year
   end_month <- end_parsed$month
-
-  if (start_year > end_year ||
-      (start_year == end_year && start_month > end_month)) {
+  
+  if (
+    start_year > end_year ||
+    (start_year == end_year && start_month > end_month)
+  ) {
     stop("`start_ym` must be before or equal to `end_ym`.")
   }
-
+  
   cy <- as.integer(format(Sys.Date(), "%Y"))
   cm <- as.integer(format(Sys.Date(), "%m"))
-
-  if (start_year > cy ||
-      (start_year == cy && start_month > cm)) {
+  
+  if (
+    start_year > cy ||
+    (start_year == cy && start_month > cm)
+  ) {
     stop("`start_ym` is in the future.")
   }
-
-  if (end_year > cy ||
-      (end_year == cy && end_month > cm)) {
+  
+  if (
+    end_year > cy ||
+    (end_year == cy && end_month > cm)
+  ) {
     end_year <- cy
     end_month <- cm
   }
-
+  
   # ---- dataset exists? ----
   ds <- try(ecmwfr::wf_datasets(), silent = TRUE)
-
+  
   if (!inherits(ds, "try-error")) {
     if (!dataset %in% ds$name) {
       stop(sprintf(
@@ -246,52 +239,54 @@ get_era5_data <- function(
       ))
     }
   }
-
+  
   # ---- resolve bounding box ----
   if (!is.null(admin_name)) {
-    if (!requireNamespace("geodata", quietly = TRUE) ||
-        !requireNamespace("sf", quietly = TRUE)) {
+    if (
+      !requireNamespace("geodata", quietly = TRUE) ||
+      !requireNamespace("sf", quietly = TRUE)
+    ) {
       stop(
         "Packages {geodata} and {sf} are required to derive an admin-unit bbox. ",
         "Install them or provide `bounding_box`."
       )
     }
-
+    
     g <- geodata::gadm(
       country = iso3,
       level = admin_level,
       path = file.path("data/proc", "gadm")
     )
-
+    
     g <- sf::st_as_sf(g)
-
+    
     nmcol <- paste0("NAME_", admin_level)
-
+    
     if (!nmcol %in% names(g)) {
       stop(
         "GADM geometry is missing expected name column ", nmcol,
         " for level ", admin_level, "."
       )
     }
-
+    
     g <- g[g[[nmcol]] == admin_name, , drop = FALSE]
-
+    
     if (nrow(g) == 0) {
       stop(
         "Admin name '", admin_name, "' not found at level ",
         admin_level, " for ", iso3, "."
       )
     }
-
+    
     bb <- sf::st_bbox(sf::st_union(sf::st_make_valid(g)))
-
+    
     bounding_box <- c(
       north = as.numeric(bb[["ymax"]]) + bbox_margin_deg,
       west = as.numeric(bb[["xmin"]]) - bbox_margin_deg,
       south = as.numeric(bb[["ymin"]]) - bbox_margin_deg,
       east = as.numeric(bb[["xmax"]]) + bbox_margin_deg
     )
-
+    
     message(sprintf(
       paste0(
         "Using GADM bbox for %s level %d '%s' (margin %.3f°): ",
@@ -309,34 +304,36 @@ get_era5_data <- function(
   } else if (!is.null(iso3)) {
     if (exists("get_bounding_boxes", mode = "function")) {
       bbox_result <- get_bounding_boxes(countries = iso3, format = "vector")
-
+      
       if (is.null(bbox_result) || length(bbox_result) == 0) {
         stop(sprintf("Country code '%s' not found by get_bounding_boxes().", iso3))
       }
-
+      
       bounding_box <- bbox_result[[1]]
     } else {
-      if (!requireNamespace("rnaturalearth", quietly = TRUE) ||
-          !requireNamespace("sf", quietly = TRUE)) {
+      if (
+        !requireNamespace("rnaturalearth", quietly = TRUE) ||
+        !requireNamespace("sf", quietly = TRUE)
+      ) {
         stop(
           "Provide `bounding_box` or install {rnaturalearth} and {sf} ",
           "to look up ISO3 bounding boxes."
         )
       }
-
+      
       world <- rnaturalearth::ne_countries(
         scale = "medium",
         returnclass = "sf"
       )
-
+      
       row <- world[world$iso_a3 == iso3, ]
-
+      
       if (nrow(row) == 0) {
         stop(sprintf("ISO3 '%s' not found in Natural Earth.", iso3))
       }
-
+      
       bb <- sf::st_bbox(row$geometry)
-
+      
       bounding_box <- c(
         north = as.numeric(bb["ymax"]),
         west = as.numeric(bb["xmin"]),
@@ -344,7 +341,7 @@ get_era5_data <- function(
         east = as.numeric(bb["xmax"])
       )
     }
-
+    
     message(sprintf(
       "Using bounding box for %s: [N=%.4f, W=%.4f, S=%.4f, E=%.4f]",
       iso3,
@@ -358,33 +355,33 @@ get_era5_data <- function(
       stop("`bounding_box` must be numeric(4): c(north, west, south, east).")
     }
   }
-
+  
   area_str <- paste(as.numeric(bounding_box), collapse = "/")
-
+  
   iso_fragment <- if (!is.null(iso3)) {
     tolower(iso3)
   } else {
     "bbox"
   }
-
+  
   admin_fragment <- NULL
-
+  
   if (!is.null(admin_name)) {
     ids <- build_location_identifiers_local(iso3, admin_level, admin_name)
     admin_fragment <- paste0(ids$admin_level, "_", ids$admin_name)
   }
-
+  
   # ---- auth ----
   if (!is.null(ecmwfr_key) && isTRUE(write_key)) {
     ecmwfr::wf_set_key(key = ecmwfr_key, user = ecmwfr_user)
   }
-
+  
   if (requireNamespace("keyring", quietly = TRUE)) {
     if (isTRUE(try(keyring::keyring_is_locked(), silent = TRUE))) {
       try(keyring::keyring_unlock(), silent = TRUE)
     }
   }
-
+  
   if (is.null(ecmwfr::wf_get_key(ecmwfr_user))) {
     stop(
       sprintf("No CDS token found for user '%s'. ", ecmwfr_user),
@@ -393,7 +390,7 @@ get_era5_data <- function(
       "') or call get_era5_data(write_key = TRUE)."
     )
   }
-
+  
   # ---- paths ----
   if (is.null(output_dir) || !nzchar(output_dir)) {
     if (!is.null(admin_name)) {
@@ -403,27 +400,27 @@ get_era5_data <- function(
       output_dir <- file.path("data/weather/grib", iso_fragment)
     }
   }
-
+  
   output_dir <- path.expand(output_dir)
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-
+  
   requires_product_type <- identical(dataset, "reanalysis-era5-single-levels")
-
+  
   ext <- if (dataset == "reanalysis-era5-land") {
     "zip"
   } else {
     "grib"
   }
-
+  
   base_prefix <- if (dataset == "reanalysis-era5-land") {
     "era5land"
   } else {
     "era5"
   }
-
+  
   total <- existed <- downloaded <- failed <- 0L
   rows <- list()
-
+  
   message(sprintf(
     "Starting ERA5 downloads %04d_%02d–%04d_%02d (%s)",
     start_year,
@@ -432,59 +429,59 @@ get_era5_data <- function(
     end_month,
     dataset
   ))
-
+  
   # ---- main loop ----
   for (yy in start_year:end_year) {
     months <- 1:12
-
+    
     if (yy == start_year) {
       months <- months[months >= start_month]
     }
-
+    
     if (yy == end_year) {
       months <- months[months <= end_month]
     }
-
+    
     if (yy == cy) {
       months <- months[months <= cm]
     }
-
+    
     if (!length(months)) next
-
+    
     for (mm in months) {
       mm_str <- sprintf("%02d", mm)
       day_vec <- days_in_month(yy, mm)
-
+      
       file_prefix <- if (!is.null(admin_fragment)) {
         sprintf("%s_%s_%s", base_prefix, iso_fragment, admin_fragment)
       } else {
         sprintf("%s_%s", base_prefix, iso_fragment)
       }
-
+      
       filename <- sprintf("%s_%d_%s.%s", file_prefix, yy, mm_str, ext)
       filepath <- file.path(output_dir, filename)
-
-      total <- total + 1L
-
-      if (file.exists(filepath)) {
-        existed <- existed + 1L
-
-        rows[[length(rows) + 1L]] <- data.frame(
+      
+      add_row <- function(status, bytes = NA_integer_, attempts = 0L) {
+        rows[[length(rows) + 1L]] <<- data.frame(
           file = filename,
           year = yy,
           month = mm,
-          variables = paste(variables, collapse = ","),
-          status = "exists",
-          bytes = file.size(filepath),
-          request_id = NA_character_,
-          attempts = 0L,
-          error = NA_character_,
+          status = status,
+          bytes = bytes,
+          attempts = attempts,
+          path = filepath,
           stringsAsFactors = FALSE
         )
-
+      }
+      
+      total <- total + 1L
+      
+      if (file.exists(filepath)) {
+        existed <- existed + 1L
+        add_row("exists", bytes = file.size(filepath), attempts = 0L)
         next
       }
-
+      
       req <- list(
         dataset_short_name = dataset,
         variable = variables,
@@ -496,20 +493,18 @@ get_era5_data <- function(
         data_format = "grib",
         target = filename
       )
-
+      
       if (requires_product_type) {
         req$product_type <- "reanalysis"
       }
-
+      
       attempt <- 0L
       ok <- FALSE
-      rid <- NA_character_
-      last_error <- NA_character_
       max_attempts <- retry + 1L
-
+      
       repeat {
         attempt <- attempt + 1L
-
+        
         res <- try(
           ecmwfr::wf_request(
             user = ecmwfr_user,
@@ -521,16 +516,14 @@ get_era5_data <- function(
           ),
           silent = TRUE
         )
-
+        
         if (!inherits(res, "try-error")) {
           ok <- TRUE
-          rid <- as.character(res)
           break
         }
-
+        
         err_text <- paste(capture.output(print(res)), collapse = "\n")
-        last_error <- err_text
-
+        
         message(sprintf(
           paste0(
             "Request failed for %s on attempt %d of %d.\n",
@@ -541,59 +534,40 @@ get_era5_data <- function(
           max_attempts,
           err_text
         ))
-
+        
         if (attempt >= max_attempts) {
           message(sprintf("Giving up on %s after %d attempts.", filename, attempt))
           break
         }
-
+        
         message(sprintf(
           "Waiting %.0f seconds before retrying %s.",
           pause_sec,
           filename
         ))
-
+        
         Sys.sleep(pause_sec)
       }
-
+      
       file_ok <- file.exists(filepath)
-
+      
       if (file_ok) {
         downloaded <- downloaded + 1L
-
-        rows[[length(rows) + 1L]] <- data.frame(
-          file = filename,
-          year = yy,
-          month = mm,
-          variables = paste(variables, collapse = ","),
+        
+        add_row(
           status = if (ok) "downloaded" else "downloaded_with_warning",
           bytes = file.size(filepath),
-          request_id = rid,
-          attempts = attempt,
-          error = if (is.na(last_error)) NA_character_ else last_error,
-          stringsAsFactors = FALSE
+          attempts = attempt
         )
-
+        
         Sys.sleep(pause_between_requests_sec)
       } else {
         failed <- failed + 1L
-
-        rows[[length(rows) + 1L]] <- data.frame(
-          file = filename,
-          year = yy,
-          month = mm,
-          variables = paste(variables, collapse = ","),
-          status = "failed",
-          bytes = NA_integer_,
-          request_id = rid,
-          attempts = attempt,
-          error = if (is.na(last_error)) NA_character_ else last_error,
-          stringsAsFactors = FALSE
-        )
+        add_row("failed", bytes = NA_integer_, attempts = attempt)
       }
     }
   }
-
+  
   files_df <- if (length(rows)) {
     do.call(rbind, rows)
   } else {
@@ -601,16 +575,14 @@ get_era5_data <- function(
       file = character(),
       year = integer(),
       month = integer(),
-      variables = character(),
       status = character(),
       bytes = integer(),
-      request_id = character(),
       attempts = integer(),
-      error = character(),
+      path = character(),
       stringsAsFactors = FALSE
     )
   }
-
+  
   summary <- list(
     total_files_needed = total,
     files_already_exist = existed,
@@ -623,6 +595,6 @@ get_era5_data <- function(
     },
     output_directory = output_dir
   )
-
+  
   list(summary = summary, files = files_df)
 }
