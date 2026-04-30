@@ -6,6 +6,7 @@
 \usage{
 add_weather_features(
   dataset,
+  dataset_type,
   data_dir = "data/proc",
   write_output = TRUE,
   verbose = TRUE
@@ -18,6 +19,10 @@ the corresponding RDS file. When a data object is supplied it must carry an
 \code{output_path} attribute naming the last saved file; the enriched dataset is
 written to \code{data_dir} with \verb{_wx.Rds} appended to that stem when
 \code{write_output} is \code{TRUE}.}
+
+\item{dataset_type}{Character. ERA5 dataset: "reanalysis-era5-single-levels"
+or "reanalysis-era5-land". Must match the dataset used when processing weather
+data with \code{process_era5_data()}.}
 
 \item{data_dir}{Directory that holds the weather RDS files and where the
 weather-enriched dataset will be written. Defaults to \code{"data/proc"}.}
@@ -45,7 +50,8 @@ add_weather_features(
     iso3 = "ESP",
     admin_level = 4,
     admin_name = "Barcelona"
-  )
+  ),
+  dataset_type = "reanalysis-era5-land"
 )
 }
 }

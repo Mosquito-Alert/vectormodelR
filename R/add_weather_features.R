@@ -10,6 +10,9 @@
 #'   `output_path` attribute naming the last saved file; the enriched dataset is
 #'   written to `data_dir` with `_wx.Rds` appended to that stem when
 #'   `write_output` is `TRUE`.
+#' @param dataset_type Character. ERA5 dataset: "reanalysis-era5-single-levels" 
+#'   or "reanalysis-era5-land". Must match the dataset used when processing weather
+#'   data with `process_era5_data()`.
 #' @param data_dir Directory that holds the weather RDS files and where the
 #'   weather-enriched dataset will be written. Defaults to `"data/proc"`.
 #' @param write_output Logical flag; when `TRUE` (default) the enriched dataset
@@ -30,14 +33,28 @@
 #'     iso3 = "ESP",
 #'     admin_level = 4,
 #'     admin_name = "Barcelona"
-#'   )
+#'   ),
+#'   dataset_type = "reanalysis-era5-land"
 #' )
 #' }
 add_weather_features <- function(
     dataset,
+    dataset_type,
     data_dir = "data/proc",
     write_output = TRUE,
     verbose = TRUE) {
+
+  # Validate dataset_type
+  if (is.null(dataset_type) || !nzchar(dataset_type)) {
+    stop("`dataset_type` is required. Use 'reanalysis-era5-single-levels' or 'reanalysis-era5-land'.", call. = FALSE)
+  }
+  valid_datasets <- c("reanalysis-era5-single-levels", "reanalysis-era5-land")
+  if (!dataset_type %in% valid_datasets) {
+    stop("`dataset_type` must be one of: ", paste(valid_datasets, collapse = ", "), call. = FALSE)
+  }
+  
+  # Determine dataset token for file naming
+  dataset_token <- if (dataset_type == "reanalysis-era5-land") "land" else "single-levels"
 
   dataset_is_path <- is.character(dataset) && length(dataset) == 1L
   if (dataset_is_path) {
@@ -82,12 +99,12 @@ add_weather_features <- function(
   }
 
   weather_files <- list(
-    daily = paste0("weather_", location_slug, "_cell_daily.rds"),
-    lag7 = paste0("weather_", location_slug, "_cell_lags_7d.Rds"),
-    lag14 = paste0("weather_", location_slug, "_cell_lags_14d.Rds"),
-    lag30 = paste0("weather_", location_slug, "_cell_lags_30d.Rds"),
-    lag21 = paste0("weather_", location_slug, "_cell_lags_21d_lag7.Rds"),
-    pptlags = paste0("weather_", location_slug, "_cell_ppt_lags.Rds")
+    daily = paste0("weather_", location_slug, "_", dataset_token, "_cell_daily.Rds"),
+    lag7 = paste0("weather_", location_slug, "_", dataset_token, "_cell_lags_7d.Rds"),
+    lag14 = paste0("weather_", location_slug, "_", dataset_token, "_cell_lags_14d.Rds"),
+    lag30 = paste0("weather_", location_slug, "_", dataset_token, "_cell_lags_30d.Rds"),
+    lag21 = paste0("weather_", location_slug, "_", dataset_token, "_cell_lags_21d_lag7.Rds"),
+    pptlags = paste0("weather_", location_slug, "_", dataset_token, "_cell_ppt_lags.Rds")
   )
 
   resolve_weather_path <- function(filename) {
@@ -104,6 +121,13 @@ add_weather_features <- function(
   }
 
   weather_paths <- lapply(weather_files, resolve_weather_path)
+
+  if (isTRUE(verbose)) {
+    message("Reading ERA5 weather tables from:")
+    for (nm in names(weather_paths)) {
+      message("  • ", nm, ": ", weather_paths[[nm]])
+    }
+  }
   weather_tables <- lapply(weather_paths, readr::read_rds)
 
   weather_tables <- lapply(weather_tables, function(tbl) {

@@ -5,10 +5,10 @@
 \title{Build daily & lagged weather features from processed ERA5 CSVs}
 \usage{
 process_era5_data(
-  processed_dir = NULL,
   iso3,
   admin_level,
   admin_name,
+  dataset,
   out_dir = "data/proc",
   start_date = NULL,
   end_date = NULL,
@@ -21,9 +21,6 @@ process_era5_data(
 )
 }
 \arguments{
-\item{processed_dir}{Character. Root dir containing \verb{processed/YYYY/era5_<iso3>_YYYY_MM_all_variables.csv.gz}.
-If NULL, defaults to \code{file.path("data/weather/grib", tolower(iso3), "processed")}.}
-
 \item{iso3}{Character. ISO3 code for the country (e.g., "ESP").}
 
 \item{admin_level}{Integer. GADM administrative level (0=country, 1=region, 2=province, ...).}
@@ -31,49 +28,70 @@ If NULL, defaults to \code{file.path("data/weather/grib", tolower(iso3), "proces
 \item{admin_name}{Character or NULL. Exact \verb{NAME_<level>} to match (e.g., "Barcelona").
 If NULL, the whole level geometry is used (unioned).}
 
+\item{dataset}{Character. ERA5 dataset: "reanalysis-era5-single-levels" or "reanalysis-era5-land".
+Required. Determines which processed folder to read from (processed/single-levels/ or processed/land/).}
+
 \item{out_dir}{Character. Directory to write RDS outputs. Created if missing.}
 
-\item{start_date}{Date. Earliest date to include (UTC). Default "2014-01-01".}
+\item{start_date}{Date. Earliest date to include (UTC). Default NULL, inferred from data.}
 
-\item{end_date}{Date. Latest date to include (UTC). Default is today.}
+\item{end_date}{Date. Latest date to include (UTC). Default NULL, inferred from data.}
 
 \item{wind_calm_kmh}{Numeric. Calm-wind threshold in km/h for MWI logic. Default 6.}
 
-\item{round_ll}{Integer. Rounding (decimal places) applied to lon/lat before
-reshaping to wide. Default 3 (≈100–120 m grid at mid-latitudes).}
+\item{round_ll}{Integer. Rounding decimal places applied to lon/lat before reshaping to wide.}
 
 \item{verbose}{Logical. If TRUE, prints progress messages. Default TRUE.}
 
-\item{attach_to_global}{Logical. If TRUE, assigns output data.frames to .GlobalEnv
-with names based on the file prefix (e.g., \code{weather_esp_lvl2_barcelona_daily}). Default FALSE.}
+\item{attach_to_global}{Logical. If TRUE, assigns output data.frames to .GlobalEnv.}
 
-\item{aggregation_unit}{Character. Choose "region" (default) to produce
-polygon-wide means, "cell" for per-ERA5-cell summaries, or "hourly" to return the
-raw per-cell hourly series without further aggregation.}
+\item{aggregation_unit}{Character. Choose "region", "cell", or "hourly".}
 
 \item{polygon_buffer_km}{Numeric. If no ERA5 centroids fall inside the admin
-polygon, expand it by this distance (kilometers) and retry. Default 10.}
+polygon, or too few are captured, expand it by this distance in kilometers.}
 }
 \value{
-For \code{aggregation_unit = "region"} or \code{"cell"}, (invisibly) a list with:
+For \code{aggregation_unit = "region"} or \code{"cell"}, invisibly returns a list with:
 \code{daily}, \code{lags_7d}, \code{lags_14d}, \code{lags_30d}, \code{lags_21d_lag7}, \code{ppt_lags}, and
-\code{paths} (written file paths). For \code{aggregation_unit = "hourly"}, returns a list
-with \code{hourly} (raw per-cell series) and \code{paths}.
+\code{paths}. For \code{aggregation_unit = "hourly"}, returns a list with \code{hourly} and \code{paths}.
 }
 \description{
-Reads monthly CSV.GZ files created by your ERA5 compiler (one file per
-month with multiple variables named like \verb{era5_<iso3>_YYYY_MM_all_variables.csv.gz}), clips by a GADM admin polygon, aggregates
+Reads monthly CSV.GZ files created by compile_era5_data_v2 from the appropriate
+dataset-specific subdirectory, clips by a GADM admin polygon, aggregates
 to hourly area means, derives daily summaries and rolling-window features,
 and saves RDS outputs with informative names.
 }
 \details{
-Expects variables in the CSVs:
-\itemize{
-\item "10m_u_component_of_wind", "10m_v_component_of_wind"
-\item "2m_temperature", "2m_dewpoint_temperature"
-\item "surface_pressure", "total_precipitation"
-}
+ERA5-Land columns are renamed after \code{dcast()} to match \code{era5_single_level},
+so downstream calculations use one standard variable schema.
 
-Units assumed (ERA5 defaults): temperature in Kelvin, precipitation in meters
-per step; wind components in m/s.
+Temperature and dewpoint values are treated as Kelvin and converted to Celsius
+with \code{x - 273.15}. This is intentional: in some GRIBs, \code{terra} may label the
+layers as \verb{[C]}, but the values can still be Kelvin, e.g. 272–295.
+
+Requires helper objects:
+\itemize{
+\item \code{era5_single_level}
+\item \code{era5_land_to_single_level}
+}
+}
+\examples{
+\dontrun{
+result <- process_era5_data(
+  iso3 = "ESP",
+  admin_level = 2,
+  admin_name = "Barcelona",
+  dataset = "reanalysis-era5-land",
+  aggregation_unit = "region"
+)
+
+result <- process_era5_data(
+  iso3 = "ITA",
+  admin_level = 0,
+  admin_name = NULL,
+  dataset = "reanalysis-era5-single-levels",
+  start_date = as.Date("2020-01-01"),
+  end_date = as.Date("2023-12-31")
+)
+}
 }

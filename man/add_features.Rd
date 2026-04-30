@@ -23,9 +23,10 @@ add_features(
 
 \item{features}{Character vector (or comma-separated string) indicating which
 feature steps to run. Accepted values: \code{"hex"},
-\code{"hex_<cellsize>"} (for example \code{hex_800}), \code{"wx"}/\code{"weather"},
+\code{"hex_<cellsize>"} (for example \code{hex_800}), \code{"wx_land"}/\code{"wx_single"}/\code{"weather_land"}/\code{"weather_single"},
 \code{"lc"}/\code{"landcover"}, \code{"ndvi"}, \code{"el"}/\code{"elevation"},
-\code{"pd"}/\code{"popdensity"}, \code{"se"}/\code{"pseudoabsence"}.}
+\code{"pd"}/\code{"popdensity"}, \code{"se"}/\code{"pseudoabsence"}. For weather features,
+specify the dataset: \code{wx_land} for ERA5-Land or \code{wx_single} for ERA5 Single Levels.}
 
 \item{vector_sources}{Character vector (or comma-separated string) describing
 which vector data sources were used to build the base dataset. Accepted
@@ -52,4 +53,23 @@ the order supplied.
 Helpers run sequentially, with the last step persisting the enriched
 dataset alongside the base inputs. Intermediate helpers update metadata
 (notably the \code{output_path} attribute) so suffixes accumulate as expected.
+}
+\examples{
+\dontrun{
+# Add ERA5-Land weather and landcover features
+add_features(
+  iso3 = "ESP",
+  admin_level = 2,
+  admin_name = "Barcelona",
+  features = "wx_land,lc"
+)
+
+# Add ERA5 Single Levels weather with hex grid
+add_features(
+  iso3 = "ITA",
+  admin_level = 1,
+  admin_name = "Lombardia",
+  features = "hex_800,wx_single,ndvi,el"
+)
+}
 }
