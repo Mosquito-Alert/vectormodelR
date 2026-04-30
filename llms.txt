@@ -17,6 +17,7 @@ You can install the development version of VectorModelR from
 [GitHub](https://github.com/) as follows:
 
 ``` r
+
 # install.packages("devtools")
 devtools::install_github("Mosquito-Alert/vectormodelR")
 ```
@@ -33,6 +34,7 @@ First, load the package and define the target area and modeling
 parameters.
 
 ``` r
+
 library(vectormodelR)
 library(terra)
 library(dplyr)
@@ -52,6 +54,7 @@ threads_per_chain   <- 1
 Download vector surveillance data and environmental covariates.
 
 ``` r
+
 # Get vector counts from Mosquito Alert and GBIF
 counts <- vectormodelR::get_vector_counts(
   iso3 = target_country_iso3, 
@@ -97,6 +100,7 @@ Build a hexagonal grid and process environmental layers (Landcover,
 Elevation, NDVI, Population).
 
 ``` r
+
 # Create hexagonal grids at different resolutions
 hex_grid400 <- vectormodelR::build_spatial_grid(
   iso3 = target_country_iso3, 
@@ -150,6 +154,7 @@ elevation <- vectormodelR::get_elevation_data(
 Initialize the dataset structure and add processed features.
 
 ``` r
+
 # Initialize empty dataset structure
 initialized_data = vectormodelR::initialize_vector_dataset(
   iso3 = target_country_iso3, 
@@ -172,6 +177,7 @@ enriched_data = vectormodelR::add_features(
 Fit a Bayesian BYM2 model to account for spatial autocorrelation.
 
 ``` r
+
 # Run BYM2 model with brms
 brms_bym2_model <- vectormodelR::run_brms_bym2_model(
   dataset = enriched_data,
@@ -196,6 +202,7 @@ Visualize the conditional effects of predictors, such as population
 density.
 
 ``` r
+
 library(ggplot2)
 library(brms)
 
@@ -268,10 +275,10 @@ NextGenerationEU/PRTR](reference/figures/funding/MICIU+NextG+PRTR+AEI_page-0001.
   : Build a TIGA-like grid over a GADM admin unit
 - [`build_trs_daily()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_trs_daily.md)
   : Build TRS daily sampling effort surface for a location
+- [`compile_era5_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/compile_era5_data.md)
+  : Compile ERA5 monthly CSVs from multi-variable GRIB/ZIP files
 - [`compile_era5_data_v2()`](https://labs.mosquitoalert.com/mosquitoR/reference/compile_era5_data_v2.md)
-  : Compile ERA5 monthly CSVs from GRIB files (terra-only)
-- [`compile_era5_monthly()`](https://labs.mosquitoalert.com/mosquitoR/reference/compile_era5_monthly.md)
-  : Compile ERA5 monthly CSVs from GRIB/NetCDF files
+  : Compile ERA5 monthly CSVs from GRIB/ZIP files (terra-only)
 - [`convert_to_utm()`](https://labs.mosquitoalert.com/mosquitoR/reference/convert_to_utm.md)
   : Transform a geometry to its local UTM zone
 - [`download_zenodo()`](https://labs.mosquitoalert.com/mosquitoR/reference/download_zenodo.md)
@@ -284,6 +291,8 @@ NextGenerationEU/PRTR](reference/figures/funding/MICIU+NextG+PRTR+AEI_page-0001.
   : Get ~30 m SRTM DEM for a GADM admin unit or full country
 - [`get_era5_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_era5_data.md)
   : Download ERA5 climate data from the Copernicus Climate Data Store
+- [`get_era5_logged_jobs()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_era5_logged_jobs.md)
+  : Retry ERA5 downloads from a CDS job log
 - [`get_gadm_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_gadm_data.md)
   : Retrieve GADM polygons using geodata::gadm()
 - [`get_gadm_names()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_gadm_names.md)

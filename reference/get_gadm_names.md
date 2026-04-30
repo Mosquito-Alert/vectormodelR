@@ -19,8 +19,8 @@ get_gadm_names(
 - country:
 
   Character scalar. Country name as accepted by
-  [`geodata::gadm()`](https://rdrr.io/pkg/geodata/man/gadm.html) (e.g.
-  "Spain").
+  [`geodata::gadm()`](https://rspatial.github.io/geodata/reference/gadm.html)
+  (e.g. "Spain").
 
 - level:
 

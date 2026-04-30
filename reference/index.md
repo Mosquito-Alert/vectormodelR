@@ -30,10 +30,10 @@
   : Build a TIGA-like grid over a GADM admin unit
 - [`build_trs_daily()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_trs_daily.md)
   : Build TRS daily sampling effort surface for a location
+- [`compile_era5_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/compile_era5_data.md)
+  : Compile ERA5 monthly CSVs from multi-variable GRIB/ZIP files
 - [`compile_era5_data_v2()`](https://labs.mosquitoalert.com/mosquitoR/reference/compile_era5_data_v2.md)
-  : Compile ERA5 monthly CSVs from GRIB files (terra-only)
-- [`compile_era5_monthly()`](https://labs.mosquitoalert.com/mosquitoR/reference/compile_era5_monthly.md)
-  : Compile ERA5 monthly CSVs from GRIB/NetCDF files
+  : Compile ERA5 monthly CSVs from GRIB/ZIP files (terra-only)
 - [`convert_to_utm()`](https://labs.mosquitoalert.com/mosquitoR/reference/convert_to_utm.md)
   : Transform a geometry to its local UTM zone
 - [`download_zenodo()`](https://labs.mosquitoalert.com/mosquitoR/reference/download_zenodo.md)
@@ -46,6 +46,8 @@
   : Get ~30 m SRTM DEM for a GADM admin unit or full country
 - [`get_era5_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_era5_data.md)
   : Download ERA5 climate data from the Copernicus Climate Data Store
+- [`get_era5_logged_jobs()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_era5_logged_jobs.md)
+  : Retry ERA5 downloads from a CDS job log
 - [`get_gadm_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_gadm_data.md)
   : Retrieve GADM polygons using geodata::gadm()
 - [`get_gadm_names()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_gadm_names.md)

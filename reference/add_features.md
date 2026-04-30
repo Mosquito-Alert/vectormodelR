@@ -40,9 +40,12 @@ add_features(
 
   Character vector (or comma-separated string) indicating which feature
   steps to run. Accepted values: `"hex"`, `"hex_<cellsize>"` (for
-  example `hex_800`), `"wx"`/`"weather"`, `"lc"`/`"landcover"`,
-  `"ndvi"`, `"el"`/`"elevation"`, `"pd"`/`"popdensity"`,
-  `"se"`/`"pseudoabsence"`.
+  example `hex_800`),
+  `"wx_land"`/`"wx_single"`/`"weather_land"`/`"weather_single"`,
+  `"lc"`/`"landcover"`, `"ndvi"`, `"el"`/`"elevation"`,
+  `"pd"`/`"popdensity"`, `"se"`/`"pseudoabsence"`. For weather features,
+  specify the dataset: `wx_land` for ERA5-Land or `wx_single` for ERA5
+  Single Levels.
 
 - vector_sources:
 
@@ -69,3 +72,25 @@ add_features(
 The enriched dataset returned by the final helper that ran. The object
 retains the `output_path` attribute referencing the file written by that
 helper.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Add ERA5-Land weather and landcover features
+add_features(
+  iso3 = "ESP",
+  admin_level = 2,
+  admin_name = "Barcelona",
+  features = "wx_land,lc"
+)
+
+# Add ERA5 Single Levels weather with hex grid
+add_features(
+  iso3 = "ITA",
+  admin_level = 1,
+  admin_name = "Lombardia",
+  features = "hex_800,wx_single,ndvi,el"
+)
+} # }
+```

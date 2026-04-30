@@ -23,7 +23,7 @@ get_elevation_data(
 - country:
 
   Country name or ISO3 code accepted by
-  [`geodata::gadm()`](https://rdrr.io/pkg/geodata/man/gadm.html).
+  [`geodata::gadm()`](https://rspatial.github.io/geodata/reference/gadm.html).
 
 - level:
 

@@ -10,6 +10,7 @@ attaches ERA5-based weather metrics, and writes a new
 ``` r
 add_weather_features(
   dataset,
+  dataset_type,
   data_dir = "data/proc",
   write_output = TRUE,
   verbose = TRUE
@@ -27,6 +28,13 @@ add_weather_features(
   attribute naming the last saved file; the enriched dataset is written
   to `data_dir` with `_wx.Rds` appended to that stem when `write_output`
   is `TRUE`.
+
+- dataset_type:
+
+  Character. ERA5 dataset: "reanalysis-era5-single-levels" or
+  "reanalysis-era5-land". Must match the dataset used when processing
+  weather data with
+  [`process_era5_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/process_era5_data.md).
 
 - data_dir:
 
@@ -58,7 +66,8 @@ add_weather_features(
     iso3 = "ESP",
     admin_level = 4,
     admin_name = "Barcelona"
-  )
+  ),
+  dataset_type = "reanalysis-era5-land"
 )
 } # }
 ```

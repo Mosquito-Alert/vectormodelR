@@ -12,6 +12,7 @@ The canonical pipeline generates a feature-enriched dataset, fits a
 Bernoulli occupancy model with `brms`, and renders a diagnostic report:
 
 ``` r
+
 library(vectormodelR)
 
 # Location configuration
@@ -294,5 +295,6 @@ outputs are available via the `format` argument.
 ## Session information
 
 ``` r
+
 sessionInfo()
 ```

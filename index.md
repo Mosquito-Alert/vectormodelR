@@ -17,6 +17,7 @@ You can install the development version of VectorModelR from
 [GitHub](https://github.com/) as follows:
 
 ``` r
+
 # install.packages("devtools")
 devtools::install_github("Mosquito-Alert/vectormodelR")
 ```
@@ -33,6 +34,7 @@ First, load the package and define the target area and modeling
 parameters.
 
 ``` r
+
 library(vectormodelR)
 library(terra)
 library(dplyr)
@@ -52,6 +54,7 @@ threads_per_chain   <- 1
 Download vector surveillance data and environmental covariates.
 
 ``` r
+
 # Get vector counts from Mosquito Alert and GBIF
 counts <- vectormodelR::get_vector_counts(
   iso3 = target_country_iso3, 
@@ -97,6 +100,7 @@ Build a hexagonal grid and process environmental layers (Landcover,
 Elevation, NDVI, Population).
 
 ``` r
+
 # Create hexagonal grids at different resolutions
 hex_grid400 <- vectormodelR::build_spatial_grid(
   iso3 = target_country_iso3, 
@@ -150,6 +154,7 @@ elevation <- vectormodelR::get_elevation_data(
 Initialize the dataset structure and add processed features.
 
 ``` r
+
 # Initialize empty dataset structure
 initialized_data = vectormodelR::initialize_vector_dataset(
   iso3 = target_country_iso3, 
@@ -172,6 +177,7 @@ enriched_data = vectormodelR::add_features(
 Fit a Bayesian BYM2 model to account for spatial autocorrelation.
 
 ``` r
+
 # Run BYM2 model with brms
 brms_bym2_model <- vectormodelR::run_brms_bym2_model(
   dataset = enriched_data,
@@ -196,6 +202,7 @@ Visualize the conditional effects of predictors, such as population
 density.
 
 ``` r
+
 library(ggplot2)
 library(brms)
 

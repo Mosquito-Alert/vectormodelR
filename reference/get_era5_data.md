@@ -6,42 +6,63 @@ Download ERA5 climate data from the Copernicus Climate Data Store
 
 ``` r
 get_era5_data(
-  country_iso3 = NULL,
+  iso3 = NULL,
+  admin_level = NULL,
+  admin_name = NULL,
+  bbox_margin_deg = 0.5,
   bounding_box = NULL,
   output_dir = NULL,
   dataset = "reanalysis-era5-single-levels",
   variables = c("2m_dewpoint_temperature", "2m_temperature", "10m_u_component_of_wind",
     "10m_v_component_of_wind", "surface_pressure", "total_precipitation"),
-  start_year = as.integer(format(Sys.Date(), "%Y")),
-  end_year = as.integer(format(Sys.Date(), "%Y")),
+  start_ym = format(Sys.Date(), "%Y_%m"),
+  end_ym = format(Sys.Date(), "%Y_%m"),
   ecmwfr_key = Sys.getenv("ECMWFR_KEY"),
   ecmwfr_user = "ecmwfr",
   write_key = FALSE,
-  data_format = c("grib", "netcdf"),
   hours = sprintf("%02d:00", 0:23),
-  skip_if_exists_mb = 1,
   retry = 2,
-  pause_sec = 10,
-  verbose = FALSE
+  pause_between_requests_sec = 90,
+  pause_sec = 600,
+  verbose = FALSE,
+  return_files = FALSE
 )
 ```
 
 ## Arguments
 
-- country_iso3:
+- iso3:
 
-  character. ISO3 country code (e.g., "BGD", "ESP", "USA"). Takes
-  precedence over `bounding_box`.
+  character. ISO3 country code (e.g., "BGD", "ESP", "USA"). When
+  `admin_level`/`admin_name` are also supplied, the download bbox is
+  derived from the matching GADM unit.
+
+- admin_level:
+
+  integer. GADM administrative level (0=country, 1=region, 2=province,
+  ...). Used only when `admin_name` is supplied.
+
+- admin_name:
+
+  character. Exact `NAME_<level>` value to select within GADM. When
+  provided, `get_era5_data()` downloads a bbox around that admin unit.
+
+- bbox_margin_deg:
+
+  numeric. Margin (in degrees) added on each side of the derived bbox.
+  Defaults to 0.5.
 
 - bounding_box:
 
   numeric(4). c(north, west, south, east) in decimal degrees. Ignored if
-  `country_iso3` is provided.
+  `iso3` is provided.
 
 - output_dir:
 
   character. Directory where downloaded files will be saved. Default
-  NULL uses "data/weather/grib/" when `country_iso3` supplied.
+  NULL uses `data/weather/grib/<iso3>` for country-wide downloads, or
+  `data/weather/grib/<iso3>_<admin_level>_<admin_name>` when
+  `admin_name` is provided.
 
 - dataset:
 
@@ -52,13 +73,15 @@ get_era5_data(
 
   character(). ERA5 variable short names. Default common surface vars.
 
-- start_year:
+- start_ym:
 
-  integer. Starting year. Default = current year.
+  character. Starting year-month in "YYYY_MM" format, e.g. "2024_05".
+  Default = current year-month.
 
-- end_year:
+- end_ym:
 
-  integer. Ending year. Default = current year.
+  character. Ending year-month in "YYYY_MM" format, e.g. "2024_11".
+  Default = current year-month.
 
 - ecmwfr_key:
 
@@ -76,45 +99,34 @@ get_era5_data(
   logical. Persist `ecmwfr_key` to the keyring (off by default for
   public packages).
 
-- data_format:
-
-  character. "grib" or "netcdf". Default "grib".
-
 - hours:
 
   character(). Hours like "00:00"…"23:00". Default all 24 hours.
 
-- skip_if_exists_mb:
-
-  numeric. Skip downloads if an existing file is larger than this size
-  (MB). Default 1.
-
 - retry:
 
-  integer. Retries per file on transient errors. Default 2.
+  integer. Number of retries after the first attempt. Default 2. Retries
+  are only used when no CDS job URL was created.
+
+- pause_between_requests_sec:
+
+  numeric. Seconds to wait after a successful download before sending
+  the next request.
 
 - pause_sec:
 
-  numeric. Seconds to wait between retries. Default 10.
+  numeric. Seconds to wait between failed attempts. Default 600.
 
 - verbose:
 
   logical. Pass to `wf_request(verbose=)`. Default FALSE.
 
+- return_files:
+
+  logical. If TRUE, returns a list with `summary` and `files`, otherwise
+  just `summary`.
+
 ## Value
 
-A list with `summary` (counts/paths) and `files` (data.frame of per-file
-results).
-
-## Examples
-
-``` r
-if (FALSE) { # \dontrun{
-# Using a country code (tries Natural Earth if get_bounding_boxes() not available)
-get_era5_data(country_iso3 = "BGD", start_year = 2024, end_year = 2024)
-
-# Using a custom bounding box
-get_era5_data(bounding_box = c(26.995, 86.950, 20.204, 93.500),
-              variables = "2m_temperature", start_year = 2024, end_year = 2024)
-} # }
-```
+A list with `summary` and `files`. A CSV log is also written to
+`<output_dir>/logs/`.
