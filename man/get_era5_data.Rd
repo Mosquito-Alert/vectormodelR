@@ -23,7 +23,8 @@ get_era5_data(
   retry = 2,
   pause_between_requests_sec = 90,
   pause_sec = 600,
-  verbose = FALSE
+  verbose = FALSE,
+  return_files = FALSE
 )
 }
 \arguments{
@@ -75,7 +76,8 @@ Default "ecmwfr".}
 
 \item{hours}{character(). Hours like "00:00"…"23:00". Default all 24 hours.}
 
-\item{retry}{integer. Number of retries after the first attempt. Default 2.}
+\item{retry}{integer. Number of retries after the first attempt. Default 2.
+Retries are only used when no CDS job URL was created.}
 
 \item{pause_between_requests_sec}{numeric. Seconds to wait after a
 successful download before sending the next request.}
@@ -83,9 +85,12 @@ successful download before sending the next request.}
 \item{pause_sec}{numeric. Seconds to wait between failed attempts. Default 600.}
 
 \item{verbose}{logical. Pass to \code{wf_request(verbose=)}. Default FALSE.}
+
+\item{return_files}{logical. If TRUE, returns a list with \code{summary} and \code{files}, otherwise just \code{summary}.}
 }
 \value{
-A list with \code{summary} and \code{files}.
+A list with \code{summary} and \code{files}. A CSV log is also written to
+\verb{<output_dir>/logs/}.
 }
 \description{
 Download ERA5 climate data from the Copernicus Climate Data Store
