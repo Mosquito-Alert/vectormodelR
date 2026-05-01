@@ -104,7 +104,53 @@ add_pseudoabsences_se <- function(
   D_sf <- sf::st_as_sf(D, coords = c(lon_col, lat_col), crs = 4326, remove = FALSE)
   D_sf[[date_col]] <- as.Date(D_sf[[date_col]])
   D_sf$year <- lubridate::year(D_sf[[date_col]])
-  years_use <- sort(unique(D_sf$year))
+  years_use <- sort(unique(stats::na.omit(D_sf$year)))
+  
+  # ---- helper: sample hours from presence distribution ----
+  sample_hours_from_presences <- function(pres_data, n_samples, source_value) {
+    # Extract hours from presence records for this source (excluding NA)
+    pres_subset <- pres_data |>
+      dplyr::filter(.data[[source_col]] == source_value)
+    
+    if (!"hour" %in% names(pres_subset)) {
+      # No hour column - return NA
+      return(rep(NA_integer_, n_samples))
+    }
+    
+    pres_hours <- pres_subset |>
+      dplyr::filter(!is.na(.data$hour)) |>
+      dplyr::pull(.data$hour)
+    
+    if (length(pres_hours) == 0) {
+      # No time data available - return NA (prefer missing over uniform assumption)
+      return(rep(NA_integer_, n_samples))
+    }
+    
+    # Sample from actual presence hours (with replacement)
+    sample(pres_hours, n_samples, replace = TRUE)
+  }
+  
+  # ---- helper: add hour and datetime to pseudoabsences ----
+  add_sampled_hours <- function(abs_sf, source_value) {
+    if (is.null(abs_sf)) return(NULL)
+    
+    abs_df <- sf::st_drop_geometry(abs_sf)
+    sampled_hours <- sample_hours_from_presences(D_sf, nrow(abs_df), source_value)
+    abs_df$hour <- sampled_hours
+    
+    # Construct datetime from date + hour (properly handling POSIXct)
+    abs_df$datetime <- as.POSIXct(NA, tz = "UTC")
+    valid_hours <- !is.na(sampled_hours)
+    if (any(valid_hours)) {
+      abs_df$datetime[valid_hours] <- as.POSIXct(
+        paste(abs_df[[date_col]][valid_hours], sprintf("%02d:00:00", sampled_hours[valid_hours])),
+        tz = "UTC"
+      )
+    }
+    
+    # Convert back to sf
+    sf::st_as_sf(abs_df, coords = c(lon_col, lat_col), crs = 4326, remove = FALSE)
+  }
   
   # ---- helper sampler ----
   sample_from_effort <- function(eff_sf, weight_col, n_abs, source_value, pa_method, extra_keep = character()) {
@@ -201,6 +247,9 @@ add_pseudoabsences_se <- function(
     
     if (!is.null(abs_ma)) {
       for (col in se_cols) if (!col %in% names(D_sf)) D_sf[[col]] <- NA_real_
+      
+      # Add hour and datetime columns matching presence distribution
+      abs_ma <- add_sampled_hours(abs_ma, ma_source)
     }
   }
   
@@ -220,6 +269,11 @@ add_pseudoabsences_se <- function(
       pa_method = "gbif_tgb",
       extra_keep = c(tgb_col)
     )
+    
+    if (!is.null(abs_gbif)) {
+      # Add hour and datetime columns matching presence distribution
+      abs_gbif <- add_sampled_hours(abs_gbif, gbif_source)
+    }
   }
   
   # ---- 5) Combine ----
