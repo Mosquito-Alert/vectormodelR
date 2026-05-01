@@ -40,8 +40,10 @@ values to drop when both sources are merged. Defaults to discarding
 \code{NULL} to keep all collection codes.}
 }
 \value{
-A tibble with columns \code{date}, \code{year}, \code{lon}, \code{lat},
-\code{presence}, \code{referenceID}, and \code{source}. Attributes include \code{output_path}
+A tibble with columns \code{date}, \code{datetime}, \code{hour}, \code{year}, \code{lon}, \code{lat},
+\code{presence}, \code{referenceID}, and \code{source}. The \code{hour} column contains integers
+(0-23) representing the top of the hour from the original datetime, or NA
+if no time component was present. Attributes include \code{output_path}
 and \code{source_files}.
 }
 \description{
