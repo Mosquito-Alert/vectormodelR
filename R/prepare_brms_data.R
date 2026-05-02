@@ -1,36 +1,36 @@
-#' Prepare data and adjacency matrix for BYM2 modelling
+#' Prepare data for brms modelling
 #'
 #' Cleans the dataset, scales predictors (storing means/SDs for future use),
-#' and aligns the spatial adjacency matrix to the filtered data. Optionally
+#' and returns an object ready to be passed to [run_brms_model()]. Optionally
 #' saves the prepared object to disk.
 #'
-#' @inheritParams run_brms_bym2_model
+#' @inheritParams run_brms_model
 #' @param cellsize_m Numeric cell size (meters). Defaults to 800.
-#' @param adjacency Optional pre-computed adjacency matrix. If NULL, one is built.
-#' @param adjacency_args List of arguments passed to [build_grid_adjacency()].
+#' @param temporal_resolution Character. Either `"daily"` (default) or `"hourly"`. 
+#'   When `"hourly"`, filters to records with valid `hour` values and includes
+#'   hour in the model data. When `"daily"`, aggregates by date only.
 #' @param output_dir Directory where the prepared dataset is written when `write = TRUE`. Defaults to `"data/proc"`.
 #' @param write Logical. If `TRUE` the prepared object is written to disk. Defaults to `FALSE`.
 #' @param verbose Logical. Emit informative messages when `TRUE`.
 #'
-#' @return A list of class `bym2_data_list` containing:
+#' @return A list of class `brms_data_prep` containing:
 #'   \item{model_data}{The filtered, scaled data.frame ready for brms.}
-#'   \item{adjacency}{The aligned sparse matrix corresponding to `model_data`.}
 #'   \item{grid_col}{The name of the grid identifier column used.}
 #'   \item{scaling}{A list of mean/sd values used for scaling predictors.}
 #'   \item{meta}{Metadata (iso3, admin_level, etc.) for file naming.}
 #' @export
-prepare_bym2_data <- function(
+prepare_brms_data <- function(
     dataset,
     cellsize_m = 800,
+    temporal_resolution = c("daily", "hourly"),
     iso3 = NULL,
     admin_level = NULL,
     admin_name = NULL,
-    adjacency = NULL,
-    adjacency_args = list(),
     output_dir = "data/proc",
     write = FALSE,
     verbose = TRUE
 ) {
+  temporal_resolution <- match.arg(temporal_resolution)
   # ---- load dataset ----
   dataset_is_path <- is.character(dataset) && length(dataset) == 1L && nzchar(dataset)
   dataset_path <- if (dataset_is_path) dataset else NULL
@@ -81,6 +81,27 @@ prepare_bym2_data <- function(
   df <- dataset |>
     dplyr::filter(!is.na(.data[[grid_col]]))
   
+  # 3. Handle temporal resolution
+  if (identical(temporal_resolution, "hourly")) {
+    if (!"hour" %in% names(df)) {
+      stop("Hourly resolution requested but 'hour' column not found in dataset.", call. = FALSE)
+    }
+    
+    n_before <- nrow(df)
+    df <- df |> dplyr::filter(!is.na(.data$hour))
+    n_after <- nrow(df)
+    n_dropped <- n_before - n_after
+    
+    if (n_dropped > 0 && isTRUE(verbose)) {
+      message(sprintf(
+        "Hourly mode: Dropped %d records (%.1f%%) with missing hour values.",
+        n_dropped, 100 * n_dropped / n_before
+      ))
+    }
+    
+    if (!nrow(df)) stop("No observations remain after filtering for valid hours.", call. = FALSE)
+  }
+  
   if (!nrow(df)) stop("No observations remain after filtering for valid grid identifiers.", call. = FALSE)
   
   # 2. explicit NA filtering for ALL model variables
@@ -117,54 +138,21 @@ prepare_bym2_data <- function(
       elev_z  = do_scale(.data$elevation_m, "elevation"),
       pop_z   = do_scale(log1p(.data$popdensity_km2), "log1p_pop")
     ) |>
-    dplyr::arrange(.data$source, .data[[grid_col]], .data$date) |>
-    dplyr::distinct(.data$source, .data[[grid_col]], .data$date, .data$presence, .keep_all = TRUE)
+    dplyr::arrange(.data$source, .data[[grid_col]], .data$date)
   
-  # ---- adjacency ----
-  grid_ids <- sort(unique(df[[grid_col]]))
-  
-  if (is.null(adjacency)) {
-    if (is.null(iso3) || is.null(admin_level) || is.null(admin_name)) {
-      stop("`iso3`, `admin_level`, `admin_name` required to build adjacency.", call. = FALSE)
-    }
-    
-    # Forward extra args if provided
-    adj_args <- c(
-      list(iso3 = iso3, admin_level = admin_level, admin_name = admin_name, 
-           cellsize_m = cellsize_m, model = dataset, sparse = TRUE),
-      adjacency_args
-    )
-    # Assuming build_grid_adjacency handles duplicate args by taking the last one
-    # or you might need more robust list merging here
-    adjacency_matrix <- do.call(build_grid_adjacency, adj_args)
-    
+  # Distinct handling depends on temporal resolution
+  if (identical(temporal_resolution, "hourly")) {
+    df <- df |>
+      dplyr::distinct(.data$source, .data[[grid_col]], .data$date, .data$hour, .data$presence, .keep_all = TRUE)
   } else {
-    adjacency_matrix <- adjacency
-  }
-  
-  if (!inherits(adjacency_matrix, "Matrix")) adjacency_matrix <- Matrix::Matrix(adjacency_matrix)
-  
-  # Ensure strict alignment
-  if (is.null(rownames(adjacency_matrix))) stop("Adjacency matrix must have rownames.", call. = FALSE)
-  
-  missing_ids <- setdiff(grid_ids, rownames(adjacency_matrix))
-  if (length(missing_ids)) {
-    stop("Adjacency matrix is missing ", length(missing_ids), " grid identifiers found in data.", call. = FALSE)
-  }
-  
-  # Subset and sort matrix to match data exactly
-  adjacency_aligned <- adjacency_matrix[grid_ids, grid_ids, drop = FALSE]
-  
-  # Ensure symmetry (numerical precision issues can sometimes break this)
-  if (!Matrix::isSymmetric(adjacency_aligned)) {
-    adjacency_aligned <- (adjacency_aligned + Matrix::t(adjacency_aligned)) / 2
+    df <- df |>
+      dplyr::distinct(.data$source, .data[[grid_col]], .data$date, .data$presence, .keep_all = TRUE)
   }
   
   # ---- return object ----
   obj <- structure(
     list(
       model_data = df,
-      adjacency = adjacency_aligned,
       grid_col = grid_col,
       scaling = scale_params,
       meta = list(
@@ -172,10 +160,11 @@ prepare_bym2_data <- function(
         admin_level = admin_level, 
         admin_name = admin_name, 
         slug = location_slug,
-        source_path = dataset_path
+        source_path = dataset_path,
+        temporal_resolution = temporal_resolution
       )
     ),
-    class = "bym2_data_prep"
+    class = "brms_data_prep"
   )
 
   if (isTRUE(write)) {
@@ -184,11 +173,12 @@ prepare_bym2_data <- function(
     }
     if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
     
-    # We save the entire object to preserve scaling params and adjacency
-    output_path <- file.path(output_dir, sprintf("model_prep_%s_data.rds", location_slug))
+    # Include temporal resolution in filename
+    resolution_suffix <- if (identical(temporal_resolution, "hourly")) "_hourly" else "_daily"
+    output_path <- file.path(output_dir, sprintf("model_prep_%s%s_data.rds", location_slug, resolution_suffix))
     saveRDS(obj, output_path)
     
-    if (isTRUE(verbose)) message("Prepared brms/BYM2 object written to ", output_path)
+    if (isTRUE(verbose)) message("Prepared brms data object (", temporal_resolution, ") written to ", output_path)
   }
 
   obj

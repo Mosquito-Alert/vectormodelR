@@ -7,6 +7,8 @@
 run_brms_model(
   dataset = NULL,
   formula = NULL,
+  cellsize_m = 800,
+  temporal_resolution = c("daily", "hourly"),
   priors = NULL,
   nchains = 4,
   threads_per_chain = 1,
@@ -24,8 +26,8 @@ run_brms_model(
 )
 }
 \arguments{
-\item{dataset}{An in-memory modelling dataset (data.frame), a \code{bym2_data_prep} object,
-or a path to the enriched RDS file.}
+\item{dataset}{An in-memory modelling dataset (data.frame), a \code{brms_data_prep} object,
+a \code{bym2_data_prep} object, or a path to a prepared RDS file.}
 
 \item{formula}{Optional character string or formula object specifying the fixed
 and random effects structure. If \code{NULL} (default), the function processes
