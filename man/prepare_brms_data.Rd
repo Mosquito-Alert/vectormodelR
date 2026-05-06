@@ -23,8 +23,9 @@ a \code{bym2_data_prep} object, or a path to a prepared RDS file.}
 \item{cellsize_m}{Numeric cell size (meters). Defaults to 800.}
 
 \item{temporal_resolution}{Character. Either \code{"daily"} (default) or \code{"hourly"}.
-When \code{"hourly"}, filters to records with valid \code{hour} values and includes
-hour in the model data. When \code{"daily"}, aggregates by date only.}
+When \code{"hourly"}, filters to records with valid hourly weather values and
+scales the current-hour and short-window hourly predictors. When \code{"daily"},
+uses the daily weather summaries and precipitation lag predictors.}
 
 \item{iso3, admin_level, admin_name}{Optional strings to locate the dataset if \code{dataset} is NULL.}
 

@@ -7,6 +7,7 @@
 add_weather_features(
   dataset,
   dataset_type,
+  weather_resolution = c("daily", "hourly"),
   data_dir = "data/proc",
   write_output = TRUE,
   verbose = TRUE
@@ -23,6 +24,13 @@ written to \code{data_dir} with \verb{_wx.Rds} appended to that stem when
 \item{dataset_type}{Character. ERA5 dataset: "reanalysis-era5-single-levels"
 or "reanalysis-era5-land". Must match the dataset used when processing weather
 data with \code{process_era5_data()}.}
+
+\item{weather_resolution}{Character. Weather feature resolution to add.
+Use \code{"daily"} for the existing daily summaries and precipitation lag
+windows, or \code{"hourly"} to join the processed hourly ERA5 cell table by
+nearest ERA5 cell and report hour. Hourly joins use \code{datetime} when
+available and fall back to \code{date} plus \code{hour} for rows with missing
+\code{datetime}.}
 
 \item{data_dir}{Directory that holds the weather RDS files and where the
 weather-enriched dataset will be written. Defaults to \code{"data/proc"}.}

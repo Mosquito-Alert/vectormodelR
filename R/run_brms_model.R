@@ -8,11 +8,8 @@
 #' 
 #' @param dataset An in-memory modelling dataset (data.frame), a `brms_data_prep` object,
 #'   a `bym2_data_prep` object, or a path to a prepared RDS file.
-#' @param formula Optional character string or formula object specifying the fixed
-#'   and random effects structure. If `NULL` (default), the function processes
-#'   `source` validation and uses a set of default predictors including
-#'   `sea_days`, `maxTM_z`, `ppt_z`, `ndvi_z`, `elev_z`, `pop_z`, `year`, and
-#'   `landcover_code`.
+#' @param formula Character string or formula object specifying the fixed
+#'   and random effects structure. This parameter is required.
 #' @param priors Optional `brms::set_prior` object. If `NULL`, default priors for
 #'   intercepts, coefficients, and standard deviations are used.
 #' @param nchains Integer. Number of MCMC chains. Default 4.
@@ -30,7 +27,7 @@
 #' @export
 run_brms_model <- function(
   dataset = NULL,
-  formula = NULL,
+  formula,
   cellsize_m = 800,
   temporal_resolution = c("daily", "hourly"),
   priors = NULL,
@@ -59,6 +56,10 @@ run_brms_model <- function(
   }
   if (identical(backend, "cmdstanr") && !requireNamespace("cmdstanr", quietly = TRUE)) {
     stop("Backend 'cmdstanr' selected but package 'cmdstanr' is not installed.", call. = FALSE)
+  }
+
+  if (missing(formula)) {
+    stop("`formula` is now required and must be supplied.", call. = FALSE)
   }
 
   validate_count <- function(x, name) {
@@ -266,24 +267,7 @@ run_brms_model <- function(
     } else {
       stop("`formula` must be a string or formula object.", call. = FALSE)
     }
-  } else {
-    # Base formula (WITHOUT spatial term)
-    formula_parts <- c(
-      "presence ~ s(sea_days, bs = \"cc\", k = 12)",
-      if (identical(temporal_resolution, "hourly")) "s(hour, bs = \"cc\", k = 24)" else NULL,
-      "s(maxTM_z, k = 6)",
-      "ppt_z + ndvi_z + elev_z + s(pop_z, k = 5)",
-      "(1 | year)",
-      "(1 | landcover_code)"
-    )
-    
-    # Add source if validated
-    if (include_source) {
-      formula_parts <- append(formula_parts, "source", after = 3)
-    }
-    
-    formula_text <- paste(formula_parts, collapse = " + ")
-  }
+  } 
   
   model_formula <- stats::as.formula(formula_text)
 

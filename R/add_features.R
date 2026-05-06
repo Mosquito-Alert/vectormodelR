@@ -24,6 +24,9 @@
 #'   derived artefacts. Defaults to `"data/proc"`.
 #' @param grid_cellsize_m Numeric cell size (meters) corresponding to the stored
 #'   hex grid. Defaults to 400.
+#' @param weather_resolution Character. Resolution used when adding weather
+#'   features. Passed to [add_weather_features()]. Use `"daily"` for daily
+#'   summaries and lagged windows or `"hourly"` for hourly ERA5 cell features.
 #' @param verbose Logical; if `TRUE`, prints progress messages while processing.
 #'
 #' @return The enriched dataset returned by the final helper that ran. The
@@ -55,8 +58,10 @@ add_features <- function(
   features,
   vector_sources = c("malert", "gbif"),
   data_dir = "data/proc",
+  weather_resolution = c("daily", "hourly"),
   verbose  = TRUE
 ) {
+  weather_resolution <- match.arg(weather_resolution)
   ids <- build_location_identifiers(iso3, admin_level, admin_name)
   location_slug <- ids$slug
 
@@ -206,6 +211,7 @@ add_features <- function(
         add_weather_features(
           dataset = current,
           dataset_type = dataset_type,
+          weather_resolution = weather_resolution,
           data_dir = data_dir,
           write_output = write_current,
           verbose = verbose

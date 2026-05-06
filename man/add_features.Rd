@@ -11,6 +11,7 @@ add_features(
   features,
   vector_sources = c("malert", "gbif"),
   data_dir = "data/proc",
+  weather_resolution = c("daily", "hourly"),
   verbose = TRUE
 )
 }
@@ -34,6 +35,10 @@ values: "malert", "gbif". Determines the filename suffix that is located.}
 
 \item{data_dir}{Directory containing the model-preparation datasets and
 derived artefacts. Defaults to \code{"data/proc"}.}
+
+\item{weather_resolution}{Character. Resolution used when adding weather
+features. Passed to \code{\link[=add_weather_features]{add_weather_features()}}. Use \code{"daily"} for daily
+summaries and lagged windows or \code{"hourly"} for hourly ERA5 cell features.}
 
 \item{verbose}{Logical; if \code{TRUE}, prints progress messages while processing.}
 
