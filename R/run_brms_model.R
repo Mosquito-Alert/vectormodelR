@@ -6,13 +6,10 @@
 #' matrix.
 #'
 #' 
-#' @param dataset An in-memory modelling dataset (data.frame), a `bym2_data_prep` object,
-#'   or a path to the enriched RDS file.
-#' @param formula Optional character string or formula object specifying the fixed
-#'   and random effects structure. If `NULL` (default), the function processes
-#'   `source` validation and uses a set of default predictors including
-#'   `sea_days`, `maxTM_z`, `ppt_z`, `ndvi_z`, `elev_z`, `pop_z`, `year`, and
-#'   `landcover_code`.
+#' @param dataset An in-memory modelling dataset (data.frame), a `brms_data_prep` object,
+#'   a `bym2_data_prep` object, or a path to a prepared RDS file.
+#' @param formula Character string or formula object specifying the fixed
+#'   and random effects structure. This parameter is required.
 #' @param priors Optional `brms::set_prior` object. If `NULL`, default priors for
 #'   intercepts, coefficients, and standard deviations are used.
 #' @param nchains Integer. Number of MCMC chains. Default 4.
@@ -30,7 +27,9 @@
 #' @export
 run_brms_model <- function(
   dataset = NULL,
-  formula = NULL,
+  formula,
+  cellsize_m = 800,
+  temporal_resolution = c("daily", "hourly"),
   priors = NULL,
   nchains = 4,
   threads_per_chain = 1,
@@ -47,6 +46,7 @@ run_brms_model <- function(
   verbose = TRUE
 ) {
   backend <- match.arg(backend)
+  temporal_resolution <- match.arg(temporal_resolution)
 
   # ---- deps ----
   for (pkg in c("brms", "dplyr")) {
@@ -56,6 +56,10 @@ run_brms_model <- function(
   }
   if (identical(backend, "cmdstanr") && !requireNamespace("cmdstanr", quietly = TRUE)) {
     stop("Backend 'cmdstanr' selected but package 'cmdstanr' is not installed.", call. = FALSE)
+  }
+
+  if (missing(formula)) {
+    stop("`formula` is now required and must be supplied.", call. = FALSE)
   }
 
   validate_count <- function(x, name) {
@@ -87,11 +91,28 @@ run_brms_model <- function(
     ids <- build_location_identifiers(iso3, admin_level, admin_name)
     slug <- ids$slug
     
-    target_file <- file.path(input_dir, sprintf("model_prep_%s_data.rds", slug))
+    resolution_suffix <- paste0("_", temporal_resolution)
+    target_file <- file.path(input_dir, sprintf("model_prep_%s%s_data.rds", slug, resolution_suffix))
     if (!file.exists(target_file)) {
+      # Backward-compatible fallbacks for older naming conventions
+      legacy_candidates <- c(
+        file.path(input_dir, sprintf("model_prep_%s_data.rds", slug)),
+        file.path(input_dir, sprintf("model_prep_%s_hourly_data.rds", slug))
+      )
+
+      if (any(file.exists(legacy_candidates))) {
+        found <- legacy_candidates[file.exists(legacy_candidates)][1]
+        stop(
+          "Prepared dataset not found at: ", target_file,
+          "\nHowever, a legacy prepared file exists at: ", found,
+          "\nRe-run `prepare_brms_data(..., temporal_resolution = \"", temporal_resolution, "\", write = TRUE)` to generate the new filename.",
+          call. = FALSE
+        )
+      }
+
       stop(
-        "Prepared dataset not found at: ", target_file, 
-        "\nPlease ensure you have run `prepare_bym2_data(..., write = TRUE)` first.", 
+        "Prepared dataset not found at: ", target_file,
+        "\nPlease ensure you have run `prepare_brms_data(..., temporal_resolution = \"", temporal_resolution, "\", write = TRUE)` first.",
         call. = FALSE
       )
     }
@@ -112,27 +133,73 @@ run_brms_model <- function(
   }
   
   # ---- process dataset object ----
-  if (inherits(dataset, "bym2_data_prep")) {
-    # Use the pre-baked object
-    model_data        <- dataset$model_data
-    # We ignore adjacency and grid_col except perhaps for location_slug
-    location_slug     <- dataset$meta$slug
-    
-  } else if (is.data.frame(dataset)) {
-    model_data <- dataset
-    
-    # Try to infer location slug from attributes if present
-    location_slug <- attr(model_data, "location_slug", exact = TRUE)
-    if (is.null(location_slug) && !is.null(iso3)) {
-        ids <- build_location_identifiers(iso3, admin_level, admin_name)
-        location_slug <- ids$slug
+  if (inherits(dataset, "brms_data_prep")) {
+    model_data <- dataset$model_data
+    location_slug <- dataset$meta$slug
+
+    if (!is.null(dataset$meta$temporal_resolution) &&
+        !identical(dataset$meta$temporal_resolution, temporal_resolution)) {
+      if (isTRUE(verbose)) {
+        message(
+          "Prepared data temporal resolution is '", dataset$meta$temporal_resolution,
+          "' but `temporal_resolution` was set to '", temporal_resolution,
+          "'. Using the prepared data setting."
+        )
+      }
+      temporal_resolution <- dataset$meta$temporal_resolution
     }
-    
+  } else if (inherits(dataset, "bym2_data_prep")) {
+    # Backwards compatibility: use the data portion only
+    model_data <- dataset$model_data
+    location_slug <- dataset$meta$slug
+  } else if (is.data.frame(dataset)) {
+    required_scaled <- c("maxTM_z", "ppt_z", "ndvi_z", "elev_z", "pop_z")
+    has_scaled <- all(required_scaled %in% names(dataset))
+
+    if (has_scaled) {
+      model_data <- dataset
+    } else {
+      if (isTRUE(verbose)) message("Raw dataframe provided; calling `prepare_brms_data()` internally...")
+      prep_obj <- prepare_brms_data(
+        dataset = dataset,
+        cellsize_m = cellsize_m,
+        temporal_resolution = temporal_resolution,
+        iso3 = iso3,
+        admin_level = admin_level,
+        admin_name = admin_name,
+        write = FALSE,
+        verbose = verbose
+      )
+      model_data <- prep_obj$model_data
+      location_slug <- prep_obj$meta$slug
+    }
+
+    # Try to infer location slug from attributes if present
+    if (is.null(location_slug) || !nzchar(location_slug)) {
+      location_slug <- attr(model_data, "location_slug", exact = TRUE)
+    }
+    if ((is.null(location_slug) || !nzchar(location_slug)) && !is.null(iso3)) {
+      ids <- build_location_identifiers(iso3, admin_level, admin_name)
+      location_slug <- ids$slug
+    }
   } else {
-    stop("`dataset` must be a path, a data frame, or a `bym2_data_prep` object.", call. = FALSE)
+    stop("`dataset` must be a path, a data frame, or a `brms_data_prep`/`bym2_data_prep` object.", call. = FALSE)
   }
   
   if (!nrow(model_data)) stop("No observations available in the model data.", call. = FALSE)
+
+  if (identical(temporal_resolution, "hourly")) {
+    if (!"hour" %in% names(model_data)) {
+      stop(
+        "Hourly resolution requested but 'hour' column is missing. ",
+        "Re-run `prepare_brms_data(..., temporal_resolution = \"hourly\")` or set `temporal_resolution = \"daily\"`.",
+        call. = FALSE
+      )
+    }
+    if (all(is.na(model_data$hour))) {
+      stop("Hourly resolution requested but all `hour` values are NA.", call. = FALSE)
+    }
+  }
 
 
 
@@ -200,23 +267,7 @@ run_brms_model <- function(
     } else {
       stop("`formula` must be a string or formula object.", call. = FALSE)
     }
-  } else {
-    # Base formula (WITHOUT spatial term)
-    formula_parts <- c(
-      "presence ~ s(sea_days, bs = \"cc\", k = 12)",
-      "s(maxTM_z, k = 6)",
-      "ppt_z + ndvi_z + elev_z + s(pop_z, k = 5)",
-      "(1 | year)",
-      "(1 | landcover_code)"
-    )
-    
-    # Add source if validated
-    if (include_source) {
-      formula_parts <- append(formula_parts, "source", after = 3)
-    }
-    
-    formula_text <- paste(formula_parts, collapse = " + ")
-  }
+  } 
   
   model_formula <- stats::as.formula(formula_text)
 
@@ -278,11 +329,11 @@ run_brms_model <- function(
     }
 
     stem_base <- if (!is.null(location_slug) && nzchar(location_slug)) {
-      paste0("model_", location_slug, "_brms_nospatial")
+      paste0("model_", location_slug, "_brms_", temporal_resolution)
     } else if (!is.null(dataset_path)) {
-      paste0(tools::file_path_sans_ext(basename(dataset_path)), "_brms_nospatial")
+      paste0(tools::file_path_sans_ext(basename(dataset_path)), "_brms_", temporal_resolution)
     } else {
-      paste0("brms_model_", format(Sys.time(), "%Y%m%d%H%M%S"))
+      paste0("brms_model_", format(Sys.time(), "%Y%m%d%H%M%S"), "_", temporal_resolution)
     }
 
     if (is_dir_target) {

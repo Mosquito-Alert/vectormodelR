@@ -4,7 +4,7 @@
 #' and aligns the spatial adjacency matrix to the filtered data. Optionally
 #' saves the prepared object to disk.
 #'
-#' @inheritParams run_brms_model
+#' @inheritParams run_brms_bym2_model
 #' @param cellsize_m Numeric cell size (meters). Defaults to 800.
 #' @param adjacency Optional pre-computed adjacency matrix. If NULL, one is built.
 #' @param adjacency_args List of arguments passed to [build_grid_adjacency()].

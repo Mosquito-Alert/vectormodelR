@@ -13,6 +13,12 @@
 #' @param dataset_type Character. ERA5 dataset: "reanalysis-era5-single-levels" 
 #'   or "reanalysis-era5-land". Must match the dataset used when processing weather
 #'   data with `process_era5_data()`.
+#' @param weather_resolution Character. Weather feature resolution to add.
+#'   Use `"daily"` for the existing daily summaries and precipitation lag
+#'   windows, or `"hourly"` to join the processed hourly ERA5 cell table by
+#'   nearest ERA5 cell and report hour. Hourly joins use `datetime` when
+#'   available and fall back to `date` plus `hour` for rows with missing
+#'   `datetime`.
 #' @param data_dir Directory that holds the weather RDS files and where the
 #'   weather-enriched dataset will be written. Defaults to `"data/proc"`.
 #' @param write_output Logical flag; when `TRUE` (default) the enriched dataset
@@ -40,9 +46,12 @@
 add_weather_features <- function(
     dataset,
     dataset_type,
+    weather_resolution = c("daily", "hourly"),
     data_dir = "data/proc",
     write_output = TRUE,
     verbose = TRUE) {
+
+  weather_resolution <- match.arg(weather_resolution)
 
   # Validate dataset_type
   if (is.null(dataset_type) || !nzchar(dataset_type)) {
@@ -91,21 +100,40 @@ add_weather_features <- function(
   attr(base_dataset, "location_slug") <- location_slug
 
   if (isTRUE(verbose)) {
-    message("Adding weather features for slug ", location_slug)
+    message("Adding ", weather_resolution, " weather features for slug ", location_slug)
   }
 
-  if (!all(c("lon", "lat", "date") %in% names(base_dataset))) {
-    stop("Base dataset must contain `lon`, `lat`, and `date` columns.", call. = FALSE)
+  required_base_cols <- c("lon", "lat")
+  if (identical(weather_resolution, "daily")) {
+    required_base_cols <- c(required_base_cols, "date")
+  }
+  missing_base_cols <- setdiff(required_base_cols, names(base_dataset))
+  if (length(missing_base_cols)) {
+    stop(
+      "Base dataset is missing required column(s): ",
+      paste(missing_base_cols, collapse = ", "),
+      call. = FALSE
+    )
+  }
+  if (identical(weather_resolution, "hourly") &&
+      !"datetime" %in% names(base_dataset) &&
+      !all(c("date", "hour") %in% names(base_dataset))) {
+    stop(
+      "Hourly weather requires a `datetime` column or both `date` and `hour` columns.",
+      call. = FALSE
+    )
   }
 
-  weather_files <- list(
-    daily = paste0("weather_", location_slug, "_", dataset_token, "_cell_daily.Rds"),
-    lag7 = paste0("weather_", location_slug, "_", dataset_token, "_cell_lags_7d.Rds"),
-    lag14 = paste0("weather_", location_slug, "_", dataset_token, "_cell_lags_14d.Rds"),
-    lag30 = paste0("weather_", location_slug, "_", dataset_token, "_cell_lags_30d.Rds"),
-    lag21 = paste0("weather_", location_slug, "_", dataset_token, "_cell_lags_21d_lag7.Rds"),
-    pptlags = paste0("weather_", location_slug, "_", dataset_token, "_cell_ppt_lags.Rds")
-  )
+  weather_files <- if (identical(weather_resolution, "daily")) {
+    list(
+      daily = paste0("weather_", location_slug, "_", dataset_token, "_cell_daily.Rds"),
+      pptlags = paste0("weather_", location_slug, "_", dataset_token, "_cell_ppt_lags.Rds")
+    )
+  } else {
+    list(
+      hourly = paste0("weather_", location_slug, "_", dataset_token, "_hourly.Rds")
+    )
+  }
 
   resolve_weather_path <- function(filename) {
     candidates <- c(
@@ -130,20 +158,91 @@ add_weather_features <- function(
   }
   weather_tables <- lapply(weather_paths, readr::read_rds)
 
-  weather_tables <- lapply(weather_tables, function(tbl) {
-    if (!"date" %in% names(tbl)) {
-      stop("Weather table is missing a `date` column.", call. = FALSE)
-    }
-    dplyr::mutate(tbl, date = as.Date(.data$date))
-  })
+  select_required <- function(tbl, cols, source_name) {
+    missing <- setdiff(cols, names(tbl))
 
-  wx_daily <- weather_tables$daily
-  wx_cells <- wx_daily |>
-    dplyr::distinct(.data$lon, .data$lat) |>
-    dplyr::arrange(.data$lon, .data$lat)
+    if (length(missing)) {
+      stop(
+        "Weather table '", source_name, "' is missing expected columns: ",
+        paste(missing, collapse = ", "),
+        call. = FALSE
+      )
+    }
+
+    dplyr::select(tbl, dplyr::all_of(cols))
+  }
+
+  floor_to_hour <- function(x) {
+    parsed <- if (inherits(x, "POSIXt")) {
+      as.POSIXct(x, tz = "UTC")
+    } else {
+      suppressWarnings(as.POSIXct(
+        x,
+        tz = "UTC",
+        tryFormats = c(
+          "%Y-%m-%d %H:%M:%OS",
+          "%Y-%m-%d %H:%M:%S",
+          "%Y-%m-%d %H:%M",
+          "%Y-%m-%d"
+        )
+      ))
+    }
+
+    as.POSIXct(
+      floor(as.numeric(parsed) / 3600) * 3600,
+      origin = "1970-01-01",
+      tz = "UTC"
+    )
+  }
+
+  build_report_hour <- function(tbl) {
+    from_datetime <- rep(as.POSIXct(NA_real_, origin = "1970-01-01", tz = "UTC"), nrow(tbl))
+    if ("datetime" %in% names(tbl)) {
+      from_datetime <- floor_to_hour(tbl[["datetime"]])
+    }
+
+    from_date_hour <- rep(as.POSIXct(NA_real_, origin = "1970-01-01", tz = "UTC"), nrow(tbl))
+    if (all(c("date", "hour") %in% names(tbl))) {
+      report_dates <- as.Date(tbl[["date"]])
+      report_hours <- suppressWarnings(as.integer(tbl[["hour"]]))
+      valid <- !is.na(report_dates) & !is.na(report_hours)
+      from_date_hour[valid] <- as.POSIXct(report_dates[valid], tz = "UTC") + report_hours[valid] * 3600
+    }
+
+    out <- from_datetime
+    missing_datetime <- is.na(out)
+    out[missing_datetime] <- from_date_hour[missing_datetime]
+    out
+  }
+
+  if (identical(weather_resolution, "daily")) {
+    weather_tables <- lapply(weather_tables, function(tbl) {
+      if (!"date" %in% names(tbl)) {
+        stop("Weather table is missing a `date` column.", call. = FALSE)
+      }
+      dplyr::mutate(tbl, date = as.Date(.data$date))
+    })
+
+    wx_daily <- weather_tables$daily
+    wx_cells <- wx_daily |>
+      dplyr::distinct(.data$lon, .data$lat) |>
+      dplyr::arrange(.data$lon, .data$lat)
+  } else {
+    wx_hourly <- weather_tables$hourly
+    select_required(
+      wx_hourly,
+      c("lon", "lat", "time", "t2m_C_hour", "RH_hour", "ws10_hour", "ppt_mm_hour", "ppt_mm_prev_6h", "ppt_mm_prev_24h", "t2m_C_mean_prev_6h", "RH_mean_prev_6h"),
+      "hourly"
+    )
+    wx_hourly$time <- floor_to_hour(wx_hourly[["time"]])
+
+    wx_cells <- wx_hourly |>
+      dplyr::distinct(.data$lon, .data$lat) |>
+      dplyr::arrange(.data$lon, .data$lat)
+  }
 
   if (nrow(wx_cells) == 0) {
-    stop("Weather daily table does not contain lon/lat entries.", call. = FALSE)
+    stop("Weather table does not contain lon/lat entries.", call. = FALSE)
   }
 
   reports_matrix <- as.matrix(dplyr::select(base_dataset, "lon", "lat"))
@@ -157,35 +256,43 @@ add_weather_features <- function(
       grid_lat = wx_cells$lat[nn_index]
     )
 
-  select_if_exists <- function(tbl, cols) {
-    available <- intersect(cols, names(tbl))
-    dplyr::select(tbl, dplyr::all_of(available))
-  }
+  if (identical(weather_resolution, "daily")) {
+    enriched <- enriched |>
+      dplyr::left_join(
+        select_required(wx_daily, c("lon", "lat", "date", "mwi", "maxTM", "meanPPT24H", "mwi_zeros_past_14d", "FH_zeros_past_14d"), "daily"),
+        by = c("grid_lon" = "lon", "grid_lat" = "lat", "date" = "date")
+      ) |>
+      dplyr::left_join(
+        select_required(weather_tables$pptlags, c("lon", "lat", "date", "PPT_3d", "PPT_7d", "PPT_14d", "PPT_21d", "PPT_30d", "PPT_3d_lag7", "PPT_7d_lag7", "PPT_14d_lag7", "PPT_21d_lag7", "PPT_30d_lag7"), "pptlags"),
+        by = c("grid_lon" = "lon", "grid_lat" = "lat", "date" = "date")
+      )
+  } else {
+    report_hour <- build_report_hour(enriched)
+    if (!any(!is.na(report_hour))) {
+      stop(
+        "Hourly weather could not be joined because all report datetimes/hours are missing.",
+        call. = FALSE
+      )
+    }
 
-  enriched <- enriched |>
-    dplyr::left_join(
-      select_if_exists(wx_daily, c("lon", "lat", "date", "mwi", "maxTM", "meanPPT24H", "mwi_zeros_past_14d", "FH_zeros_past_14d")),
-      by = c("grid_lon" = "lon", "grid_lat" = "lat", "date" = "date")
-    ) |>
-    dplyr::left_join(
-      select_if_exists(weather_tables$pptlags, c("lon", "lat", "date", "PPT_7d_8daysago")),
-      by = c("grid_lon" = "lon", "grid_lat" = "lat", "date" = "date")
-    ) |>
-    dplyr::left_join(
-      select_if_exists(weather_tables$lag30, c("lon", "lat", "date", "FW30", "FH30", "FT30", "mwi30")),
-      by = c("grid_lon" = "lon", "grid_lat" = "lat", "date" = "date")
-    ) |>
-    dplyr::left_join(
-      select_if_exists(weather_tables$lag14, c("lon", "lat", "date", "FW14", "FH14", "FT14", "mwi14")),
-      by = c("grid_lon" = "lon", "grid_lat" = "lat", "date" = "date")
-    ) |>
-    dplyr::left_join(
-      select_if_exists(weather_tables$lag21, c("lon", "lat", "date", "FW21", "FH21", "FT21", "mwi21")),
-      by = c("grid_lon" = "lon", "grid_lat" = "lat", "date" = "date")
+    hourly_cols <- c(
+      "lon", "lat", "time",
+      "t2m_C_hour", "RH_hour", "ws10_hour", "ppt_mm_hour",
+      "ppt_mm_prev_6h", "ppt_mm_prev_24h",
+      "t2m_C_mean_prev_6h", "RH_mean_prev_6h"
     )
 
+    enriched <- enriched |>
+      dplyr::mutate(weather_time = report_hour) |>
+      dplyr::left_join(
+        select_required(wx_hourly, hourly_cols, "hourly"),
+        by = c("grid_lon" = "lon", "grid_lat" = "lat", "weather_time" = "time")
+      )
+  }
+
   stem <- tools::file_path_sans_ext(basename(dataset_path))
-  destination_filename <- paste0(stem, "_wx.Rds")
+  destination_suffix <- if (identical(weather_resolution, "daily")) "_wx.Rds" else "_wx_hourly.Rds"
+  destination_filename <- paste0(stem, destination_suffix)
   destination_path <- file.path(data_dir, destination_filename)
 
   base_attrs <- attributes(base_dataset)
@@ -195,6 +302,7 @@ add_weather_features <- function(
   }
 
   attr(enriched, "weather_sources") <- unlist(weather_paths, use.names = TRUE)
+  attr(enriched, "weather_resolution") <- weather_resolution
   attr(enriched, "output_path") <- destination_path
   attr(enriched, "location_slug") <- location_slug
 

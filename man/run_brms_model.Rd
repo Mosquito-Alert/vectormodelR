@@ -6,7 +6,9 @@
 \usage{
 run_brms_model(
   dataset = NULL,
-  formula = NULL,
+  formula,
+  cellsize_m = 800,
+  temporal_resolution = c("daily", "hourly"),
   priors = NULL,
   nchains = 4,
   threads_per_chain = 1,
@@ -24,14 +26,11 @@ run_brms_model(
 )
 }
 \arguments{
-\item{dataset}{An in-memory modelling dataset (data.frame), a \code{bym2_data_prep} object,
-or a path to the enriched RDS file.}
+\item{dataset}{An in-memory modelling dataset (data.frame), a \code{brms_data_prep} object,
+a \code{bym2_data_prep} object, or a path to a prepared RDS file.}
 
-\item{formula}{Optional character string or formula object specifying the fixed
-and random effects structure. If \code{NULL} (default), the function processes
-\code{source} validation and uses a set of default predictors including
-\code{sea_days}, \code{maxTM_z}, \code{ppt_z}, \code{ndvi_z}, \code{elev_z}, \code{pop_z}, \code{year}, and
-\code{landcover_code}.}
+\item{formula}{Character string or formula object specifying the fixed
+and random effects structure. This parameter is required.}
 
 \item{priors}{Optional \code{brms::set_prior} object. If \code{NULL}, default priors for
 intercepts, coefficients, and standard deviations are used.}

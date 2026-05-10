@@ -21,8 +21,10 @@
 #'   `"Mosquito Alert Tiger Mosquito"` when Mosquito Alert data is present. Use
 #'   `NULL` to keep all collection codes.
 #'
-#' @return A tibble with columns `date`, `year`, `lon`, `lat`,
-#'   `presence`, `referenceID`, and `source`. Attributes include `output_path`
+#' @return A tibble with columns `date`, `datetime`, `hour`, `year`, `lon`, `lat`,
+#'   `presence`, `referenceID`, and `source`. The `hour` column contains integers
+#'   (0-23) representing the top of the hour from the original datetime, or NA
+#'   if no time component was present. Attributes include `output_path`
 #'   and `source_files`.
 #' @export
 initialize_vector_dataset <- function(
@@ -92,9 +94,56 @@ initialize_vector_dataset <- function(
 		as.Date(x_chr)
 	}
 
+	to_datetime <- function(x) {
+		if (inherits(x, "POSIXct") || inherits(x, "POSIXlt")) {
+			return(as.POSIXct(x, tz = "UTC"))
+		}
+		x_chr <- trimws(as.character(x))
+		x_chr[x_chr == ""] <- NA_character_
+		
+		# Handle date ranges (e.g., "2013-01-07/2015-07-07") - take first date
+		x_chr_clean <- sub("/.*$", "", x_chr)
+		
+		# Try parsing as datetime
+		dt <- suppressWarnings(lubridate::parse_date_time(
+			x_chr_clean,
+			orders = c("ymd HMS", "ymd HM", "ymd H", "ymd"),
+			tz = "UTC",
+			quiet = TRUE
+		))
+		
+		# Check each value individually for time components
+		# A value has time if: the original string contains 'T' or has time separators ':'
+		has_time_in_original <- grepl("[T:]", x_chr_clean, perl = TRUE)
+		
+		# Also check parsed datetime for non-zero time components
+		has_nonzero_time <- !is.na(dt) & (
+			lubridate::hour(dt) != 0 | 
+			lubridate::minute(dt) != 0 | 
+			lubridate::second(dt) != 0
+		)
+		
+		# Keep datetime only if original had time format OR parsed with non-zero time
+		has_time <- has_time_in_original | has_nonzero_time
+		
+		# Set to NA where there's no time component
+		dt[!has_time] <- as.POSIXct(NA, tz = "UTC")
+		
+		as.POSIXct(dt, tz = "UTC")
+	}
+
+	extract_hour <- function(dt) {
+		if (all(is.na(dt))) {
+			return(rep(NA_integer_, length(dt)))
+		}
+		as.integer(format(dt, "%H"))
+	}
+
 	make_template <- function() {
 		tibble::tibble(
 			date = as.Date(character()),
+			datetime = as.POSIXct(character(), tz = "UTC"),
+			hour = integer(),
 			year = integer(),
 			lon = numeric(),
 			lat = numeric(),
@@ -116,12 +165,13 @@ initialize_vector_dataset <- function(
 
 		mapped <- list(
 			date_col = find_column(malert_data, "creation_date"),
+			time_col = find_column(malert_data, c("creation_time", "created_at", "timestamp")),
 			year_col = find_column(malert_data, "creation_year"),
 			lon_col = find_column(malert_data, c("lon", "longitude")),
 			lat_col = find_column(malert_data, c("lat", "latitude")),
 			ref_col = find_column(malert_data, c("version_UUID", "report_uuid"))
 		)
-		missing_required <- Filter(is.na, mapped)
+		missing_required <- Filter(is.na, mapped[c("date_col", "year_col", "lon_col", "lat_col", "ref_col")])
 		if (length(missing_required)) {
 			stop("Required columns missing from Mosquito Alert data: ",
 				paste(names(missing_required), collapse = ", "),
@@ -129,8 +179,19 @@ initialize_vector_dataset <- function(
 			)
 		}
 
+		# Use time column if available, otherwise fall back to date column
+		datetime_source <- if (!is.na(mapped$time_col)) {
+			malert_data[[mapped$time_col]]
+		} else {
+			malert_data[[mapped$date_col]]
+		}
+		datetime_vals <- to_datetime(datetime_source)
+		hour_vals <- extract_hour(datetime_vals)
+		
 		malert_prepped <- tibble::tibble(
 			date = to_date(malert_data[[mapped$date_col]]),
+			datetime = datetime_vals,
+			hour = hour_vals,
 			year = as.integer(malert_data[[mapped$year_col]]),
 			lon = as.numeric(malert_data[[mapped$lon_col]]),
 			lat = as.numeric(malert_data[[mapped$lat_col]]),
@@ -187,8 +248,13 @@ initialize_vector_dataset <- function(
 			presence_values[raw_presence %in% c("absent", "false", "0")] <- "FALSE"
 		}
 
+		datetime_vals <- to_datetime(gbif_data[[mapped$date_col]])
+		hour_vals <- extract_hour(datetime_vals)
+		
 		gbif_prepped <- tibble::tibble(
 			date = to_date(gbif_data[[mapped$date_col]]),
+			datetime = datetime_vals,
+			hour = hour_vals,
 			year = as.integer(gbif_data[[mapped$year_col]]),
 			lon = as.numeric(gbif_data[[mapped$lon_col]]),
 			lat = as.numeric(gbif_data[[mapped$lat_col]]),
