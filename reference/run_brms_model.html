@@ -52,7 +52,9 @@ matrix.</p>
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">run_brms_model</span><span class="op">(</span></span>
 <span>  dataset <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  formula <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">formula</span>,</span>
+<span>  cellsize_m <span class="op">=</span> <span class="fl">800</span>,</span>
+<span>  temporal_resolution <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"daily"</span>, <span class="st">"hourly"</span><span class="op">)</span>,</span>
 <span>  priors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  nchains <span class="op">=</span> <span class="fl">4</span>,</span>
 <span>  threads_per_chain <span class="op">=</span> <span class="fl">1</span>,</span>
@@ -75,16 +77,13 @@ matrix.</p>
 
 
 <dl><dt id="arg-dataset">dataset<a class="anchor" aria-label="anchor" href="#arg-dataset"></a></dt>
-<dd><p>An in-memory modelling dataset (data.frame), a <code>bym2_data_prep</code> object,
-or a path to the enriched RDS file.</p></dd>
+<dd><p>An in-memory modelling dataset (data.frame), a <code>brms_data_prep</code> object,
+a <code>bym2_data_prep</code> object, or a path to a prepared RDS file.</p></dd>
 
 
 <dt id="arg-formula">formula<a class="anchor" aria-label="anchor" href="#arg-formula"></a></dt>
-<dd><p>Optional character string or formula object specifying the fixed
-and random effects structure. If <code>NULL</code> (default), the function processes
-<code>source</code> validation and uses a set of default predictors including
-<code>sea_days</code>, <code>maxTM_z</code>, <code>ppt_z</code>, <code>ndvi_z</code>, <code>elev_z</code>, <code>pop_z</code>, <code>year</code>, and
-<code>landcover_code</code>.</p></dd>
+<dd><p>Character string or formula object specifying the fixed
+and random effects structure. This parameter is required.</p></dd>
 
 
 <dt id="arg-priors">priors<a class="anchor" aria-label="anchor" href="#arg-priors"></a></dt>

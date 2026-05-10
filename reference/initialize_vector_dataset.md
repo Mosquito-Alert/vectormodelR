@@ -67,6 +67,8 @@ initialize_vector_dataset(
 
 ## Value
 
-A tibble with columns `date`, `year`, `lon`, `lat`, `presence`,
-`referenceID`, and `source`. Attributes include `output_path` and
-`source_files`.
+A tibble with columns `date`, `datetime`, `hour`, `year`, `lon`, `lat`,
+`presence`, `referenceID`, and `source`. The `hour` column contains
+integers (0-23) representing the top of the hour from the original
+datetime, or NA if no time component was present. Attributes include
+`output_path` and `source_files`.

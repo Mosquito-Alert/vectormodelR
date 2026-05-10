@@ -18,6 +18,7 @@ add_features(
   features,
   vector_sources = c("malert", "gbif"),
   data_dir = "data/proc",
+  weather_resolution = c("daily", "hourly"),
   verbose = TRUE
 )
 ```
@@ -57,6 +58,13 @@ add_features(
 
   Directory containing the model-preparation datasets and derived
   artefacts. Defaults to `"data/proc"`.
+
+- weather_resolution:
+
+  Character. Resolution used when adding weather features. Passed to
+  [`add_weather_features()`](https://labs.mosquitoalert.com/mosquitoR/reference/add_weather_features.md).
+  Use `"daily"` for daily summaries and lagged windows or `"hourly"` for
+  hourly ERA5 cell features.
 
 - verbose:
 

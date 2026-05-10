@@ -312,6 +312,8 @@ NextGenerationEU/PRTR](reference/figures/funding/MICIU+NextG+PRTR+AEI_page-0001.
   : Build a unified vector presence dataset
 - [`interpret_brms_model()`](https://labs.mosquitoalert.com/mosquitoR/reference/interpret_brms_model.md)
   : Generate a diagnostic report for a fitted brms model
+- [`prepare_brms_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/prepare_brms_data.md)
+  : Prepare data for brms modelling
 - [`prepare_bym2_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/prepare_bym2_data.md)
   : Prepare data and adjacency matrix for BYM2 modelling
 - [`process_era5_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/process_era5_data.md)

@@ -1,20 +1,20 @@
-# Prepare data and adjacency matrix for BYM2 modelling
+# Prepare data for brms modelling
 
 Cleans the dataset, scales predictors (storing means/SDs for future
-use), and aligns the spatial adjacency matrix to the filtered data.
+use), and returns an object ready to be passed to
+[`run_brms_model()`](https://labs.mosquitoalert.com/mosquitoR/reference/run_brms_model.md).
 Optionally saves the prepared object to disk.
 
 ## Usage
 
 ``` r
-prepare_bym2_data(
+prepare_brms_data(
   dataset,
   cellsize_m = 800,
+  temporal_resolution = c("daily", "hourly"),
   iso3 = NULL,
   admin_level = NULL,
   admin_name = NULL,
-  adjacency = NULL,
-  adjacency_args = list(),
   output_dir = "data/proc",
   write = FALSE,
   verbose = TRUE
@@ -23,18 +23,25 @@ prepare_bym2_data(
 
 ## Arguments
 
+- dataset:
+
+  An in-memory modelling dataset (data.frame), a `brms_data_prep`
+  object, a `bym2_data_prep` object, or a path to a prepared RDS file.
+
 - cellsize_m:
 
   Numeric cell size (meters). Defaults to 800.
 
-- adjacency:
+- temporal_resolution:
 
-  Optional pre-computed adjacency matrix. If NULL, one is built.
+  Character. Either `"daily"` (default) or `"hourly"`. When `"hourly"`,
+  filters to records with valid hourly weather values and scales the
+  current-hour and short-window hourly predictors. When `"daily"`, uses
+  the daily weather summaries and precipitation lag predictors.
 
-- adjacency_args:
+- iso3, admin_level, admin_name:
 
-  List of arguments passed to
-  [`build_grid_adjacency()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_grid_adjacency.md).
+  Optional strings to locate the dataset if `dataset` is NULL.
 
 - output_dir:
 
@@ -52,15 +59,11 @@ prepare_bym2_data(
 
 ## Value
 
-A list of class `bym2_data_list` containing:
+A list of class `brms_data_prep` containing:
 
 - model_data:
 
   The filtered, scaled data.frame ready for brms.
-
-- adjacency:
-
-  The aligned sparse matrix corresponding to `model_data`.
 
 - grid_col:
 

@@ -2,8 +2,10 @@
 
 Reads monthly CSV.GZ files created by compile_era5_data_v2 from the
 appropriate dataset-specific subdirectory, clips by a GADM admin
-polygon, aggregates to hourly area means, derives daily summaries and
-rolling-window features, and saves RDS outputs with informative names.
+polygon, aggregates to hourly area means or cell-level daily summaries,
+derives daily weather summaries, rolling-window weather features,
+accumulated precipitation windows, lagged precipitation windows, and
+saves RDS outputs with informative names.
 
 ## Usage
 
@@ -89,9 +91,14 @@ process_era5_data(
 ## Value
 
 For `aggregation_unit = "region"` or `"cell"`, invisibly returns a list
-with: `daily`, `lags_7d`, `lags_14d`, `lags_30d`, `lags_21d_lag7`,
-`ppt_lags`, and `paths`. For `aggregation_unit = "hourly"`, returns a
-list with `hourly` and `paths`.
+with: `daily`, `lags_3d`, `lags_7d`, `lags_14d`, `lags_21d`, `lags_30d`,
+`lags_3d_lag7`, `lags_7d_lag7`, `lags_14d_lag7`, `lags_21d_lag7`,
+`lags_30d_lag7`, `ppt_lags`, and `paths`. `ppt_lags` contains
+accumulated precipitation windows of 3, 7, 14, 21, and 30 days, plus the
+same windows lagged by 7 days. For `aggregation_unit = "hourly"`,
+returns a list with `hourly` and `paths`. The hourly table includes
+current-hour weather values plus short-window precipitation and
+temperature/humidity summaries for each cell.
 
 ## Details
 
@@ -103,6 +110,13 @@ Temperature and dewpoint values are treated as Kelvin and converted to
 Celsius with `x - 273.15`. This is intentional: in some GRIBs, `terra`
 may label the layers as `[C]`, but the values can still be Kelvin, e.g.
 272–295.
+
+Rolling weather summaries use rolling means for temperature, humidity,
+wind, and MWI-type indices. Accumulated precipitation is handled
+separately in `ppt_lags` using rolling sums.
+
+Hourly short-window features are right-aligned within each cell and
+include the current ERA5 hour in the window.
 
 Requires helper objects:
 

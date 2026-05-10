@@ -11,6 +11,7 @@ attaches ERA5-based weather metrics, and writes a new
 add_weather_features(
   dataset,
   dataset_type,
+  weather_resolution = c("daily", "hourly"),
   data_dir = "data/proc",
   write_output = TRUE,
   verbose = TRUE
@@ -35,6 +36,14 @@ add_weather_features(
   "reanalysis-era5-land". Must match the dataset used when processing
   weather data with
   [`process_era5_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/process_era5_data.md).
+
+- weather_resolution:
+
+  Character. Weather feature resolution to add. Use `"daily"` for the
+  existing daily summaries and precipitation lag windows, or `"hourly"`
+  to join the processed hourly ERA5 cell table by nearest ERA5 cell and
+  report hour. Hourly joins use `datetime` when available and fall back
+  to `date` plus `hour` for rows with missing `datetime`.
 
 - data_dir:
 

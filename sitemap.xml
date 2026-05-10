@@ -38,6 +38,7 @@
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/initialize_ma_dataset.html</loc></url>
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/initialize_vector_dataset.html</loc></url>
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/interpret_brms_model.html</loc></url>
+<url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/prepare_brms_data.html</loc></url>
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/prepare_bym2_data.html</loc></url>
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/process_era5_data.html</loc></url>
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/process_landcover_data.html</loc></url>

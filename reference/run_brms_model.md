@@ -11,7 +11,9 @@ but ignores the adjacency matrix.
 ``` r
 run_brms_model(
   dataset = NULL,
-  formula = NULL,
+  formula,
+  cellsize_m = 800,
+  temporal_resolution = c("daily", "hourly"),
   priors = NULL,
   nchains = 4,
   threads_per_chain = 1,
@@ -33,16 +35,13 @@ run_brms_model(
 
 - dataset:
 
-  An in-memory modelling dataset (data.frame), a `bym2_data_prep`
-  object, or a path to the enriched RDS file.
+  An in-memory modelling dataset (data.frame), a `brms_data_prep`
+  object, a `bym2_data_prep` object, or a path to a prepared RDS file.
 
 - formula:
 
-  Optional character string or formula object specifying the fixed and
-  random effects structure. If `NULL` (default), the function processes
-  `source` validation and uses a set of default predictors including
-  `sea_days`, `maxTM_z`, `ppt_z`, `ndvi_z`, `elev_z`, `pop_z`, `year`,
-  and `landcover_code`.
+  Character string or formula object specifying the fixed and random
+  effects structure. This parameter is required.
 
 - priors:
 

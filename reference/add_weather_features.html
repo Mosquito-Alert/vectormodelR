@@ -50,6 +50,7 @@ new <code>model_prep_*_wx.Rds</code> file alongside the existing outputs.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">add_weather_features</span><span class="op">(</span></span>
 <span>  <span class="va">dataset</span>,</span>
 <span>  <span class="va">dataset_type</span>,</span>
+<span>  weather_resolution <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"daily"</span>, <span class="st">"hourly"</span><span class="op">)</span>,</span>
 <span>  data_dir <span class="op">=</span> <span class="st">"data/proc"</span>,</span>
 <span>  write_output <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
@@ -73,6 +74,15 @@ written to <code>data_dir</code> with <code>_wx.Rds</code> appended to that stem
 <dd><p>Character. ERA5 dataset: "reanalysis-era5-single-levels"
 or "reanalysis-era5-land". Must match the dataset used when processing weather
 data with <code><a href="process_era5_data.html">process_era5_data()</a></code>.</p></dd>
+
+
+<dt id="arg-weather-resolution">weather_resolution<a class="anchor" aria-label="anchor" href="#arg-weather-resolution"></a></dt>
+<dd><p>Character. Weather feature resolution to add.
+Use <code>"daily"</code> for the existing daily summaries and precipitation lag
+windows, or <code>"hourly"</code> to join the processed hourly ERA5 cell table by
+nearest ERA5 cell and report hour. Hourly joins use <code>datetime</code> when
+available and fall back to <code>date</code> plus <code>hour</code> for rows with missing
+<code>datetime</code>.</p></dd>
 
 
 <dt id="arg-data-dir">data_dir<a class="anchor" aria-label="anchor" href="#arg-data-dir"></a></dt>

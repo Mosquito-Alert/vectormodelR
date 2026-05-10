@@ -107,8 +107,10 @@ values to drop when both sources are merged. Defaults to discarding
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A tibble with columns <code>date</code>, <code>year</code>, <code>lon</code>, <code>lat</code>,
-<code>presence</code>, <code>referenceID</code>, and <code>source</code>. Attributes include <code>output_path</code>
+    <p>A tibble with columns <code>date</code>, <code>datetime</code>, <code>hour</code>, <code>year</code>, <code>lon</code>, <code>lat</code>,
+<code>presence</code>, <code>referenceID</code>, and <code>source</code>. The <code>hour</code> column contains integers
+(0-23) representing the top of the hour from the original datetime, or NA
+if no time component was present. Attributes include <code>output_path</code>
 and <code>source_files</code>.</p>
     </div>
 
