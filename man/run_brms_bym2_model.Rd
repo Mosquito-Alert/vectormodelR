@@ -6,15 +6,16 @@
 \usage{
 run_brms_bym2_model(
   dataset = NULL,
-  formula = NULL,
+  formula,
   cellsize_m = 800,
+  temporal_resolution = c("daily", "hourly"),
   adjacency = NULL,
   adjacency_args = list(),
   priors = NULL,
   nchains = 4,
   threads_per_chain = 1,
-  adapt_delta = 0.995,
-  max_treedepth = 20,
+  adapt_delta = 0.99,
+  max_treedepth = 15,
   backend = c("cmdstanr", "rstan"),
   iso3 = NULL,
   admin_level = NULL,
@@ -27,52 +28,67 @@ run_brms_bym2_model(
 )
 }
 \arguments{
-\item{formula}{Optional character string or formula object specifying the fixed
-and random effects structure. If provided, it overrides the default base
-formula. The spatial BYM2 term \verb{+ car(W, gr = <grid_col>, type = "bym2")}
-will be automatically appended to this formula. If \code{NULL} (default), the
-function processes \code{source} validation and uses a set of default predictors
-including \code{sea_days}, \code{maxTM_z}, \code{ppt_z}, \code{ndvi_z}, \code{elev_z}, \code{pop_z},
-\code{year}, and \code{landcover_code}.}
+\item{dataset}{An in-memory modelling dataset, a \code{brms_data_prep} object,
+a \code{bym2_data_prep} object, a data.frame, a path to a prepared RDS file,
+or \code{NULL}. If \code{NULL}, \code{iso3}, \code{admin_level}, and \code{admin_name} are used
+to locate a prepared BYM2 object in \code{input_dir}.}
 
-\item{cellsize_m}{Numeric cell size (meters) of the hex grid whose adjacency
-matrix will be used. Defaults to 800, expecting a \code{grid_id_800} column in
-the dataset.}
+\item{formula}{Character string or formula object specifying the fixed and
+non-spatial random effects structure. This is required. If the formula does
+not contain a \code{car()} term, the BYM2 term
+\verb{+ car(W, gr = <grid_col>, type = "bym2")} is appended automatically.
+If the formula already contains \code{car(...)}, it is used as supplied.}
+
+\item{cellsize_m}{Numeric cell size in meters. Defaults to \code{800}, expecting
+a grid column such as \code{grid_id_800}.}
+
+\item{temporal_resolution}{Character. Either \code{"daily"} or \code{"hourly"}.
+Determines which prepared-file name is used when \code{dataset = NULL}.}
 
 \item{adjacency}{Optional pre-computed adjacency matrix whose row/column
-names match the grid identifier column. When \code{NULL}, the helper calls
-\code{\link[=build_grid_adjacency]{build_grid_adjacency()}}.}
+names match the grid identifier column.}
 
 \item{adjacency_args}{Named list of additional arguments forwarded to
-\code{\link[=build_grid_adjacency]{build_grid_adjacency()}} when \code{adjacency} is \code{NULL}. These values override
-the defaults assembled by the helper.}
+\code{\link[=build_grid_adjacency]{build_grid_adjacency()}} when adjacency needs to be built.}
 
-\item{save_pars}{Logical; forwarded to \code{brms::brm()} as the \code{save_pars}
-argument. Defaults to \code{TRUE} to retain latent BYM2 parameters.}
+\item{priors}{Optional \code{brms::set_prior} object. If \code{NULL}, default BYM2
+priors are used.}
+
+\item{nchains}{Integer. Number of MCMC chains.}
+
+\item{threads_per_chain}{Integer. Number of threads per chain.}
+
+\item{adapt_delta}{Numeric. Target average proposal acceptance probability.}
+
+\item{max_treedepth}{Integer. Maximum tree depth for NUTS.}
+
+\item{backend}{Character. \code{"cmdstanr"} or \code{"rstan"}.}
+
+\item{iso3, admin_level, admin_name}{Optional location identifiers used for
+prepared-file lookup and adjacency construction.}
+
+\item{write_output}{Logical. Whether to save the fitted model to disk.}
+
+\item{output_path}{Directory or file path for saved model output.}
+
+\item{input_dir}{Directory used when automatically locating prepared data.}
+
+\item{save_pars}{Logical. Forwarded to \code{brms::brm()}.}
+
+\item{verbose}{Logical. Emit messages when \code{TRUE}.}
 }
 \value{
-The fitted \code{brmsfit} object with attributes for the modelling data,
-aligned adjacency matrix, and saved path when written to disk.
+A fitted \code{brmsfit} object with attributes for model data, adjacency
+IDs, grid column, source dataset, location slug, formula text, and output path.
 }
 \description{
-Extends \code{\link[=run_brms_model]{run_brms_model()}} with a spatial BYM2 random effect using an
-adjacency matrix derived from the hex grid. The helper accepts either an
-in-memory modelling dataset or a path to the enriched RDS file and will
-construct the required adjacency matrix when only the location identifiers
-are supplied. Predictors are scaled to match the baseline specification and
-duplicate observations per grid-date-source-presence combination are dropped
-prior to model fitting.
+Fits a Bayesian occupancy model using \code{brms} with a spatial BYM2/CAR
+random effect based on a grid adjacency matrix.
 }
-\examples{
-\dontrun{
-bym2_fit <- run_brms_bym2_model(
-  dataset = "data/proc/model_prep_esp_4_barcelona_malert_gbif_se_el_ndvi_pd_wx_lc_hex400_hex800.Rds",
-  iso3 = "ESP",
-  admin_level = 4,
-  admin_name = "Barcelona",
-  cellsize_m = 800,
-  nchains = 4,
-  threads_per_chain = 2
-)
-}
+\details{
+This function is the spatial counterpart to \code{\link[=run_brms_model]{run_brms_model()}}. It expects
+either a \code{bym2_data_prep} object created by \code{\link[=prepare_bym2_data]{prepare_bym2_data()}}, a path to
+a prepared BYM2 RDS file, a \code{brms_data_prep} object plus enough information
+to build/provide adjacency, or a raw modelling data frame that can be passed
+through \code{\link[=prepare_bym2_data]{prepare_bym2_data()}}.
 }

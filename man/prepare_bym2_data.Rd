@@ -2,11 +2,12 @@
 % Please edit documentation in R/prepare_bym2_data.R
 \name{prepare_bym2_data}
 \alias{prepare_bym2_data}
-\title{Prepare data and adjacency matrix for BYM2 modelling}
+\title{Prepare data and adjacency matrix for BYM2 brms modelling}
 \usage{
 prepare_bym2_data(
   dataset,
   cellsize_m = 800,
+  temporal_resolution = c("daily", "hourly"),
   iso3 = NULL,
   admin_level = NULL,
   admin_name = NULL,
@@ -18,11 +19,23 @@ prepare_bym2_data(
 )
 }
 \arguments{
+\item{dataset}{An in-memory modelling dataset (data.frame), a \code{brms_data_prep} object,
+a \code{bym2_data_prep} object, or a path to a prepared RDS file.}
+
 \item{cellsize_m}{Numeric cell size (meters). Defaults to 800.}
 
-\item{adjacency}{Optional pre-computed adjacency matrix. If NULL, one is built.}
+\item{temporal_resolution}{Character. Either \code{"daily"} (default) or \code{"hourly"}.
+When \code{"hourly"}, filters to records with valid hourly weather values and
+scales the current-hour and short-window hourly predictors. When \code{"daily"},
+uses the daily weather summaries and precipitation lag predictors.}
 
-\item{adjacency_args}{List of arguments passed to \code{\link[=build_grid_adjacency]{build_grid_adjacency()}}.}
+\item{iso3, admin_level, admin_name}{Optional strings to locate the dataset if \code{dataset} is NULL.}
+
+\item{adjacency}{Optional pre-computed adjacency matrix. If \code{NULL}, one is
+built using \code{\link[=build_grid_adjacency]{build_grid_adjacency()}}.}
+
+\item{adjacency_args}{List of additional arguments passed to
+\code{\link[=build_grid_adjacency]{build_grid_adjacency()}} when \code{adjacency = NULL}.}
 
 \item{output_dir}{Directory where the prepared dataset is written when \code{write = TRUE}. Defaults to \code{"data/proc"}.}
 
@@ -31,15 +44,19 @@ prepare_bym2_data(
 \item{verbose}{Logical. Emit informative messages when \code{TRUE}.}
 }
 \value{
-A list of class \code{bym2_data_list} containing:
+A list of class \code{bym2_data_prep} containing:
 \item{model_data}{The filtered, scaled data.frame ready for brms.}
-\item{adjacency}{The aligned sparse matrix corresponding to \code{model_data}.}
+\item{adjacency}{The aligned sparse adjacency matrix corresponding to \code{model_data}.}
 \item{grid_col}{The name of the grid identifier column used.}
 \item{scaling}{A list of mean/sd values used for scaling predictors.}
-\item{meta}{Metadata (iso3, admin_level, etc.) for file naming.}
+\item{meta}{Metadata including iso3, admin_level, admin_name, slug, source path, and temporal resolution.}
 }
 \description{
-Cleans the dataset, scales predictors (storing means/SDs for future use),
-and aligns the spatial adjacency matrix to the filtered data. Optionally
-saves the prepared object to disk.
+Cleans and scales model data using \code{\link[=prepare_brms_data]{prepare_brms_data()}}, then builds or
+aligns a spatial adjacency matrix for BYM2 modelling.
+}
+\details{
+This function is a spatial wrapper around \code{\link[=prepare_brms_data]{prepare_brms_data()}}. Use
+\code{\link[=prepare_brms_data]{prepare_brms_data()}} for non-spatial brms models, and use
+\code{prepare_bym2_data()} when the model requires a BYM2/CAR spatial component.
 }

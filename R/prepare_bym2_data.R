@@ -1,27 +1,30 @@
-#' Prepare data and adjacency matrix for BYM2 modelling
+#' Prepare data and adjacency matrix for BYM2 brms modelling
 #'
-#' Cleans the dataset, scales predictors (storing means/SDs for future use),
-#' and aligns the spatial adjacency matrix to the filtered data. Optionally
-#' saves the prepared object to disk.
+#' Cleans and scales model data using [prepare_brms_data()], then builds or
+#' aligns a spatial adjacency matrix for BYM2 modelling.
 #'
-#' @inheritParams run_brms_bym2_model
-#' @param cellsize_m Numeric cell size (meters). Defaults to 800.
-#' @param adjacency Optional pre-computed adjacency matrix. If NULL, one is built.
-#' @param adjacency_args List of arguments passed to [build_grid_adjacency()].
-#' @param output_dir Directory where the prepared dataset is written when `write = TRUE`. Defaults to `"data/proc"`.
-#' @param write Logical. If `TRUE` the prepared object is written to disk. Defaults to `FALSE`.
-#' @param verbose Logical. Emit informative messages when `TRUE`.
+#' This function is a spatial wrapper around [prepare_brms_data()]. Use
+#' [prepare_brms_data()] for non-spatial brms models, and use
+#' `prepare_bym2_data()` when the model requires a BYM2/CAR spatial component.
 #'
-#' @return A list of class `bym2_data_list` containing:
+#' @inheritParams prepare_brms_data
+#' @param adjacency Optional pre-computed adjacency matrix. If `NULL`, one is
+#'   built using [build_grid_adjacency()].
+#' @param adjacency_args List of additional arguments passed to
+#'   [build_grid_adjacency()] when `adjacency = NULL`.
+#'
+#' @return A list of class `bym2_data_prep` containing:
 #'   \item{model_data}{The filtered, scaled data.frame ready for brms.}
-#'   \item{adjacency}{The aligned sparse matrix corresponding to `model_data`.}
+#'   \item{adjacency}{The aligned sparse adjacency matrix corresponding to `model_data`.}
 #'   \item{grid_col}{The name of the grid identifier column used.}
 #'   \item{scaling}{A list of mean/sd values used for scaling predictors.}
-#'   \item{meta}{Metadata (iso3, admin_level, etc.) for file naming.}
+#'   \item{meta}{Metadata including iso3, admin_level, admin_name, slug, source path, and temporal resolution.}
+#'
 #' @export
 prepare_bym2_data <- function(
     dataset,
     cellsize_m = 800,
+    temporal_resolution = c("daily", "hourly"),
     iso3 = NULL,
     admin_level = NULL,
     admin_name = NULL,
@@ -31,164 +34,214 @@ prepare_bym2_data <- function(
     write = FALSE,
     verbose = TRUE
 ) {
-  # ---- load dataset ----
-  dataset_is_path <- is.character(dataset) && length(dataset) == 1L && nzchar(dataset)
-  dataset_path <- if (dataset_is_path) dataset else NULL
-  
-  if (dataset_is_path) {
-    if (!file.exists(dataset_path)) stop("Dataset not found at ", dataset_path, call. = FALSE)
-    dataset <- readRDS(dataset_path)
-  }
-  
-  if (!is.data.frame(dataset)) {
-    stop("`dataset` must be a data frame or a path to an RDS file.", call. = FALSE)
-  }
-  
-  # ---- metadata & slug ----
-  explicit_slug <- NULL
-  if (!all(vapply(list(iso3, admin_level, admin_name), is.null, logical(1)))) {
-    if (any(vapply(list(iso3, admin_level, admin_name), is.null, logical(1)))) {
-      stop("`iso3`, `admin_level`, and `admin_name` must be supplied together.", call. = FALSE)
-    }
-    # Assuming build_location_identifiers is available in your package
-    ids <- tryCatch(build_location_identifiers(iso3, admin_level, admin_name), error = function(e) list(slug = "custom"))
-    explicit_slug <- ids$slug
-  }
-  
-  location_slug <- attr(dataset, "location_slug", exact = TRUE)
-  if (is.null(location_slug) || !nzchar(location_slug)) location_slug <- explicit_slug
-  
-  # ---- validation ----
-  if (!is.numeric(cellsize_m) || cellsize_m <= 0) stop("`cellsize_m` must be positive.", call. = FALSE)
-  
-  cellsize_token <- gsub("\\.", "_", format(cellsize_m, trim = TRUE, scientific = FALSE))
-  grid_col <- paste0("grid_id_", cellsize_token)
-  
-  required_cols <- c(
-    "date", "sea_days", "presence", "year", "landcover_code",
-    "maxTM", "meanPPT24H", "ndvi_ddf_proximity", "elevation_m",
-    "popdensity_km2", "source", grid_col
+  temporal_resolution <- match.arg(temporal_resolution)
+
+  # ---------------------------------------------------------------------------
+  # 1. Prepare the regular brms modelling data
+  # ---------------------------------------------------------------------------
+
+  prepared <- prepare_brms_data(
+    dataset = dataset,
+    cellsize_m = cellsize_m,
+    temporal_resolution = temporal_resolution,
+    iso3 = iso3,
+    admin_level = admin_level,
+    admin_name = admin_name,
+    output_dir = output_dir,
+    write = FALSE,
+    verbose = verbose
   )
-  
-  missing <- setdiff(required_cols, names(dataset))
-  if (length(missing)) stop("Missing columns: ", paste(missing, collapse = ", "), call. = FALSE)
-  
-  # ---- filtering & formatting ----
-  # Convert grid ID to character to ensure matching with matrix rownames
-  dataset[[grid_col]] <- as.character(dataset[[grid_col]])
-  
-  # 1. Filter valid grid IDs
-  df <- dataset |>
-    dplyr::filter(!is.na(.data[[grid_col]]))
-  
-  if (!nrow(df)) stop("No observations remain after filtering for valid grid identifiers.", call. = FALSE)
-  
-  # 2. explicit NA filtering for ALL model variables
-  # We do this BEFORE scaling to ensure we don't scale based on rows we drop later
-  vars_to_check <- c("presence", "sea_days", "maxTM", "meanPPT24H", 
-                     "ndvi_ddf_proximity", "elevation_m", "popdensity_km2",
-                     "source", "year", "landcover_code")
-  
-  df <- df |>
-    dplyr::filter(dplyr::if_all(dplyr::all_of(vars_to_check), ~ !is.na(.)))
-  
-  if (!nrow(df)) stop("No observations remain after dropping NAs.", call. = FALSE)
-  
-  # ---- scaling (manual to capture parameters) ----
-  # We define a helper to scale and return the params
-  scale_params <- list()
-  
-  do_scale <- function(x, name) {
-    mu <- mean(x, na.rm = TRUE)
-    sigma <- sd(x, na.rm = TRUE)
-    scale_params[[name]] <<- list(mean = mu, sd = sigma)
-    (x - mu) / sigma
+
+  df <- prepared$model_data
+  grid_col <- prepared$grid_col
+
+  if (!is.data.frame(df)) {
+    stop("`prepare_brms_data()` did not return a valid `model_data` data.frame.", call. = FALSE)
   }
-  
-  df <- df |>
-    dplyr::mutate(
-      year           = factor(.data$year),
-      landcover_code = factor(.data$landcover_code),
-      source         = factor(.data$source),
-      # Transformations + Scaling
-      maxTM_z = do_scale(.data$maxTM, "maxTM"),
-      ppt_z   = do_scale(log1p(.data$meanPPT24H), "log1p_ppt"),
-      ndvi_z  = do_scale(.data$ndvi_ddf_proximity, "ndvi"),
-      elev_z  = do_scale(.data$elevation_m, "elevation"),
-      pop_z   = do_scale(log1p(.data$popdensity_km2), "log1p_pop")
-    ) |>
-    dplyr::arrange(.data$source, .data[[grid_col]], .data$date) |>
-    dplyr::distinct(.data$source, .data[[grid_col]], .data$date, .data$presence, .keep_all = TRUE)
-  
-  # ---- adjacency ----
+
+  if (is.null(grid_col) || !nzchar(grid_col)) {
+    stop("`prepare_brms_data()` did not return a valid `grid_col`.", call. = FALSE)
+  }
+
+  if (!grid_col %in% names(df)) {
+    stop("Grid column `", grid_col, "` was not found in prepared model data.", call. = FALSE)
+  }
+
+  if (!nrow(df)) {
+    stop("Prepared model data has zero rows.", call. = FALSE)
+  }
+
+  df[[grid_col]] <- as.character(df[[grid_col]])
+
   grid_ids <- sort(unique(df[[grid_col]]))
-  
+
+  if (!length(grid_ids)) {
+    stop("No grid identifiers found in prepared model data.", call. = FALSE)
+  }
+
+  # ---------------------------------------------------------------------------
+  # 2. Build or use supplied adjacency matrix
+  # ---------------------------------------------------------------------------
+
   if (is.null(adjacency)) {
     if (is.null(iso3) || is.null(admin_level) || is.null(admin_name)) {
-      stop("`iso3`, `admin_level`, `admin_name` required to build adjacency.", call. = FALSE)
+      stop(
+        "`iso3`, `admin_level`, and `admin_name` are required to build adjacency ",
+        "when `adjacency = NULL`.",
+        call. = FALSE
+      )
     }
-    
-    # Forward extra args if provided
-    adj_args <- c(
-      list(iso3 = iso3, admin_level = admin_level, admin_name = admin_name, 
-           cellsize_m = cellsize_m, model = dataset, sparse = TRUE),
+
+    if (isTRUE(verbose)) {
+      message("Building BYM2 adjacency matrix for ", length(grid_ids), " grid cells.")
+    }
+
+    default_adjacency_args <- list(
+      iso3 = iso3,
+      admin_level = admin_level,
+      admin_name = admin_name,
+      cellsize_m = cellsize_m,
+      model = df,
+      sparse = TRUE
+    )
+
+    adjacency_args <- utils::modifyList(
+      default_adjacency_args,
       adjacency_args
     )
-    # Assuming build_grid_adjacency handles duplicate args by taking the last one
-    # or you might need more robust list merging here
-    adjacency_matrix <- do.call(build_grid_adjacency, adj_args)
-    
+
+    adjacency_matrix <- do.call(build_grid_adjacency, adjacency_args)
+
   } else {
+    if (isTRUE(verbose)) {
+      message("Using supplied adjacency matrix.")
+    }
+
     adjacency_matrix <- adjacency
   }
-  
-  if (!inherits(adjacency_matrix, "Matrix")) adjacency_matrix <- Matrix::Matrix(adjacency_matrix)
-  
-  # Ensure strict alignment
-  if (is.null(rownames(adjacency_matrix))) stop("Adjacency matrix must have rownames.", call. = FALSE)
-  
-  missing_ids <- setdiff(grid_ids, rownames(adjacency_matrix))
-  if (length(missing_ids)) {
-    stop("Adjacency matrix is missing ", length(missing_ids), " grid identifiers found in data.", call. = FALSE)
+
+  # ---------------------------------------------------------------------------
+  # 3. Validate and coerce adjacency matrix
+  # ---------------------------------------------------------------------------
+
+  if (!inherits(adjacency_matrix, "Matrix")) {
+    adjacency_matrix <- Matrix::Matrix(adjacency_matrix, sparse = TRUE)
   }
-  
-  # Subset and sort matrix to match data exactly
+
+  if (is.null(rownames(adjacency_matrix))) {
+    stop("Adjacency matrix must have rownames matching grid identifiers.", call. = FALSE)
+  }
+
+  if (is.null(colnames(adjacency_matrix))) {
+    stop("Adjacency matrix must have colnames matching grid identifiers.", call. = FALSE)
+  }
+
+  row_ids <- rownames(adjacency_matrix)
+  col_ids <- colnames(adjacency_matrix)
+
+  missing_row_ids <- setdiff(grid_ids, row_ids)
+  missing_col_ids <- setdiff(grid_ids, col_ids)
+
+  if (length(missing_row_ids)) {
+    stop(
+      "Adjacency matrix rownames are missing ",
+      length(missing_row_ids),
+      " grid identifiers found in model data. Examples: ",
+      paste(utils::head(missing_row_ids, 10), collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  if (length(missing_col_ids)) {
+    stop(
+      "Adjacency matrix colnames are missing ",
+      length(missing_col_ids),
+      " grid identifiers found in model data. Examples: ",
+      paste(utils::head(missing_col_ids, 10), collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  # ---------------------------------------------------------------------------
+  # 4. Align adjacency matrix to model data grid IDs
+  # ---------------------------------------------------------------------------
+
   adjacency_aligned <- adjacency_matrix[grid_ids, grid_ids, drop = FALSE]
-  
-  # Ensure symmetry (numerical precision issues can sometimes break this)
+
+  if (!all(rownames(adjacency_aligned) == grid_ids)) {
+    stop("Adjacency matrix row alignment failed.", call. = FALSE)
+  }
+
+  if (!all(colnames(adjacency_aligned) == grid_ids)) {
+    stop("Adjacency matrix column alignment failed.", call. = FALSE)
+  }
+
+  # brms CAR/BYM2 structures expect symmetric adjacency.
   if (!Matrix::isSymmetric(adjacency_aligned)) {
+    if (isTRUE(verbose)) {
+      message("Adjacency matrix is not symmetric; symmetrising it.")
+    }
+
     adjacency_aligned <- (adjacency_aligned + Matrix::t(adjacency_aligned)) / 2
   }
-  
-  # ---- return object ----
-  obj <- structure(
-    list(
-      model_data = df,
-      adjacency = adjacency_aligned,
-      grid_col = grid_col,
-      scaling = scale_params,
-      meta = list(
-        iso3 = iso3, 
-        admin_level = admin_level, 
-        admin_name = admin_name, 
-        slug = location_slug,
-        source_path = dataset_path
-      )
-    ),
-    class = "bym2_data_prep"
-  )
+
+  adjacency_aligned <- Matrix::drop0(adjacency_aligned)
+
+  # ---------------------------------------------------------------------------
+  # 5. Add BYM2 fields to prepared object
+  # ---------------------------------------------------------------------------
+
+  obj <- prepared
+
+  obj$model_data <- df
+  obj$adjacency <- adjacency_aligned
+
+  if (is.null(obj$meta)) {
+    obj$meta <- list()
+  }
+
+  obj$meta$spatial_model <- "BYM2"
+  obj$meta$adjacency_nrow <- nrow(adjacency_aligned)
+  obj$meta$adjacency_ncol <- ncol(adjacency_aligned)
+  obj$meta$adjacency_nonzero <- Matrix::nnzero(adjacency_aligned)
+
+  class(obj) <- unique(c("bym2_data_prep", class(prepared)))
+
+  # ---------------------------------------------------------------------------
+  # 6. Optional write to disk
+  # ---------------------------------------------------------------------------
 
   if (isTRUE(write)) {
     if (is.null(output_dir) || !nzchar(output_dir)) {
       stop("`write = TRUE` requires a valid `output_dir`.", call. = FALSE)
     }
-    if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
-    
-    # We save the entire object to preserve scaling params and adjacency
-    output_path <- file.path(output_dir, sprintf("model_prep_%s_data.rds", location_slug))
+
+    if (!dir.exists(output_dir)) {
+      dir.create(output_dir, recursive = TRUE)
+    }
+
+    slug <- obj$meta$slug
+
+    if (is.null(slug) || !nzchar(slug)) {
+      slug <- "custom"
+    }
+
+    resolution_suffix <- if (identical(temporal_resolution, "hourly")) {
+      "_hourly"
+    } else {
+      "_daily"
+    }
+
+    output_path <- file.path(
+      output_dir,
+      sprintf("model_prep_%s%s_bym2_data.rds", slug, resolution_suffix)
+    )
+
     saveRDS(obj, output_path)
-    
-    if (isTRUE(verbose)) message("Prepared brms/BYM2 object written to ", output_path)
+
+    if (isTRUE(verbose)) {
+      message("Prepared brms/BYM2 object written to ", output_path)
+    }
   }
 
   obj
