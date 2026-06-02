@@ -2,11 +2,17 @@
 % Please edit documentation in R/prepare_bym2_data.R
 \name{prepare_bym2_data}
 \alias{prepare_bym2_data}
-\title{Prepare data and adjacency matrix for BYM2 modelling}
+\title{Prepare data and adjacency matrix for BYM2 brms modelling}
 \usage{
 prepare_bym2_data(
   dataset,
   cellsize_m = 800,
+  temporal_resolution = c("daily", "hourly"),
+  base_required_cols = NULL,
+  vars_to_check = NULL,
+  scale_specs = NULL,
+  aggregation_specs = NULL,
+  factor_cols = NULL,
   iso3 = NULL,
   admin_level = NULL,
   admin_name = NULL,
@@ -18,28 +24,76 @@ prepare_bym2_data(
 )
 }
 \arguments{
-\item{cellsize_m}{Numeric cell size (meters). Defaults to 800.}
+\item{dataset}{An in-memory modelling dataset (data.frame), a \code{brms_data_prep} object,
+a \code{bym2_data_prep} object, or a path to a prepared RDS file.}
 
-\item{adjacency}{Optional pre-computed adjacency matrix. If NULL, one is built.}
+\item{cellsize_m}{Numeric cell size in meters. Defaults to 800.}
 
-\item{adjacency_args}{List of arguments passed to \code{\link[=build_grid_adjacency]{build_grid_adjacency()}}.}
+\item{temporal_resolution}{Character. Either \code{"daily"} or \code{"hourly"}.
+When \code{"daily"}, records are aggregated to source-grid-date units.
+When \code{"hourly"}, records are aggregated to source-grid-date-hour units.}
 
-\item{output_dir}{Directory where the prepared dataset is written when \code{write = TRUE}. Defaults to \code{"data/proc"}.}
+\item{base_required_cols}{Optional character vector of column names that must
+exist for the preparation machinery to run. The active grid column is always
+added automatically. If \code{NULL}, defaults to \code{c("date", "presence", "source")}.}
 
-\item{write}{Logical. If \code{TRUE} the prepared object is written to disk. Defaults to \code{FALSE}.}
+\item{vars_to_check}{Optional character vector of column names to check for
+missing values before aggregation and scaling. If \code{NULL}, no explicit
+missing-value filtering is applied beyond required grid/hour checks.}
+
+\item{scale_specs}{Optional named list of scaling specifications. If \code{NULL},
+no predictor scaling is applied. Specs may be plain named lists with fields
+\code{input}, \code{output}, optional \code{transform}, and optional \code{scale_name}; these are
+normalized internally by \code{normalize_scale_specs()}.}
+
+\item{aggregation_specs}{Optional named list or named character vector defining
+how columns should be aggregated when multiple rows occur in the same
+modelling unit. Names are column names and values are aggregation methods.
+Supported methods are \code{"any"}, \code{"all"}, \code{"mean"}, \code{"median"}, \code{"sum"},
+\code{"min"}, \code{"max"}, \code{"first"}, \code{"last"}, \code{"mode"}, and \code{"paste_unique"}.
+If \code{NULL}, all non-grouping columns are aggregated using \code{"first"}, except
+\code{presence}, which defaults to \code{"any"}.}
+
+\item{factor_cols}{Optional character vector of columns to convert to factors
+after aggregation and before scaling/modelling. If \code{NULL}, no columns are
+converted. For typical models, use columns such as \code{"year"},
+\code{"landcover_code"}, and \code{"source"} when they should be treated as categorical
+predictors or grouping variables.}
+
+\item{iso3, admin_level, admin_name}{Optional strings to locate the dataset if \code{dataset} is NULL.}
+
+\item{adjacency}{Optional pre-computed adjacency matrix. If \code{NULL}, one is
+built using \code{\link[=build_grid_adjacency]{build_grid_adjacency()}}.}
+
+\item{adjacency_args}{List of additional arguments passed to
+\code{\link[=build_grid_adjacency]{build_grid_adjacency()}} when \code{adjacency = NULL}.}
+
+\item{output_dir}{Directory where the prepared dataset is written when
+\code{write = TRUE}. Defaults to \code{"data/proc"}.}
+
+\item{write}{Logical. If \code{TRUE}, the prepared object is written to disk.
+Defaults to \code{FALSE}.}
 
 \item{verbose}{Logical. Emit informative messages when \code{TRUE}.}
 }
 \value{
-A list of class \code{bym2_data_list} containing:
-\item{model_data}{The filtered, scaled data.frame ready for brms.}
-\item{adjacency}{The aligned sparse matrix corresponding to \code{model_data}.}
+A list of class \code{bym2_data_prep} containing:
+\item{model_data}{The filtered, aggregated, scaled data.frame ready for brms.}
+\item{adjacency}{The aligned sparse adjacency matrix corresponding to \code{model_data}.}
 \item{grid_col}{The name of the grid identifier column used.}
 \item{scaling}{A list of mean/sd values used for scaling predictors.}
-\item{meta}{Metadata (iso3, admin_level, etc.) for file naming.}
+\item{scale_specs}{The scaling specifications supplied to the preparation step.}
+\item{aggregation_specs}{The aggregation specifications used by the preparation step.}
+\item{factor_cols}{The columns converted to factors by the preparation step.}
+\item{meta}{Metadata including iso3, admin_level, admin_name, slug, source path, temporal resolution, preparation settings, and BYM2 adjacency metadata.}
 }
 \description{
-Cleans the dataset, scales predictors (storing means/SDs for future use),
-and aligns the spatial adjacency matrix to the filtered data. Optionally
-saves the prepared object to disk.
+Cleans, aggregates, optionally factor-converts, and scales model data using
+\code{\link[=prepare_brms_data]{prepare_brms_data()}}, then builds or aligns a spatial adjacency matrix for
+BYM2 modelling.
+}
+\details{
+This function is a spatial wrapper around \code{\link[=prepare_brms_data]{prepare_brms_data()}}. Use
+\code{\link[=prepare_brms_data]{prepare_brms_data()}} for non-spatial brms models, and use
+\code{prepare_bym2_data()} when the model requires a BYM2/CAR spatial component.
 }
