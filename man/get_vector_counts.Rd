@@ -20,9 +20,10 @@ get_vector_counts(
 )
 }
 \arguments{
-\item{iso3}{Character ISO3 code (e.g., "MEX", "JAM").}
+\item{iso3}{Character ISO3 code, e.g. \code{"MEX"} or \code{"JAM"}.}
 
-\item{level}{Integer requested GADM level (0 = country, 1 = region, 2 = district, ...).}
+\item{level}{Integer requested GADM level.
+\code{0 = country}, \code{1 = region}, \code{2 = district}, etc.}
 
 \item{gadm}{Optional sf polygon layer for the chosen GADM level. If NULL, fetched via
 \code{vectormodelR::get_gadm_data(iso3, level)}.}
@@ -33,42 +34,59 @@ get_vector_counts(
 \item{malert_sf}{Optional sf POINT layer for Mosquito Alert occurrences. If NULL, fetched via
 \code{vectormodelR::get_malert_data()}.}
 
-\item{malert_source}{Character passed to \code{vectormodelR::get_malert_data(source = ...)}.
-Default: "github".}
+\item{malert_source}{Character passed to
+\code{vectormodelR::get_malert_data(source = ...)}.
+Default: \code{"github"}.}
 
-\item{taxon_key}{Optional vector of GBIF taxon key passed to \code{vectormodelR::get_gbif_data()}.}
+\item{taxon_key}{Optional vector of GBIF taxon keys passed to
+\code{vectormodelR::get_gbif_data()}.}
 
-\item{gbif_clip_to_perimeter}{Logical passed to \code{vectormodelR::get_gbif_data()}.}
+\item{gbif_clip_to_perimeter}{Logical passed to
+\code{vectormodelR::get_gbif_data()}.}
 
-\item{gbif_save_outputs}{Logical passed to \code{vectormodelR::get_gbif_data()}.}
+\item{gbif_save_outputs}{Logical passed to
+\code{vectormodelR::get_gbif_data()}.}
 
-\item{crs}{Integer EPSG for point creation / joining. Default 4326 (WGS84).}
+\item{crs}{Integer EPSG for point creation and spatial joining.
+Default: \code{4326}.}
 
-\item{join_predicate}{Spatial predicate for join. Default \code{sf::st_within}.
-You can set \code{sf::st_intersects} if you prefer edge-inclusion.}
+\item{join_predicate}{Spatial predicate for join.
+Default: \code{sf::st_within}.
+You can set \code{sf::st_intersects} if you prefer edge inclusion.}
 
-\item{keep_unmatched}{Logical. If TRUE, includes an "UNMATCHED" bucket for points
-that do not fall inside polygons. Default FALSE (drops NAs).}
+\item{keep_unmatched}{Logical. If TRUE, includes an \code{"UNMATCHED"} bucket for points
+that do not fall inside polygons. Default FALSE.}
 }
 \value{
 A tibble with columns:
 \itemize{
-\item \code{admin_name} : the selected name column at the level (e.g., NAME_2)
+\item Parent admin columns, where relevant, e.g. \code{admin_level_1}, \code{admin_level_2}
+\item \code{admin_name}: the selected admin name at the requested/fallback level
 \item \code{malert_count}
 \item \code{gbif_count}
 \item \code{total}
 \item \code{iso3}
-\item \code{level_used} : actual level used after fallback
-\item \code{name_col} : which NAME_* column was used
+\item \code{level_used}: actual level used after fallback
+\item \code{name_col}: which GADM \code{NAME_*} column was used as \code{admin_name}
 }
 }
 \description{
 Spatially joins Mosquito Alert (MA) and GBIF occurrence points to GADM polygons
-and returns counts by admin name at the chosen level, plus totals.
+and returns counts by admin name at the chosen level, plus parent admin names
+and totals.
 }
 \details{
 If the requested GADM level is not available for the given ISO3, the function
 falls back to the highest available GADM level.
+
+Parent admin names are included for levels above 1. For example:
+\itemize{
+\item If \code{level = 2}, output includes \code{admin_level_1} and \code{admin_name}.
+\item If \code{level = 3}, output includes \code{admin_level_1}, \code{admin_level_2}, and \code{admin_name}.
+\item If \code{level = 1}, output includes only \code{admin_name}.
+}
+
+Country-level names are not included as parent columns.
 }
 \examples{
 \dontrun{

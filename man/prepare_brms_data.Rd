@@ -8,6 +8,9 @@ prepare_brms_data(
   dataset,
   cellsize_m = 800,
   temporal_resolution = c("daily", "hourly"),
+  base_required_cols = NULL,
+  vars_to_check = NULL,
+  scale_specs = NULL,
   iso3 = NULL,
   admin_level = NULL,
   admin_name = NULL,
@@ -23,15 +26,28 @@ a \code{bym2_data_prep} object, or a path to a prepared RDS file.}
 \item{cellsize_m}{Numeric cell size (meters). Defaults to 800.}
 
 \item{temporal_resolution}{Character. Either \code{"daily"} (default) or \code{"hourly"}.
-When \code{"hourly"}, filters to records with valid hourly weather values and
-scales the current-hour and short-window hourly predictors. When \code{"daily"},
-uses the daily weather summaries and precipitation lag predictors.}
+When \code{"hourly"}, prepares records for hourly models. When \code{"daily"},
+prepares records for daily models.}
+
+\item{base_required_cols}{Optional character vector of column names that must
+exist for the preparation machinery to run. The active grid column is always
+added automatically. If \code{NULL}, defaults to \code{c("date", "presence", "source")}.}
+
+\item{vars_to_check}{Optional character vector of column names to check for
+missing values before scaling. If \code{NULL}, no explicit missing-value filtering
+is applied beyond required grid/hour checks.}
+
+\item{scale_specs}{Optional named list of scaling specifications. If \code{NULL},
+no predictor scaling is applied. Use \code{\link[=scale_spec]{scale_spec()}} to define how raw
+columns should be transformed and scaled into model-ready columns.}
 
 \item{iso3, admin_level, admin_name}{Optional strings to locate the dataset if \code{dataset} is NULL.}
 
-\item{output_dir}{Directory where the prepared dataset is written when \code{write = TRUE}. Defaults to \code{"data/proc"}.}
+\item{output_dir}{Directory where the prepared dataset is written when
+\code{write = TRUE}. Defaults to \code{"data/proc"}.}
 
-\item{write}{Logical. If \code{TRUE} the prepared object is written to disk. Defaults to \code{FALSE}.}
+\item{write}{Logical. If \code{TRUE} the prepared object is written to disk.
+Defaults to \code{FALSE}.}
 
 \item{verbose}{Logical. Emit informative messages when \code{TRUE}.}
 }
@@ -40,10 +56,12 @@ A list of class \code{brms_data_prep} containing:
 \item{model_data}{The filtered, scaled data.frame ready for brms.}
 \item{grid_col}{The name of the grid identifier column used.}
 \item{scaling}{A list of mean/sd values used for scaling predictors.}
+\item{scale_specs}{The scaling specifications supplied to the function.}
 \item{meta}{Metadata (iso3, admin_level, etc.) for file naming.}
 }
 \description{
-Cleans the dataset, scales predictors (storing means/SDs for future use),
-and returns an object ready to be passed to \code{\link[=run_brms_model]{run_brms_model()}}. Optionally
-saves the prepared object to disk.
+Cleans the dataset, optionally filters rows with missing values in user-supplied
+variables, scales predictors using user-supplied scaling specifications, and
+returns an object ready to be passed to \code{\link[=run_brms_model]{run_brms_model()}}. Optionally saves
+the prepared object to disk.
 }

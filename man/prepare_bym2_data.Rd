@@ -8,6 +8,9 @@ prepare_bym2_data(
   dataset,
   cellsize_m = 800,
   temporal_resolution = c("daily", "hourly"),
+  base_required_cols = NULL,
+  vars_to_check = NULL,
+  scale_specs = NULL,
   iso3 = NULL,
   admin_level = NULL,
   admin_name = NULL,
@@ -25,9 +28,20 @@ a \code{bym2_data_prep} object, or a path to a prepared RDS file.}
 \item{cellsize_m}{Numeric cell size (meters). Defaults to 800.}
 
 \item{temporal_resolution}{Character. Either \code{"daily"} (default) or \code{"hourly"}.
-When \code{"hourly"}, filters to records with valid hourly weather values and
-scales the current-hour and short-window hourly predictors. When \code{"daily"},
-uses the daily weather summaries and precipitation lag predictors.}
+When \code{"hourly"}, prepares records for hourly models. When \code{"daily"},
+prepares records for daily models.}
+
+\item{base_required_cols}{Optional character vector of column names that must
+exist for the preparation machinery to run. The active grid column is always
+added automatically. If \code{NULL}, defaults to \code{c("date", "presence", "source")}.}
+
+\item{vars_to_check}{Optional character vector of column names to check for
+missing values before scaling. If \code{NULL}, no explicit missing-value filtering
+is applied beyond required grid/hour checks.}
+
+\item{scale_specs}{Optional named list of scaling specifications. If \code{NULL},
+no predictor scaling is applied. Use \code{\link[=scale_spec]{scale_spec()}} to define how raw
+columns should be transformed and scaled into model-ready columns.}
 
 \item{iso3, admin_level, admin_name}{Optional strings to locate the dataset if \code{dataset} is NULL.}
 
@@ -37,9 +51,11 @@ built using \code{\link[=build_grid_adjacency]{build_grid_adjacency()}}.}
 \item{adjacency_args}{List of additional arguments passed to
 \code{\link[=build_grid_adjacency]{build_grid_adjacency()}} when \code{adjacency = NULL}.}
 
-\item{output_dir}{Directory where the prepared dataset is written when \code{write = TRUE}. Defaults to \code{"data/proc"}.}
+\item{output_dir}{Directory where the prepared dataset is written when
+\code{write = TRUE}. Defaults to \code{"data/proc"}.}
 
-\item{write}{Logical. If \code{TRUE} the prepared object is written to disk. Defaults to \code{FALSE}.}
+\item{write}{Logical. If \code{TRUE} the prepared object is written to disk.
+Defaults to \code{FALSE}.}
 
 \item{verbose}{Logical. Emit informative messages when \code{TRUE}.}
 }
@@ -49,7 +65,8 @@ A list of class \code{bym2_data_prep} containing:
 \item{adjacency}{The aligned sparse adjacency matrix corresponding to \code{model_data}.}
 \item{grid_col}{The name of the grid identifier column used.}
 \item{scaling}{A list of mean/sd values used for scaling predictors.}
-\item{meta}{Metadata including iso3, admin_level, admin_name, slug, source path, and temporal resolution.}
+\item{scale_specs}{The scaling specifications supplied to the preparation step.}
+\item{meta}{Metadata including iso3, admin_level, admin_name, slug, source path, temporal resolution, and BYM2 adjacency metadata.}
 }
 \description{
 Cleans and scales model data using \code{\link[=prepare_brms_data]{prepare_brms_data()}}, then builds or

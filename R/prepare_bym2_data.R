@@ -18,14 +18,17 @@
 #'   \item{adjacency}{The aligned sparse adjacency matrix corresponding to `model_data`.}
 #'   \item{grid_col}{The name of the grid identifier column used.}
 #'   \item{scaling}{A list of mean/sd values used for scaling predictors.}
-#'   \item{meta}{Metadata including iso3, admin_level, admin_name, slug, source path, and temporal resolution.}
+#'   \item{scale_specs}{The scaling specifications supplied to the preparation step.}
+#'   \item{meta}{Metadata including iso3, admin_level, admin_name, slug, source path, temporal resolution, and BYM2 adjacency metadata.}
 #'
 #' @export
 prepare_bym2_data <- function(
     dataset,
     cellsize_m = 800,
     temporal_resolution = c("daily", "hourly"),
+    base_required_cols = NULL,
     vars_to_check = NULL,
+    scale_specs = NULL,
     iso3 = NULL,
     admin_level = NULL,
     admin_name = NULL,
@@ -38,14 +41,36 @@ prepare_bym2_data <- function(
   temporal_resolution <- match.arg(temporal_resolution)
 
   # ---------------------------------------------------------------------------
-  # 1. Prepare the regular brms modelling data
+  # 1. Argument validation
+  # ---------------------------------------------------------------------------
+
+  if (!is.null(base_required_cols) && !is.character(base_required_cols)) {
+    stop("`base_required_cols` must be NULL or a character vector.", call. = FALSE)
+  }
+
+  if (!is.null(vars_to_check) && !is.character(vars_to_check)) {
+    stop("`vars_to_check` must be NULL or a character vector.", call. = FALSE)
+  }
+
+  if (!is.null(scale_specs) && !is.list(scale_specs)) {
+    stop("`scale_specs` must be NULL or a named list.", call. = FALSE)
+  }
+
+  if (!is.list(adjacency_args)) {
+    stop("`adjacency_args` must be a list.", call. = FALSE)
+  }
+
+  # ---------------------------------------------------------------------------
+  # 2. Prepare the regular brms modelling data
   # ---------------------------------------------------------------------------
 
   prepared <- prepare_brms_data(
     dataset = dataset,
     cellsize_m = cellsize_m,
     temporal_resolution = temporal_resolution,
+    base_required_cols = base_required_cols,
     vars_to_check = vars_to_check,
+    scale_specs = scale_specs,
     iso3 = iso3,
     admin_level = admin_level,
     admin_name = admin_name,
@@ -82,7 +107,7 @@ prepare_bym2_data <- function(
   }
 
   # ---------------------------------------------------------------------------
-  # 2. Build or use supplied adjacency matrix
+  # 3. Build or use supplied adjacency matrix
   # ---------------------------------------------------------------------------
 
   if (is.null(adjacency)) {
@@ -123,7 +148,7 @@ prepare_bym2_data <- function(
   }
 
   # ---------------------------------------------------------------------------
-  # 3. Validate and coerce adjacency matrix
+  # 4. Validate and coerce adjacency matrix
   # ---------------------------------------------------------------------------
 
   if (!inherits(adjacency_matrix, "Matrix")) {
@@ -165,7 +190,7 @@ prepare_bym2_data <- function(
   }
 
   # ---------------------------------------------------------------------------
-  # 4. Align adjacency matrix to model data grid IDs
+  # 5. Align adjacency matrix to model data grid IDs
   # ---------------------------------------------------------------------------
 
   adjacency_aligned <- adjacency_matrix[grid_ids, grid_ids, drop = FALSE]
@@ -178,7 +203,6 @@ prepare_bym2_data <- function(
     stop("Adjacency matrix column alignment failed.", call. = FALSE)
   }
 
-  # brms CAR/BYM2 structures expect symmetric adjacency.
   if (!Matrix::isSymmetric(adjacency_aligned)) {
     if (isTRUE(verbose)) {
       message("Adjacency matrix is not symmetric; symmetrising it.")
@@ -190,7 +214,7 @@ prepare_bym2_data <- function(
   adjacency_aligned <- Matrix::drop0(adjacency_aligned)
 
   # ---------------------------------------------------------------------------
-  # 5. Add BYM2 fields to prepared object
+  # 6. Add BYM2 fields to prepared object
   # ---------------------------------------------------------------------------
 
   obj <- prepared
@@ -206,11 +230,14 @@ prepare_bym2_data <- function(
   obj$meta$adjacency_nrow <- nrow(adjacency_aligned)
   obj$meta$adjacency_ncol <- ncol(adjacency_aligned)
   obj$meta$adjacency_nonzero <- Matrix::nnzero(adjacency_aligned)
+  obj$meta$base_required_cols <- base_required_cols
+  obj$meta$vars_to_check <- vars_to_check
+  obj$meta$scale_spec_names <- if (is.null(scale_specs)) NULL else names(scale_specs)
 
   class(obj) <- unique(c("bym2_data_prep", class(prepared)))
 
   # ---------------------------------------------------------------------------
-  # 6. Optional write to disk
+  # 7. Optional write to disk
   # ---------------------------------------------------------------------------
 
   if (isTRUE(write)) {
