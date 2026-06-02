@@ -422,3 +422,78 @@ subset_scale_specs_by_output <- function(scale_specs, outputs) {
 
   scale_specs[keep]
 }
+
+#' Normalize scaling specifications
+#'
+#' Converts user-supplied scaling specs into standard `scale_spec()` objects.
+#'
+#' Accepts specs already created by `scale_spec()`, or simple named character
+#' vectors/lists with fields `input`, `output`, optional `transform`, and optional
+#' `scale_name`.
+#'
+#' @param scale_specs A named list of scaling specifications.
+#'
+#' @return A named list of normalized scaling specifications.
+#'
+#' @keywords internal
+#' @noRd
+normalize_scale_specs <- function(scale_specs) {
+  if (is.null(scale_specs)) {
+    return(NULL)
+  }
+
+  if (!is.list(scale_specs)) {
+    stop("`scale_specs` must be NULL or a named list.", call. = FALSE)
+  }
+
+  spec_names <- names(scale_specs)
+
+  if (is.null(spec_names) || any(!nzchar(spec_names))) {
+    stop("`scale_specs` must be a named list.", call. = FALSE)
+  }
+
+  out <- vector("list", length(scale_specs))
+  names(out) <- spec_names
+
+  for (spec_name in spec_names) {
+    spec <- scale_specs[[spec_name]]
+
+    if (!is.list(spec) && !is.character(spec)) {
+      stop(
+        "Scale spec `", spec_name, "` must be a list or named character vector.",
+        call. = FALSE
+      )
+    }
+
+    if (is.null(names(spec)) || any(!nzchar(names(spec)))) {
+      stop(
+        "Scale spec `", spec_name, "` must have named fields.",
+        call. = FALSE
+      )
+    }
+
+    input <- spec[["input"]]
+    output <- spec[["output"]]
+    transform <- spec[["transform"]]
+    scale_name <- spec[["scale_name"]]
+
+    if (is.null(transform)) {
+      transform <- "identity"
+    }
+
+    if (is.null(scale_name)) {
+      scale_name <- spec_name
+    }
+
+    out[[spec_name]] <- scale_spec(
+      input = input,
+      output = output,
+      transform = transform,
+      scale_name = scale_name
+    )
+  }
+
+  validate_scale_specs(out)
+
+  out
+}

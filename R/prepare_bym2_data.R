@@ -1,7 +1,8 @@
 #' Prepare data and adjacency matrix for BYM2 brms modelling
 #'
-#' Cleans and scales model data using [prepare_brms_data()], then builds or
-#' aligns a spatial adjacency matrix for BYM2 modelling.
+#' Cleans, aggregates, optionally factor-converts, and scales model data using
+#' [prepare_brms_data()], then builds or aligns a spatial adjacency matrix for
+#' BYM2 modelling.
 #'
 #' This function is a spatial wrapper around [prepare_brms_data()]. Use
 #' [prepare_brms_data()] for non-spatial brms models, and use
@@ -14,12 +15,14 @@
 #'   [build_grid_adjacency()] when `adjacency = NULL`.
 #'
 #' @return A list of class `bym2_data_prep` containing:
-#'   \item{model_data}{The filtered, scaled data.frame ready for brms.}
+#'   \item{model_data}{The filtered, aggregated, scaled data.frame ready for brms.}
 #'   \item{adjacency}{The aligned sparse adjacency matrix corresponding to `model_data`.}
 #'   \item{grid_col}{The name of the grid identifier column used.}
 #'   \item{scaling}{A list of mean/sd values used for scaling predictors.}
 #'   \item{scale_specs}{The scaling specifications supplied to the preparation step.}
-#'   \item{meta}{Metadata including iso3, admin_level, admin_name, slug, source path, temporal resolution, and BYM2 adjacency metadata.}
+#'   \item{aggregation_specs}{The aggregation specifications used by the preparation step.}
+#'   \item{factor_cols}{The columns converted to factors by the preparation step.}
+#'   \item{meta}{Metadata including iso3, admin_level, admin_name, slug, source path, temporal resolution, preparation settings, and BYM2 adjacency metadata.}
 #'
 #' @export
 prepare_bym2_data <- function(
@@ -29,6 +32,8 @@ prepare_bym2_data <- function(
     base_required_cols = NULL,
     vars_to_check = NULL,
     scale_specs = NULL,
+    aggregation_specs = NULL,
+    factor_cols = NULL,
     iso3 = NULL,
     admin_level = NULL,
     admin_name = NULL,
@@ -56,6 +61,19 @@ prepare_bym2_data <- function(
     stop("`scale_specs` must be NULL or a named list.", call. = FALSE)
   }
 
+  if (!is.null(aggregation_specs) &&
+      !is.list(aggregation_specs) &&
+      !is.character(aggregation_specs)) {
+    stop(
+      "`aggregation_specs` must be NULL, a named character vector, or a named list.",
+      call. = FALSE
+    )
+  }
+
+  if (!is.null(factor_cols) && !is.character(factor_cols)) {
+    stop("`factor_cols` must be NULL or a character vector.", call. = FALSE)
+  }
+
   if (!is.list(adjacency_args)) {
     stop("`adjacency_args` must be a list.", call. = FALSE)
   }
@@ -71,6 +89,8 @@ prepare_bym2_data <- function(
     base_required_cols = base_required_cols,
     vars_to_check = vars_to_check,
     scale_specs = scale_specs,
+    aggregation_specs = aggregation_specs,
+    factor_cols = factor_cols,
     iso3 = iso3,
     admin_level = admin_level,
     admin_name = admin_name,
@@ -138,7 +158,6 @@ prepare_bym2_data <- function(
     )
 
     adjacency_matrix <- do.call(build_grid_adjacency, adjacency_args)
-
   } else {
     if (isTRUE(verbose)) {
       message("Using supplied adjacency matrix.")
@@ -230,9 +249,12 @@ prepare_bym2_data <- function(
   obj$meta$adjacency_nrow <- nrow(adjacency_aligned)
   obj$meta$adjacency_ncol <- ncol(adjacency_aligned)
   obj$meta$adjacency_nonzero <- Matrix::nnzero(adjacency_aligned)
+
   obj$meta$base_required_cols <- base_required_cols
   obj$meta$vars_to_check <- vars_to_check
   obj$meta$scale_spec_names <- if (is.null(scale_specs)) NULL else names(scale_specs)
+  obj$meta$aggregation_spec_names <- if (is.null(aggregation_specs)) NULL else names(aggregation_specs)
+  obj$meta$factor_cols <- factor_cols
 
   class(obj) <- unique(c("bym2_data_prep", class(prepared)))
 
