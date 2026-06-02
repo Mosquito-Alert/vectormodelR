@@ -2,7 +2,7 @@
 
 Spatially joins Mosquito Alert (MA) and GBIF occurrence points to GADM
 polygons and returns counts by admin name at the chosen level, plus
-totals.
+parent admin names and totals.
 
 ## Usage
 
@@ -27,12 +27,12 @@ get_vector_counts(
 
 - iso3:
 
-  Character ISO3 code (e.g., "MEX", "JAM").
+  Character ISO3 code, e.g. `"MEX"` or `"JAM"`.
 
 - level:
 
-  Integer requested GADM level (0 = country, 1 = region, 2 = district,
-  ...).
+  Integer requested GADM level. `0 = country`, `1 = region`,
+  `2 = district`, etc.
 
 - gadm:
 
@@ -53,11 +53,11 @@ get_vector_counts(
 - malert_source:
 
   Character passed to `vectormodelR::get_malert_data(source = ...)`.
-  Default: "github".
+  Default: `"github"`.
 
 - taxon_key:
 
-  Optional vector of GBIF taxon key passed to
+  Optional vector of GBIF taxon keys passed to
   [`vectormodelR::get_gbif_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_gbif_data.md).
 
 - gbif_clip_to_perimeter:
@@ -72,26 +72,29 @@ get_vector_counts(
 
 - crs:
 
-  Integer EPSG for point creation / joining. Default 4326 (WGS84).
+  Integer EPSG for point creation and spatial joining. Default: `4326`.
 
 - join_predicate:
 
-  Spatial predicate for join. Default
+  Spatial predicate for join. Default:
   [`sf::st_within`](https://r-spatial.github.io/sf/reference/geos_binary_pred.html).
   You can set
   [`sf::st_intersects`](https://r-spatial.github.io/sf/reference/geos_binary_pred.html)
-  if you prefer edge-inclusion.
+  if you prefer edge inclusion.
 
 - keep_unmatched:
 
-  Logical. If TRUE, includes an "UNMATCHED" bucket for points that do
-  not fall inside polygons. Default FALSE (drops NAs).
+  Logical. If TRUE, includes an `"UNMATCHED"` bucket for points that do
+  not fall inside polygons. Default FALSE.
 
 ## Value
 
 A tibble with columns:
 
-- `admin_name` : the selected name column at the level (e.g., NAME_2)
+- Parent admin columns, where relevant, e.g. `admin_level_1`,
+  `admin_level_2`
+
+- `admin_name`: the selected admin name at the requested/fallback level
 
 - `malert_count`
 
@@ -101,14 +104,25 @@ A tibble with columns:
 
 - `iso3`
 
-- `level_used` : actual level used after fallback
+- `level_used`: actual level used after fallback
 
-- `name_col` : which NAME\_\* column was used
+- `name_col`: which GADM `NAME_*` column was used as `admin_name`
 
 ## Details
 
 If the requested GADM level is not available for the given ISO3, the
 function falls back to the highest available GADM level.
+
+Parent admin names are included for levels above 1. For example:
+
+- If `level = 2`, output includes `admin_level_1` and `admin_name`.
+
+- If `level = 3`, output includes `admin_level_1`, `admin_level_2`, and
+  `admin_name`.
+
+- If `level = 1`, output includes only `admin_name`.
+
+Country-level names are not included as parent columns.
 
 ## Examples
 

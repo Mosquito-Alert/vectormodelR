@@ -315,7 +315,7 @@ NextGenerationEU/PRTR](reference/figures/funding/MICIU+NextG+PRTR+AEI_page-0001.
 - [`prepare_brms_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/prepare_brms_data.md)
   : Prepare data for brms modelling
 - [`prepare_bym2_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/prepare_bym2_data.md)
-  : Prepare data and adjacency matrix for BYM2 modelling
+  : Prepare data and adjacency matrix for BYM2 brms modelling
 - [`process_era5_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/process_era5_data.md)
   : Build daily & lagged weather features from processed ERA5 CSVs
 - [`process_landcover_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/process_landcover_data.md)
