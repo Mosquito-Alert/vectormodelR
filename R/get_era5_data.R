@@ -492,9 +492,35 @@ get_era5_data <- function(
         )
 
         if (!inherits(res, "try-error")) {
-          ok <- TRUE
-          request_url <- as.character(res)
-          break
+          res_text <- paste(capture.output(print(res)), collapse = "\n")
+          job_url <- extract_cds_job_url(res_text)
+
+          if (!is.na(job_url)) {
+            request_url <- job_url
+          }
+
+          if (file.exists(filepath)) {
+            ok <- TRUE
+            break
+          }
+
+          if (!is.na(job_url)) {
+            last_error <- res_text
+            request_submitted_but_not_downloaded <- TRUE
+
+            message(sprintf(
+              paste0(
+                "CDS created a job record for %s, but transfer/polling did not complete.\n",
+                "Saved job URL to log for later retry: %s"
+              ),
+              filename,
+              log_file
+            ))
+
+            break
+          }
+
+          last_error <- res_text
         }
 
         err_text <- paste(capture.output(print(res)), collapse = "\n")
