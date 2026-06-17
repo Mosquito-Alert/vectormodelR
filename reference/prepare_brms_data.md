@@ -20,6 +20,7 @@ prepare_brms_data(
   scale_specs = NULL,
   aggregation_specs = NULL,
   factor_cols = NULL,
+  remove_unused_cols = FALSE,
   iso3 = NULL,
   admin_level = NULL,
   admin_name = NULL,
