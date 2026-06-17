@@ -58,6 +58,7 @@ prepare_brms_data <- function(
     scale_specs = NULL,
     aggregation_specs = NULL,
     factor_cols = NULL,
+    remove_unused_cols = FALSE,
     iso3 = NULL,
     admin_level = NULL,
     admin_name = NULL,
@@ -128,6 +129,15 @@ prepare_brms_data <- function(
       cellsize_m <= 0) {
     stop("`cellsize_m` must be a positive numeric scalar.", call. = FALSE)
   }
+
+  if (!is.logical(remove_unused_cols) ||
+    length(remove_unused_cols) != 1L ||
+    is.na(remove_unused_cols)) {
+  stop(
+    "`remove_unused_cols` must be TRUE or FALSE.",
+    call. = FALSE
+  )
+}
 
   if (!is.null(base_required_cols) && !is.character(base_required_cols)) {
     stop("`base_required_cols` must be NULL or a character vector.", call. = FALSE)
@@ -305,6 +315,69 @@ prepare_brms_data <- function(
       stop("No observations remain after filtering for valid hours.", call. = FALSE)
     }
   }
+
+# ---------------------------------------------------------------------------
+# 6.5 Optionally remove unused columns
+# ---------------------------------------------------------------------------
+
+if (isTRUE(remove_unused_cols)) {
+
+  cols_to_keep <- unique(c(
+    base_required_cols,
+    vars_to_check,
+    scale_input_cols,
+    factor_cols,
+    grid_col,
+    "year",
+    if (identical(temporal_resolution, "hourly")) "hour" else NULL
+  ))
+
+  # Remove missing, NULL-equivalent, and empty names
+  cols_to_keep <- cols_to_keep[
+    !is.na(cols_to_keep) &
+      nzchar(cols_to_keep)
+  ]
+
+  missing_keep_cols <- setdiff(cols_to_keep, names(df))
+
+  if (length(missing_keep_cols)) {
+    stop(
+      "Columns required for data preparation are missing: ",
+      paste(missing_keep_cols, collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  removed_cols <- setdiff(names(df), cols_to_keep)
+
+  df <- df |>
+    dplyr::select(
+      dplyr::all_of(cols_to_keep)
+    )
+
+  if (isTRUE(verbose)) {
+    message(
+      "Removed ",
+      length(removed_cols),
+      " unused column",
+      if (length(removed_cols) == 1L) "" else "s",
+      "; retained ",
+      length(cols_to_keep),
+      " preparation columns."
+    )
+
+    if (length(removed_cols)) {
+      message(
+        "Removed columns: ",
+        paste(removed_cols, collapse = ", ")
+      )
+    }
+  }
+} else if (isTRUE(verbose)) {
+  message(
+    "`remove_unused_cols = FALSE`; retaining all available columns."
+  )
+}
 
   # ---------------------------------------------------------------------------
   # 7. User-controlled NA filtering
