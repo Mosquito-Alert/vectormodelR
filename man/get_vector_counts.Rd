@@ -11,6 +11,7 @@ get_vector_counts(
   gbif_tbl = NULL,
   malert_sf = NULL,
   malert_source = "github",
+  ma_filters = NULL,
   taxon_key = NULL,
   gbif_clip_to_perimeter = FALSE,
   gbif_save_outputs = FALSE,
@@ -37,6 +38,14 @@ get_vector_counts(
 \item{malert_source}{Character passed to
 \code{vectormodelR::get_malert_data(source = ...)}.
 Default: \code{"github"}.}
+
+\item{ma_filters}{Optional named list of filters passed to
+\code{vectormodelR::get_malert_data(filters = ...)} when Mosquito Alert
+data is fetched internally. If \code{malert_sf} is supplied directly, the
+same filters are applied in this function. Each list element name should be
+a column name and values can be scalars or vectors, e.g.
+\code{list("movelab_annotation_euro.class_id" = c(4, 5), type = "adult")}
+keeps rows where class_id is 4 or 5 and type is adult.}
 
 \item{taxon_key}{Optional vector of GBIF taxon keys passed to
 \code{vectormodelR::get_gbif_data()}.}

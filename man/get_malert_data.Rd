@@ -28,7 +28,8 @@ spatial filtering.}
 perimeter file.}
 
 \item{admin_name}{Optional administrative unit name associated with the
-perimeter file.}
+perimeter file. When the expected perimeter RDS is missing, it is generated
+automatically via \code{\link[=get_gadm_data]{get_gadm_data()}}.}
 
 \item{desired_cols}{Optional character vector (or list) of column names to
 retain after spatial filtering. When \code{NULL}, all available columns are kept.}

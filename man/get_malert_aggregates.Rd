@@ -4,7 +4,13 @@
 \alias{get_malert_aggregates}
 \title{Aggregates mosquito alert report data by country or city}
 \usage{
-get_malert_aggregates(aggregate_type, filter_year, country_code, file_layer)
+get_malert_aggregates(
+  aggregate_type,
+  filter_year = NULL,
+  country_code = NULL,
+  file_layer = NULL,
+  ma_filters = NULL
+)
 }
 \arguments{
 \item{aggregate_type}{String. The type of aggregation to perform. Options are "country" or "city".}
@@ -15,6 +21,10 @@ a comma-separated list of years (e.g., "2014,2015"), or a range (e.g., "2014-201
 \item{country_code}{String. The ISO country code (required if aggregate_type is "city").}
 
 \item{file_layer}{Integer. The layer of the shapefile/geopackage to access (for city aggregation).}
+
+\item{ma_filters}{Optional named list of filters to apply to Mosquito Alert data.
+Each list element name should be a column name and values can be scalars or vectors, e.g.
+\code{list("movelab_annotation_euro.class_id" = c(4, 5), type = "adult")}.}
 }
 \value{
 A data frame containing the aggregated mosquito alert report counts.
