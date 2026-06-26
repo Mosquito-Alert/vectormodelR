@@ -3,6 +3,9 @@
 #' @param aggregate_type String. The type of aggregation to perform. Options are "country" or "city".
 #' @param filter_year String. The year(s) to filter the data. Options include a single year (e.g., "2014"),
 #'   a comma-separated list of years (e.g., "2014,2015"), or a range (e.g., "2014-2016"). Defaults to NULL (all years).
+#' @param ma_filters Optional named list of filters to apply to Mosquito Alert data.
+#'   Each list element name should be a column name and values can be scalars or vectors, e.g.
+#'   \code{list("movelab_annotation_euro.class_id" = c(4, 5), type = "adult")}.
 #' @param country_code String. The ISO country code (required if aggregate_type is "city").
 #' @param file_layer Integer. The layer of the shapefile/geopackage to access (for city aggregation).
 #' @returns A data frame containing the aggregated mosquito alert report counts.
@@ -16,27 +19,45 @@
 #' get_malert_aggregates(aggregate_type = "city", filter_year = "2014-2024", country_code = "ESP", file_layer = 2)
 
 
-get_malert_aggregates <- function(aggregate_type, filter_year, country_code, file_layer) {
+get_malert_aggregates <- function(aggregate_type, filter_year = NULL, country_code = NULL, file_layer = NULL, ma_filters = NULL) {
+
+  if (!is.null(ma_filters)) {
+    if (!is.list(ma_filters) || is.null(names(ma_filters)) || any(!nzchar(names(ma_filters)))) {
+      stop("`ma_filters` must be a named list with non-empty column names.", call. = FALSE)
+    }
+  }
 
 malerts_reports_github = get_malert_data(source = "github")
 
 
-# Handle multiple years or year range
-if (!is.null(filter_year)) {
+  # Handle multiple years or year range
+  if (!is.null(filter_year)) {
 
-  if (grepl("-", filter_year)) { # Check if it's a range (e.g., "2011-2015")
-    years <- as.numeric(unlist(strsplit(filter_year, "-")))
-    filter_year <- seq(years[1], years[2])
+    if (grepl("-", filter_year)) { # Check if it's a range (e.g., "2011-2015")
+      years <- as.numeric(unlist(strsplit(filter_year, "-")))
+      filter_year <- seq(years[1], years[2])
 
-  } else if (grepl(",", filter_year)) { # Check if it's a comma-separated list (e.g., "2021,2024,2023,2022")
-    filter_year <- as.numeric(unlist(strsplit(filter_year, ",")))
-  } else {
-    filter_year <- as.numeric(filter_year) # Single year
+    } else if (grepl(",", filter_year)) { # Check if it's a comma-separated list (e.g., "2021,2024,2023,2022")
+      filter_year <- as.numeric(unlist(strsplit(filter_year, ",")))
+    } else {
+      filter_year <- as.numeric(filter_year) # Single year
+    }
+
+    malerts_reports_github <- malerts_reports_github %>%
+      dplyr::filter(creation_year %in% filter_year)
   }
 
-  malerts_reports_github <- malerts_reports_github %>%
-    dplyr::filter(creation_year %in% filter_year)
-}
+  # Apply ma_filters if provided
+  if (!is.null(ma_filters)) {
+    for (col in names(ma_filters)) {
+      if (col %in% names(malerts_reports_github)) {
+        malerts_reports_github <- malerts_reports_github %>%
+          dplyr::filter(.data[[col]] %in% ma_filters[[col]])
+      } else {
+        warning("Filter column '", col, "' not found in Mosquito Alert data. Skipping.", call. = FALSE)
+      }
+    }
+  }
 
 if(aggregate_type == "country")
 {

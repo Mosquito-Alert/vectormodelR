@@ -28,6 +28,13 @@
 #' @param malert_source Character passed to
 #'   \code{vectormodelR::get_malert_data(source = ...)}.
 #'   Default: \code{"github"}.
+#' @param ma_filters Optional named list of filters passed to
+#'   \code{vectormodelR::get_malert_data(filters = ...)} when Mosquito Alert
+#'   data is fetched internally. If \code{malert_sf} is supplied directly, the
+#'   same filters are applied in this function. Each list element name should be
+#'   a column name and values can be scalars or vectors, e.g.
+#'   \code{list("movelab_annotation_euro.class_id" = c(4, 5), type = "adult")}
+#'   keeps rows where class_id is 4 or 5 and type is adult.
 #' @param taxon_key Optional vector of GBIF taxon keys passed to
 #'   \code{vectormodelR::get_gbif_data()}.
 #' @param gbif_clip_to_perimeter Logical passed to
@@ -68,6 +75,7 @@ get_vector_counts <- function(
   gbif_tbl = NULL,
   malert_sf = NULL,
   malert_source = "github",
+  ma_filters = NULL,
   taxon_key = NULL,
   gbif_clip_to_perimeter = FALSE,
   gbif_save_outputs = FALSE,
@@ -82,6 +90,12 @@ get_vector_counts <- function(
 
   if (!is.numeric(level) || length(level) != 1 || is.na(level) || level < 0) {
     stop("`level` must be a single non-negative integer.")
+  }
+
+  if (!is.null(ma_filters)) {
+    if (!is.list(ma_filters) || is.null(names(ma_filters)) || any(!nzchar(names(ma_filters)))) {
+      stop("`ma_filters` must be a named list with non-empty column names.", call. = FALSE)
+    }
   }
 
   level <- as.integer(level)
@@ -190,7 +204,15 @@ get_vector_counts <- function(
 
   # ---- get Mosquito Alert data if needed ----
   if (is.null(malert_sf)) {
-    malert_sf <- vectormodelR::get_malert_data(source = malert_source)
+    malert_sf <- vectormodelR::get_malert_data(source = malert_source, filters = ma_filters)
+  } else if (!is.null(ma_filters)) {
+    for (col in names(ma_filters)) {
+      if (col %in% names(malert_sf)) {
+        malert_sf <- malert_sf[malert_sf[[col]] %in% ma_filters[[col]], , drop = FALSE]
+      } else {
+        warning("Filter column '", col, "' not found in `malert_sf`. Skipping.", call. = FALSE)
+      }
+    }
   }
 
   # ---- make sf points: GBIF ----

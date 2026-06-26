@@ -9,7 +9,8 @@
 #' @param admin_level Optional administrative level associated with the
 #'   perimeter file.
 #' @param admin_name Optional administrative unit name associated with the
-#'   perimeter file.
+#'   perimeter file. When the expected perimeter RDS is missing, it is generated
+#'   automatically via [get_gadm_data()].
 #' @param desired_cols Optional character vector (or list) of column names to
 #'   retain after spatial filtering. When `NULL`, all available columns are kept.
 #' @param filters Optional named list of values to filter by. Each element name
@@ -113,11 +114,29 @@ get_malert_data <- function(source = "zenodo",
     )
     perimeter_path <- perimeter_candidates[file.exists(perimeter_candidates)][1]
     if (is.na(perimeter_path)) {
-      stop(
-        "Perimeter file not found. Looked for: ",
-        paste(perimeter_candidates, collapse = "; "),
-        call. = FALSE
+      if (isTRUE(getOption("vectormodelR.verbose_missing_perimeter", TRUE))) {
+        message(
+          "Perimeter file not found for ", ids$slug,
+          ". Generating it with `get_gadm_data(..., perimeter = TRUE, rds = TRUE)`..."
+        )
+      }
+
+      vectormodelR::get_gadm_data(
+        iso3 = ids$iso3,
+        name = admin_name,
+        level = admin_level,
+        perimeter = TRUE,
+        rds = TRUE
       )
+
+      perimeter_path <- perimeter_candidates[file.exists(perimeter_candidates)][1]
+      if (is.na(perimeter_path)) {
+        stop(
+          "Perimeter file could not be generated. Looked for: ",
+          paste(perimeter_candidates, collapse = "; "),
+          call. = FALSE
+        )
+      }
     }
     message("Applying spatial filter using ", perimeter_path)
 
