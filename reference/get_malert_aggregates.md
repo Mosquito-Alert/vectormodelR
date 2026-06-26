@@ -5,7 +5,13 @@ Aggregates mosquito alert report data by country or city
 ## Usage
 
 ``` r
-get_malert_aggregates(aggregate_type, filter_year, country_code, file_layer)
+get_malert_aggregates(
+  aggregate_type,
+  filter_year = NULL,
+  country_code = NULL,
+  file_layer = NULL,
+  ma_filters = NULL
+)
 ```
 
 ## Arguments
@@ -30,6 +36,13 @@ get_malert_aggregates(aggregate_type, filter_year, country_code, file_layer)
   Integer. The layer of the shapefile/geopackage to access (for city
   aggregation).
 
+- ma_filters:
+
+  Optional named list of filters to apply to Mosquito Alert data. Each
+  list element name should be a column name and values can be scalars or
+  vectors, e.g.
+  `list("movelab_annotation_euro.class_id" = c(4, 5), type = "adult")`.
+
 ## Value
 
 A data frame containing the aggregated mosquito alert report counts.
@@ -39,8 +52,34 @@ A data frame containing the aggregated mosquito alert report counts.
 ``` r
 # Aggregate mosquito reports by country for 2015, 2016 and 2018
 get_malert_aggregates(aggregate_type = "country", filter_year = "2015,2016,2018")
-#> Warning: URL 'https://raw.githubusercontent.com/MosquitoAlert/Data/master/all_reports.zip': status was 'SSL connect error'
-#> Error in download.file("https://github.com/MosquitoAlert/Data/raw/master/all_reports.zip",     destfile = temp): cannot open URL 'https://github.com/MosquitoAlert/Data/raw/master/all_reports.zip'
+#> Loading year: 2014
+#> Loading year: 2015
+#> Loading year: 2016
+#> Loading year: 2017
+#> Loading year: 2018
+#> Loading year: 2019
+#> Loading year: 2020
+#> Loading year: 2021
+#> Loading year: 2022
+#> Loading year: 2023
+#> Loading year: 2024
+#> Loading year: 2025
+#> Loading year: 2026
+#> Saved raw Mosquito Alert reports to data/vector/vector_global_malert.Rds
+#> # A tibble: 22 × 2
+#>    country count
+#>    <chr>   <int>
+#>  1 ESP     10247
+#>  2 NA        464
+#>  3 ITA        32
+#>  4 FRA        18
+#>  5 ECU         7
+#>  6 BEL         6
+#>  7 PRT         6
+#>  8 NLD         5
+#>  9 LKA         4
+#> 10 GBR         3
+#> # ℹ 12 more rows
 
 # Aggregate mosquito reports by city for Spain in 2014-2024
 get_malert_aggregates(aggregate_type = "city", filter_year = "2014-2024", country_code = "ESP", file_layer = 2)
@@ -58,7 +97,7 @@ get_malert_aggregates(aggregate_type = "city", filter_year = "2014-2024", countr
 #> Loading year: 2025
 #> Loading year: 2026
 #> Saved raw Mosquito Alert reports to data/vector/vector_global_malert.Rds
-#> Reading layer `ADM_ADM_2' from data source `/tmp/Rtmp4Lx4GX/file1e1d5a1efe26.gpkg' using driver `GPKG'
+#> Reading layer `ADM_ADM_2' from data source `/tmp/Rtmp8EotLZ/file1dd2617c3abc.gpkg' using driver `GPKG'
 #> Simple feature collection with 52 features and 13 fields
 #> Geometry type: MULTIPOLYGON
 #> Dimension:     XY

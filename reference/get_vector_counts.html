@@ -54,6 +54,7 @@ and totals.</p>
 <span>  gbif_tbl <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  malert_sf <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  malert_source <span class="op">=</span> <span class="st">"github"</span>,</span>
+<span>  ma_filters <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  taxon_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  gbif_clip_to_perimeter <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  gbif_save_outputs <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -95,6 +96,16 @@ and totals.</p>
 <dd><p>Character passed to
 <code>vectormodelR::get_malert_data(source = ...)</code>.
 Default: <code>"github"</code>.</p></dd>
+
+
+<dt id="arg-ma-filters">ma_filters<a class="anchor" aria-label="anchor" href="#arg-ma-filters"></a></dt>
+<dd><p>Optional named list of filters passed to
+<code>vectormodelR::get_malert_data(filters = ...)</code> when Mosquito Alert
+data is fetched internally. If <code>malert_sf</code> is supplied directly, the
+same filters are applied in this function. Each list element name should be
+a column name and values can be scalars or vectors, e.g.
+<code>list("movelab_annotation_euro.class_id" = c(4, 5), type = "adult")</code>
+keeps rows where class_id is 4 or 5 and type is adult.</p></dd>
 
 
 <dt id="arg-taxon-key">taxon_key<a class="anchor" aria-label="anchor" href="#arg-taxon-key"></a></dt>

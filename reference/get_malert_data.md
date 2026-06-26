@@ -39,6 +39,9 @@ get_malert_data(
 - admin_name:
 
   Optional administrative unit name associated with the perimeter file.
+  When the expected perimeter RDS is missing, it is generated
+  automatically via
+  [`get_gadm_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_gadm_data.md).
 
 - desired_cols:
 
