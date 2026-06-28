@@ -116,7 +116,7 @@ get_gadm_data <- function(
   if (!is.null(name) && length(name)) {
     clean_names <- sanitize_slug(name)
     if (length(clean_names)) {
-      name_suffix <- paste0("_", paste(clean_names, collapse = "-"))
+      name_suffix <- paste0("_", paste(clean_names, collapse = "_"))
     }
   }
 

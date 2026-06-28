@@ -807,7 +807,7 @@ process_era5_data <- function(
       "_",
       admin_level,
       "_",
-      paste(admin_tokens, collapse = "-"),
+      paste(admin_tokens, collapse = "_"),
       "_",
       dataset_token
     )
@@ -908,7 +908,7 @@ process_era5_data <- function(
       "_",
       admin_level,
       "_",
-      paste(admin_tokens, collapse = "-"),
+      paste(admin_tokens, collapse = "_"),
       "_",
       dataset_token
     )

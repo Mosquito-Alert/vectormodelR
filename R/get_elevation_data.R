@@ -78,7 +78,7 @@ get_elevation_data <- function(country,
     if (!is.null(name_value) && length(name_value)) {
       clean_names <- sanitize_slug(name_value)
       if (length(clean_names)) {
-        name_suffix <- paste0("_", paste(clean_names, collapse = "-"))
+        name_suffix <- paste0("_", paste(clean_names, collapse = "_"))
       }
     }
 
