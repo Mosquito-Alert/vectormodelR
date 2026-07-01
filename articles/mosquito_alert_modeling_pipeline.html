@@ -107,7 +107,7 @@ diagnostic report:</p>
 <span>  verbose      <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="../reference/compile_era5_data_v2.html">compile_era5_data_v2</a></span><span class="op">(</span></span>
+<span><span class="fu">compile_era5_data_v2</span><span class="op">(</span></span>
 <span>  iso3     <span class="op">=</span> <span class="va">iso3</span>,</span>
 <span>  recent_n <span class="op">=</span> <span class="fl">12</span>,</span>
 <span>  verbose  <span class="op">=</span> <span class="cn">TRUE</span></span>
@@ -227,7 +227,7 @@ arguments (<code>data_dir</code>, <code>proc_dir</code>, or
 <code><a href="../reference/get_era5_data.html">get_era5_data()</a></code> downloads hourly ERA5 fields using the
 ECMWF Web API, storing GRIB files in <code>data/raw/era5</code>.</li>
 <li>
-<code><a href="../reference/compile_era5_data_v2.html">compile_era5_data_v2()</a></code> mosaics the tiles, clones the
+<code>compile_era5_data_v2()</code> mosaics the tiles, clones the
 latest <code>recent_n</code> months, and caches intermediate
 NetCDF/Parquet files in <code>data/proc/era5</code>.</li>
 <li>

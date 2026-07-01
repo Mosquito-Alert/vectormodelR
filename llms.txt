@@ -277,8 +277,6 @@ NextGenerationEU/PRTR](reference/figures/funding/MICIU+NextG+PRTR+AEI_page-0001.
   : Build TRS daily sampling effort surface for a location
 - [`compile_era5_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/compile_era5_data.md)
   : Compile ERA5 monthly CSVs from multi-variable GRIB/ZIP files
-- [`compile_era5_data_v2()`](https://labs.mosquitoalert.com/mosquitoR/reference/compile_era5_data_v2.md)
-  : Compile ERA5 monthly CSVs from GRIB/ZIP files (terra-only)
 - [`convert_to_utm()`](https://labs.mosquitoalert.com/mosquitoR/reference/convert_to_utm.md)
   : Transform a geometry to its local UTM zone
 - [`download_zenodo()`](https://labs.mosquitoalert.com/mosquitoR/reference/download_zenodo.md)

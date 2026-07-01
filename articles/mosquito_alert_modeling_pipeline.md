@@ -148,9 +148,9 @@ You can customize directories via function arguments (`data_dir`,
 1.  [`get_era5_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_era5_data.md)
     downloads hourly ERA5 fields using the ECMWF Web API, storing GRIB
     files in `data/raw/era5`.
-2.  [`compile_era5_data_v2()`](https://labs.mosquitoalert.com/mosquitoR/reference/compile_era5_data_v2.md)
-    mosaics the tiles, clones the latest `recent_n` months, and caches
-    intermediate NetCDF/Parquet files in `data/proc/era5`.
+2.  `compile_era5_data_v2()` mosaics the tiles, clones the latest
+    `recent_n` months, and caches intermediate NetCDF/Parquet files in
+    `data/proc/era5`.
 3.  [`process_era5_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/process_era5_data.md)
     aggregates weather summaries to `cell` or `hex` spatial units,
     producing statistics like daily maximum temperature and 24-hour
