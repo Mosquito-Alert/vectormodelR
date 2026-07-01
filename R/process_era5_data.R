@@ -54,8 +54,7 @@
 #'
 #' @importFrom lubridate parse_date_time floor_date ceiling_date
 #' @importFrom RcppRoll roll_mean roll_sum
-#' @importFrom sf st_as_sf st_make_valid st_union st_bbox st_transform st_buffer st_intersects
-#' @importFrom geodata gadm
+#' @importFrom sf st_make_valid st_union st_bbox st_transform st_buffer st_intersects
 #' @importFrom tidyr pivot_longer pivot_wider
 #' @importFrom dplyr mutate case_when transmute arrange lag select all_of group_by ungroup
 #' @importFrom readr write_rds
@@ -206,26 +205,33 @@ process_era5_data <- function(
   
   # ---- admin geometry & bbox window ----
   .say("Loading GADM geometry: %s level %d ...", iso3_upper, admin_level)
-  
-  g <- geodata::gadm(
-    country = iso3_upper,
-    level = admin_level,
-    path = file.path(out_dir, "gadm")
-  ) |>
-    sf::st_as_sf()
-  
+
   if (!is.null(admin_name)) {
-    nmcol <- paste0("NAME_", admin_level)
-    .say("Filtering admin unit by name column %s == '%s' ...", nmcol, admin_name)
-    
-    g <- g[g[[nmcol]] == admin_name, , drop = FALSE]
-    
-    if (nrow(g) == 0) {
-      stop("Admin name '", admin_name, "' not found at level ", admin_level, " for ", iso3_upper)
-    }
+    .say("Filtering admin unit by exact name match: '%s' ...", admin_name)
+
+    g <- get_gadm_data(
+      iso3 = iso3_upper,
+      level = admin_level,
+      name = admin_name,
+      path = file.path(out_dir, "gadm"),
+      rds = FALSE,
+      perimeter = FALSE,
+      union = FALSE,
+      match_type = "exact",
+      verbose = FALSE
+    )
   } else {
     .say("No admin_name provided; using union of all geometries at level %d.", admin_level)
-    g <- sf::st_union(g)
+
+    g <- get_gadm_data(
+      iso3 = iso3_upper,
+      level = admin_level,
+      path = file.path(out_dir, "gadm"),
+      rds = FALSE,
+      perimeter = FALSE,
+      union = TRUE,
+      verbose = FALSE
+    )
   }
   
   bb <- sf::st_bbox(g)

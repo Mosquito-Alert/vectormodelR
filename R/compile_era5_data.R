@@ -245,13 +245,13 @@ compile_era5_data <- function(
     # ERA5 Single: era5_<iso3>_<admin>_YYYY_MM.grib
     prefix <- if (is_era5_land) "era5land" else "era5"
     ext <- if (is_era5_land) "zip" else "grib"
-    
+
+    # Build regex directly from requested location identifiers.
+    # This avoids brittle underscore-position parsing for admin names like "wien_stadt".
     patt <- if (!is.null(admin_fragment)) {
-      sprintf("^%s_%s_%s_\\d{4}_\\d{2}\\.%s$", prefix, iso_fragment, gsub("_", "_", admin_fragment, fixed = TRUE), ext)
-    } else if (!is.null(iso_fragment)) {
-      sprintf("^%s_%s_\\d{4}_\\d{2}\\.%s$", prefix, iso_fragment, ext)
+      sprintf("^%s_([a-z]{3})_%s_(\\d{4})_(\\d{2})\\.%s$", prefix, admin_fragment, ext)
     } else {
-      sprintf("^%s_[a-z]{3}_\\d{4}_\\d{2}\\.%s$", prefix, ext)
+      sprintf("^%s_([a-z]{3})_(\\d{4})_(\\d{2})\\.%s$", prefix, ext)
     }
     
     files <- list.files(input_dir, pattern = patt, full.names = TRUE, ignore.case = TRUE)
@@ -260,50 +260,32 @@ compile_era5_data <- function(
     by_month <- list(); count <- 0L
     for (fp in files) {
       fn <- basename(fp)
-      # Remove extension (.grib or .zip)
-      stem <- sub("\\.(grib|zip)$", "", fn, ignore.case = TRUE)
-      parts <- strsplit(stem, "_", fixed = TRUE)[[1]]
+      m <- regexec(patt, fn, perl = TRUE, ignore.case = TRUE)
+      captures <- regmatches(fn, m)[[1]]
+      if (length(captures) != 4L) next
+
+      file_dataset_type <- dataset
+
+      iso_part <- tolower(captures[2])
+      yy <- suppressWarnings(as.integer(captures[3]))
+      mm <- suppressWarnings(as.integer(captures[4]))
+
+      if (!is.null(iso_fragment) && !identical(iso_part, iso_fragment)) next
+      if (is.na(yy) || is.na(mm) || yy < 1900 || mm < 1 || mm > 12) next
       
-      # Check for era5 or era5land prefix
-      if (length(parts) >= 4 && parts[1] %in% c("era5", "era5land")) {
-        file_dataset_type <- if (parts[1] == "era5land") "reanalysis-era5-land" else "reanalysis-era5-single-levels"
-        
-        # Skip if dataset doesn't match
-        if (file_dataset_type != dataset) next
-        
-        iso_part <- tolower(parts[2])
-        if (!is.null(iso_fragment) && !identical(iso_part, iso_fragment)) next
-        
-        # Determine offset based on admin fragment presence
-        # Format: era5[land]_<iso3>_YYYY_MM OR era5[land]_<iso3>_<level>_<name>_YYYY_MM
-        has_admin <- !is.null(admin_fragment)
-        offset <- if (has_admin) {
-          # parts[3]=level, parts[4]=name, parts[5]=year, parts[6]=month
-          4
-        } else {
-          # parts[3]=year, parts[4]=month
-          2
-        }
-        
-        if (length(parts) < (offset + 2)) next
-        
-        yy <- suppressWarnings(as.integer(parts[offset + 1]))
-        mm <- suppressWarnings(as.integer(parts[offset + 2]))
-        if (!is.na(yy) && !is.na(mm) && yy >= 1900 && mm >= 1 && mm <= 12) {
-          key_suffix <- if (has_admin) paste0("_", admin_fragment) else ""
-          key <- sprintf("%s%s_%04d_%02d", iso_part, key_suffix, yy, mm)
-          if (is.null(by_month[[key]])) {
-            by_month[[key]] <- list(
-              iso = iso_part, 
-              year = yy, 
-              month = mm, 
-              admin_fragment = admin_fragment, 
-              file_dataset = file_dataset_type,
-              file = fp  # Single file path (contains all variables)
-            )
-            count <- count + 1L
-          }
-        }
+      key_suffix <- if (!is.null(admin_fragment)) paste0("_", admin_fragment) else ""
+      key <- sprintf("%s%s_%04d_%02d", iso_part, key_suffix, yy, mm)
+      
+      if (is.null(by_month[[key]])) {
+        by_month[[key]] <- list(
+          iso = iso_part, 
+          year = yy, 
+          month = mm, 
+          admin_fragment = admin_fragment, 
+          file_dataset = file_dataset_type,
+          file = fp  # Single file path (contains all variables)
+        )
+        count <- count + 1L
       }
     }
     if (verbose) {

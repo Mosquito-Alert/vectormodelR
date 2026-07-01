@@ -206,40 +206,24 @@ get_era5_data <- function(
 
   # ---- resolve bounding box ----
   if (!is.null(admin_name)) {
-    if (
-      !requireNamespace("geodata", quietly = TRUE) ||
-        !requireNamespace("sf", quietly = TRUE)
-    ) {
+    if (!requireNamespace("sf", quietly = TRUE)) {
       stop(
-        "Packages {geodata} and {sf} are required to derive an admin-unit bbox. ",
+        "Package {sf} is required to derive an admin-unit bbox. ",
         "Install them or provide `bounding_box`."
       )
     }
 
-    g <- geodata::gadm(
-      country = iso3,
+    g <- get_gadm_data(
+      iso3 = iso3,
       level = admin_level,
-      path = file.path("data/proc", "gadm")
+      name = admin_name,
+      path = file.path("data/proc", "gadm"),
+      rds = FALSE,
+      perimeter = FALSE,
+      union = FALSE,
+      match_type = "exact",
+      verbose = FALSE
     )
-
-    g <- sf::st_as_sf(g)
-    nmcol <- paste0("NAME_", admin_level)
-
-    if (!nmcol %in% names(g)) {
-      stop(
-        "GADM geometry is missing expected name column ", nmcol,
-        " for level ", admin_level, "."
-      )
-    }
-
-    g <- g[g[[nmcol]] == admin_name, , drop = FALSE]
-
-    if (nrow(g) == 0) {
-      stop(
-        "Admin name '", admin_name, "' not found at level ",
-        admin_level, " for ", iso3, "."
-      )
-    }
 
     bb <- sf::st_bbox(sf::st_union(sf::st_make_valid(g)))
 
