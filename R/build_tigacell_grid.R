@@ -89,7 +89,7 @@ build_tigacell_grid <- function(
     if (!is.null(admin_name) && length(admin_name)) {
       clean_names <- sanitize_slug(admin_name)
       if (length(clean_names)) {
-        name_suffix <- paste0("_", paste(clean_names, collapse = "-"))
+        name_suffix <- paste0("_", paste(clean_names, collapse = "_"))
       }
     }
 

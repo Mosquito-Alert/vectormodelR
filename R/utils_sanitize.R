@@ -15,7 +15,7 @@
 #'   removed.
 #' @keywords internal
 #' @noRd
-sanitize_slug <- function(x, separator = "-", max_length = NULL) {
+sanitize_slug <- function(x, separator = "_", max_length = NULL) {
   if (missing(x) || is.null(x)) {
     return(character())
   }
