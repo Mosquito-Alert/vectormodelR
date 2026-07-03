@@ -1,14 +1,14 @@
 #' Prepare data and adjacency matrix for BYM2 brms modelling
 #'
 #' Cleans, aggregates, optionally factor-converts, and scales model data using
-#' [prepare_brms_data()], then builds or aligns a spatial adjacency matrix for
+#' [prepare_model_data()], then builds or aligns a spatial adjacency matrix for
 #' BYM2 modelling.
 #'
-#' This function is a spatial wrapper around [prepare_brms_data()]. Use
-#' [prepare_brms_data()] for non-spatial brms models, and use
+#' This function is a spatial wrapper around [prepare_model_data()]. Use
+#' [prepare_model_data()] for non-spatial brms models, and use
 #' `prepare_bym2_data()` when the model requires a BYM2/CAR spatial component.
 #'
-#' @inheritParams prepare_brms_data
+#' @inheritParams prepare_model_data
 #' @param adjacency Optional pre-computed adjacency matrix. If `NULL`, one is
 #'   built using [build_grid_adjacency()].
 #' @param adjacency_args List of additional arguments passed to
@@ -82,7 +82,7 @@ prepare_bym2_data <- function(
   # 2. Prepare the regular brms modelling data
   # ---------------------------------------------------------------------------
 
-  prepared <- prepare_brms_data(
+  prepared <- prepare_model_data(
     dataset = dataset,
     cellsize_m = cellsize_m,
     temporal_resolution = temporal_resolution,
@@ -100,25 +100,26 @@ prepare_bym2_data <- function(
   )
 
   df <- prepared$model_data
-  grid_col <- prepared$grid_col
 
   if (!is.data.frame(df)) {
-    stop("`prepare_brms_data()` did not return a valid `model_data` data.frame.", call. = FALSE)
-  }
-
-  if (is.null(grid_col) || !nzchar(grid_col)) {
-    stop("`prepare_brms_data()` did not return a valid `grid_col`.", call. = FALSE)
-  }
-
-  if (!grid_col %in% names(df)) {
-    stop("Grid column `", grid_col, "` was not found in prepared model data.", call. = FALSE)
+    stop("`prepare_model_data()` did not return a valid `model_data` data.frame.", call. = FALSE)
   }
 
   if (!nrow(df)) {
     stop("Prepared model data has zero rows.", call. = FALSE)
   }
 
-  df[[grid_col]] <- as.character(df[[grid_col]])
+  grid_col <- .resolve_bym2_grid_col(
+    prepared_object = prepared,
+    prepared_meta = prepared$meta,
+    model_data = df
+  )
+
+  df[[grid_col]] <- .coerce_bym2_grid_ids(
+    df[[grid_col]],
+    grid_col = grid_col,
+    context = "model_data"
+  )
 
   grid_ids <- sort(unique(df[[grid_col]]))
 

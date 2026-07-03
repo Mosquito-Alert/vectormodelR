@@ -105,14 +105,14 @@ run_brms_model <- function(
         stop(
           "Prepared dataset not found at: ", target_file,
           "\nHowever, a legacy prepared file exists at: ", found,
-          "\nRe-run `prepare_brms_data(..., temporal_resolution = \"", temporal_resolution, "\", write = TRUE)` to generate the new filename.",
+          "\nRe-run `prepare_model_data(..., temporal_resolution = \"", temporal_resolution, "\", write = TRUE)` to generate the new filename.",
           call. = FALSE
         )
       }
 
       stop(
         "Prepared dataset not found at: ", target_file,
-        "\nPlease ensure you have run `prepare_brms_data(..., temporal_resolution = \"", temporal_resolution, "\", write = TRUE)` first.",
+        "\nPlease ensure you have run `prepare_model_data(..., temporal_resolution = \"", temporal_resolution, "\", write = TRUE)` first.",
         call. = FALSE
       )
     }
@@ -159,8 +159,8 @@ run_brms_model <- function(
     if (has_scaled) {
       model_data <- dataset
     } else {
-      if (isTRUE(verbose)) message("Raw dataframe provided; calling `prepare_brms_data()` internally...")
-      prep_obj <- prepare_brms_data(
+      if (isTRUE(verbose)) message("Raw dataframe provided; calling `prepare_model_data()` internally...")
+      prep_obj <- prepare_model_data(
         dataset = dataset,
         cellsize_m = cellsize_m,
         temporal_resolution = temporal_resolution,
@@ -192,7 +192,7 @@ run_brms_model <- function(
     if (!"hour" %in% names(model_data)) {
       stop(
         "Hourly resolution requested but 'hour' column is missing. ",
-        "Re-run `prepare_brms_data(..., temporal_resolution = \"hourly\")` or set `temporal_resolution = \"daily\"`.",
+        "Re-run `prepare_model_data(..., temporal_resolution = \"hourly\")` or set `temporal_resolution = \"daily\"`.",
         call. = FALSE
       )
     }
@@ -270,6 +270,16 @@ run_brms_model <- function(
   } 
   
   model_formula <- stats::as.formula(formula_text)
+
+  formula_has_source <- "source" %in% all.vars(model_formula)
+
+  if (isTRUE(include_source) &&
+      !formula_has_source &&
+      "source" %in% names(model_data)) {
+    model_formula <- stats::update(model_formula, . ~ . + source)
+  } else if (!isTRUE(include_source) && formula_has_source) {
+    model_formula <- stats::update(model_formula, . ~ . - source)
+  }
 
   # ensure brms functions are found when formula is evaluated
   formula_env <- new.env(parent = parent.frame())

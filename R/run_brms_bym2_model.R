@@ -235,7 +235,7 @@ run_brms_bym2_model <- function(
 
   } else if (inherits(dataset, "brms_data_prep")) {
     if (isTRUE(verbose)) {
-      message("`brms_data_prep` object supplied; adding/building BYM2 adjacency.")
+      message("`brms_data_prep` object supplied; building BYM2 adjacency without re-preparing data.")
     }
 
     model_data <- dataset$model_data
@@ -263,6 +263,9 @@ run_brms_bym2_model <- function(
       temporal_resolution <- dataset$meta$temporal_resolution
     }
 
+    model_data[[grid_col]] <- as.character(model_data[[grid_col]])
+    grid_ids <- sort(unique(model_data[[grid_col]]))
+
     if (is.null(adjacency)) {
       if (is.null(iso3)) iso3 <- dataset$meta$iso3
       if (is.null(admin_level)) admin_level <- dataset$meta$admin_level
@@ -276,26 +279,39 @@ run_brms_bym2_model <- function(
           call. = FALSE
         )
       }
+
+      if (isTRUE(verbose)) {
+        message("Building BYM2 adjacency matrix for ", length(grid_ids), " grid cells.")
+      }
+
+      default_adjacency_args <- list(
+        iso3 = iso3,
+        admin_level = admin_level,
+        admin_name = admin_name,
+        data_dir = input_dir,
+        cellsize_m = cellsize_m,
+        model = model_data,
+        sparse = TRUE
+      )
+
+      adjacency_args <- utils::modifyList(default_adjacency_args, adjacency_args)
+      adjacency_matrix <- do.call(build_grid_adjacency, adjacency_args)
+    } else {
+      adjacency_matrix <- adjacency
     }
 
-    prep_obj <- prepare_bym2_data(
-      dataset = model_data,
-      cellsize_m = cellsize_m,
-      temporal_resolution = temporal_resolution,
-      iso3 = iso3,
-      admin_level = admin_level,
-      admin_name = admin_name,
-      adjacency = adjacency,
-      adjacency_args = adjacency_args,
-      output_dir = input_dir,
-      write = FALSE,
-      verbose = verbose
-    )
+    prep_obj <- dataset
+    prep_obj$model_data <- model_data
+    prep_obj$adjacency <- adjacency_matrix
 
-    if (!is.null(dataset$meta)) {
-      prep_obj$meta <- utils::modifyList(dataset$meta, prep_obj$meta)
-      prep_obj$meta$temporal_resolution <- temporal_resolution
+    if (is.null(prep_obj$meta)) {
+      prep_obj$meta <- list()
     }
+
+    prep_obj$meta$spatial_model <- "BYM2"
+    prep_obj$meta$temporal_resolution <- temporal_resolution
+
+    class(prep_obj) <- unique(c("bym2_data_prep", class(dataset)))
 
   } else if (is.data.frame(dataset)) {
     if (isTRUE(verbose)) {
