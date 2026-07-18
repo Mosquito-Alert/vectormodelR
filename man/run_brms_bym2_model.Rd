@@ -28,67 +28,57 @@ run_brms_bym2_model(
 )
 }
 \arguments{
-\item{dataset}{An in-memory modelling dataset, a \code{brms_data_prep} object,
-a \code{bym2_data_prep} object, a data.frame, a path to a prepared RDS file,
-or \code{NULL}. If \code{NULL}, \code{iso3}, \code{admin_level}, and \code{admin_name} are used
-to locate a prepared BYM2 object in \code{input_dir}.}
+\item{dataset}{A \code{brms_bym2_data_prep} object, a data frame, a path to a
+prepared RDS file, or \code{NULL}. When \code{NULL}, location information is used
+to locate the prepared file in \code{input_dir}.}
 
-\item{formula}{Character string or formula object specifying the fixed and
-non-spatial random effects structure. This is required. If the formula does
-not contain a \code{car()} term, the BYM2 term
-\verb{+ car(W, gr = <grid_col>, type = "bym2")} is appended automatically.
-If the formula already contains \code{car(...)}, it is used as supplied.}
+\item{formula}{Formula or character string specifying the fixed and
+non-spatial random effects. The BYM2 term is added automatically when
+the formula does not already contain \code{car()}.}
 
-\item{cellsize_m}{Numeric cell size in meters. Defaults to \code{800}, expecting
-a grid column such as \code{grid_id_800}.}
+\item{cellsize_m}{Numeric grid-cell size in metres.}
 
-\item{temporal_resolution}{Character. Either \code{"daily"} or \code{"hourly"}.
-Determines which prepared-file name is used when \code{dataset = NULL}.}
+\item{temporal_resolution}{Either \code{"daily"} or \code{"hourly"}.}
 
-\item{adjacency}{Optional pre-computed adjacency matrix whose row/column
-names match the grid identifier column.}
+\item{adjacency}{Optional adjacency matrix used when preparing a raw data
+frame.}
 
-\item{adjacency_args}{Named list of additional arguments forwarded to
-\code{\link[=build_grid_adjacency]{build_grid_adjacency()}} when adjacency needs to be built.}
+\item{adjacency_args}{Additional arguments passed to
+\code{\link[=build_grid_adjacency]{build_grid_adjacency()}}.}
 
-\item{priors}{Optional \code{brms::set_prior} object. If \code{NULL}, default BYM2
-priors are used.}
+\item{priors}{Optional brms prior specification.}
 
-\item{nchains}{Integer. Number of MCMC chains.}
+\item{nchains}{Number of MCMC chains.}
 
-\item{threads_per_chain}{Integer. Number of threads per chain.}
+\item{threads_per_chain}{Number of threads per chain.}
 
-\item{adapt_delta}{Numeric. Target average proposal acceptance probability.}
+\item{adapt_delta}{Target acceptance probability.}
 
-\item{max_treedepth}{Integer. Maximum tree depth for NUTS.}
+\item{max_treedepth}{Maximum NUTS tree depth.}
 
-\item{backend}{Character. \code{"cmdstanr"} or \code{"rstan"}.}
+\item{backend}{Either \code{"cmdstanr"} or \code{"rstan"}.}
 
-\item{iso3, admin_level, admin_name}{Optional location identifiers used for
-prepared-file lookup and adjacency construction.}
+\item{iso3, admin_level, admin_name}{Location identifiers.}
 
-\item{write_output}{Logical. Whether to save the fitted model to disk.}
+\item{write_output}{Whether to save the fitted model.}
 
-\item{output_path}{Directory or file path for saved model output.}
+\item{output_path}{Output directory or RDS filename.}
 
-\item{input_dir}{Directory used when automatically locating prepared data.}
+\item{input_dir}{Directory containing prepared data.}
 
-\item{save_pars}{Logical. Forwarded to \code{brms::brm()}.}
+\item{save_pars}{Whether to save latent parameters.}
 
-\item{verbose}{Logical. Emit messages when \code{TRUE}.}
+\item{verbose}{Whether to emit progress messages.}
 }
 \value{
-A fitted \code{brmsfit} object with attributes for model data, adjacency
-IDs, grid column, source dataset, location slug, formula text, and output path.
+A fitted \code{brmsfit} object.
 }
 \description{
-Fits a Bayesian occupancy model using \code{brms} with a spatial BYM2/CAR
+Fits a Bayesian occupancy model using \code{brms} with a BYM2 spatial
 random effect based on a grid adjacency matrix.
 }
 \details{
-This function is the spatial counterpart to \code{\link[=run_brms_model]{run_brms_model()}}. It expects
-either a \code{bym2_data_prep} object created by \code{\link[=prepare_bym2_data]{prepare_bym2_data()}}, a path to
-a prepared BYM2 RDS file, a \code{brms_data_prep} object plus enough information
-to build/provide adjacency, or a raw modelling data frame that can be passed
-through \code{\link[=prepare_bym2_data]{prepare_bym2_data()}}.
+The function expects an object created by
+\code{\link[=prepare_brms_bym2_data]{prepare_brms_bym2_data()}}, a path to a saved preparation object, or a raw
+data frame that can be passed to \code{\link[=prepare_brms_bym2_data]{prepare_brms_bym2_data()}}.
 }
