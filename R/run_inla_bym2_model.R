@@ -264,7 +264,7 @@ run_inla_bym2_model <- function(
   }
 
   formula_env <- new.env(
-    parent = baseenv()
+    parent = parent.frame()
   )
 
   formula_env$f <- INLA::f
