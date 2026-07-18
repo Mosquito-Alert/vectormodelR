@@ -2,115 +2,49 @@
 % Please edit documentation in R/prepare_inla_data.R
 \name{prepare_inla_data}
 \alias{prepare_inla_data}
-\title{Prepare an existing model-data object for INLA}
+\title{Prepare base model data for INLA}
 \usage{
 prepare_inla_data(
-  dataset = NULL,
-  temporal_resolution = c("daily", "hourly"),
-  iso3 = NULL,
-  admin_level = NULL,
-  admin_name = NULL,
-  input_dir = "data/proc",
-  response_col = "presence",
-  create_year_index = TRUE,
-  year_col = "year",
-  year_index_col = "year_id",
-  create_seasonal_index = TRUE,
-  date_col = "date",
-  seasonal_index_col = "sea_day_id",
-  leap_day_method = c("feb28", "mar01"),
-  group_specs = NULL,
-  drop_incomplete = FALSE,
+  dataset,
+  landcover_reference = "Built-up",
+  source_reference = NULL,
+  temperature_groups = 30,
   output_dir = "data/proc",
   write = FALSE,
   verbose = TRUE
 )
 }
 \arguments{
-\item{dataset}{A \code{model_data_prep} object, a data frame, a path to an RDS
-file created by \code{\link[=prepare_model_data]{prepare_model_data()}}, or \code{NULL}.}
+\item{dataset}{Object returned by \code{\link[=prepare_model_data]{prepare_model_data()}}.}
 
-\item{temporal_resolution}{Character. Either \code{"daily"} or \code{"hourly"}.
-Used when locating a saved preparation file and constructing output names.}
+\item{landcover_reference}{Reference level for \code{landcover_class}.}
 
-\item{iso3}{Optional ISO3 country code. Required with \code{admin_level} and
-\code{admin_name} when \code{dataset = NULL}.}
+\item{source_reference}{Optional reference level for \code{source}.}
 
-\item{admin_level}{Optional administrative level. Required with \code{iso3} and
-\code{admin_name} when \code{dataset = NULL}.}
+\item{temperature_groups}{Number of groups used for \code{maxTM_z}.}
 
-\item{admin_name}{Optional administrative name. Required with \code{iso3} and
-\code{admin_level} when \code{dataset = NULL}.}
+\item{output_dir}{Directory used when \code{write = TRUE}.}
 
-\item{input_dir}{Directory containing files created by
-\code{\link[=prepare_model_data]{prepare_model_data()}}. Defaults to \code{"data/proc"}.}
+\item{write}{Whether to save the prepared object.}
 
-\item{response_col}{Name of the binary response column. Defaults to
-\code{"presence"}.}
-
-\item{create_year_index}{Logical. Create an integer INLA year index.
-Defaults to \code{TRUE}.}
-
-\item{year_col}{Name of the original year column. Defaults to \code{"year"}.}
-
-\item{year_index_col}{Name of the generated year index. Defaults to
-\code{"year_id"}.}
-
-\item{create_seasonal_index}{Logical. Create a consistent 365-position
-seasonal index from the date. Defaults to \code{TRUE}.}
-
-\item{date_col}{Name of the date column. Defaults to \code{"date"}.}
-
-\item{seasonal_index_col}{Name of the generated seasonal index. Defaults to
-\code{"sea_day_id"}.}
-
-\item{leap_day_method}{How February 29 is mapped in the 365-day seasonal
-index. \code{"feb28"} maps it to position 59; \code{"mar01"} maps it to position 60.}
-
-\item{group_specs}{Optional named list describing continuous variables to
-group using \code{\link[INLA:group]{INLA::inla.group()}}. Each specification must contain
-\code{input}, \code{output}, and \code{n}; \code{method} is optional and defaults to
-\code{"quantile"}.}
-
-\item{drop_incomplete}{Logical. Drop rows missing the response or generated
-INLA indices and grouped predictors. Defaults to \code{FALSE}.}
-
-\item{output_dir}{Directory used when \code{write = TRUE}. Defaults to
-\code{"data/proc"}.}
-
-\item{write}{Logical. Write the resulting INLA preparation object to disk.
-Defaults to \code{FALSE}.}
-
-\item{verbose}{Logical. Emit informative messages. Defaults to \code{TRUE}.}
+\item{verbose}{Whether to emit progress messages.}
 }
 \value{
-An object of class \code{inla_data_prep} and \code{model_data_prep} containing:
-\item{model_data}{The INLA-ready data frame.}
-\item{grid_col}{The grid identifier inherited from the source object.}
-\item{scaling}{Scaling parameters inherited from the source object.}
-\item{scale_specs}{Scaling specifications inherited from the source object.}
-\item{aggregation_specs}{Aggregation specifications inherited from the source object.}
-\item{factor_cols}{Factor columns inherited from the source object.}
-\item{index_lookup}{Lookup tables for generated indices.}
-\item{inla_group_specs}{Normalized continuous grouping specifications.}
-\item{meta}{Shared and INLA-specific metadata.}
+An object of class \code{inla_data_prep} containing the original
+preparation information and INLA-ready \code{model_data}.
 }
 \description{
-Takes the output from \code{\link[=prepare_model_data]{prepare_model_data()}}, converts the binary response
-to numeric 0/1, and adds indices commonly required by INLA latent models.
+Takes the object returned by \code{\link[=prepare_model_data]{prepare_model_data()}} and adds the variables
+required by the standard INLA occupancy model:
 }
 \details{
-The prepared data may be supplied directly as:
 \itemize{
-\item a \code{model_data_prep} object;
-\item a data frame;
-\item a path to an RDS file created by \code{\link[=prepare_model_data]{prepare_model_data()}}; or
-\item \code{NULL}, in which case the function attempts to locate the saved
-preparation file using \code{iso3}, \code{admin_level}, \code{admin_name}, and
-\code{temporal_resolution}.
+\item integer binary response;
+\item factor reference levels;
+\item integer year index;
+\item consistent 365-day seasonal index;
+\item grouped maximum temperature.
 }
 
-This function does not repeat filtering, aggregation, factor conversion,
-or predictor scaling. Those operations must first be performed by
-\code{\link[=prepare_model_data]{prepare_model_data()}}.
+Filtering, aggregation, and scaling are not repeated.
 }
