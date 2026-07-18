@@ -264,9 +264,10 @@ run_inla_bym2_model <- function(
   }
 
   formula_env <- new.env(
-    parent = parent.frame()
+    parent = baseenv()
   )
 
+  formula_env$model.frame <- stats::model.frame
   formula_env$f <- INLA::f
   formula_env$.bym2_graph <- spatial_graph
   formula_env$.bym2_hyper <- bym2_hyper
