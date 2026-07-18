@@ -432,16 +432,22 @@ run_brms_bym2_model <- function(
       deparse(formula),
       collapse = " "
     )
-  } else if (is.character(formula) &&
-             length(formula) == 1L &&
-             nzchar(formula)) {
-    formula_text <- formula
+  } else if (
+    is.character(formula) &&
+    length(formula) >= 1L &&
+    !anyNA(formula) &&
+    all(nzchar(formula))
+  ) {
+    formula_text <- paste(
+      formula,
+      collapse = " + "
+    )
   } else {
     stop(
-      "`formula` must be a formula or one character string.",
+      "`formula` must be a formula or a non-empty character vector.",
       call. = FALSE
     )
-  }
+}
 
   car_term <- paste0(
     "car(W, gr = ",
