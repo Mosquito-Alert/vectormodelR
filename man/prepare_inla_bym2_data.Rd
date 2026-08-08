@@ -26,10 +26,9 @@ prepare_inla_bym2_data(
 created with \code{\link[=build_grid_adjacency]{build_grid_adjacency()}}.}
 
 \item{adjacency_args}{Additional arguments passed to
-\code{\link[=build_grid_adjacency]{build_grid_adjacency()}}, such as \code{data_dir}.}
+\code{\link[=build_grid_adjacency]{build_grid_adjacency()}}.}
 
-\item{iso3, admin_level, admin_name}{Optional location identifiers. Values are
-taken from the prepared object when available.}
+\item{iso3, admin_level, admin_name}{Optional location identifiers.}
 
 \item{output_dir}{Directory used when \code{write = TRUE}.}
 
@@ -38,11 +37,10 @@ taken from the prepared object when available.}
 \item{verbose}{Whether to emit progress messages.}
 }
 \value{
-An \code{inla_bym2_data_prep} object containing the INLA-ready model data,
-adjacency matrix, spatial graph, and spatial index.
+An \code{inla_bym2_data_prep} object containing the model data,
+adjacency matrix, spatial graph, and space-time interaction objects.
 }
 \description{
 Takes the output from \code{\link[=prepare_inla_data]{prepare_inla_data()}}, builds or accepts an adjacency
-matrix, aligns it with the model grid cells, and creates the integer spatial
-index and graph required by INLA's BYM2 model.
+matrix, and creates the spatial and space-time objects required by INLA.
 }

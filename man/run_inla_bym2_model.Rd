@@ -28,15 +28,14 @@ run_inla_bym2_model(
 \item{dataset}{An \code{inla_bym2_data_prep} object, a path to a saved preparation
 object, or \code{NULL}.}
 
-\item{formula}{Formula or character string specifying the fixed and
-non-spatial random effects.}
+\item{formula}{Complete INLA formula, including the BYM2 spatial term.}
 
 \item{family}{INLA likelihood family. Defaults to \code{"binomial"}.}
 
-\item{Ntrials}{Optional binomial trial counts. When \code{NULL}, one trial per
-observation is used.}
+\item{Ntrials}{Optional binomial trial counts.}
 
-\item{bym2_hyper}{Optional BYM2 hyperprior specification.}
+\item{bym2_hyper}{Optional BYM2 hyperprior specification available inside
+the formula as \code{bym2_hyper}.}
 
 \item{temporal_resolution}{Either \code{"daily"} or \code{"hourly"}.}
 
@@ -64,7 +63,11 @@ observation is used.}
 A fitted \code{inla} object.
 }
 \description{
-Fits an INLA model using data prepared by \code{\link[=prepare_inla_bym2_data]{prepare_inla_bym2_data()}}.
-A BYM2 spatial term is added automatically when the supplied formula does
-not already contain one.
+Fits a complete user-supplied INLA formula using data prepared by
+\code{\link[=prepare_inla_bym2_data]{prepare_inla_bym2_data()}}. The formula must include the BYM2 spatial term.
+}
+\details{
+The prepared spatial graph is available inside the formula as
+\code{spatial_graph}. When the formula contains \code{space_time_id}, the prepared
+Knorr-Held Type IV objects are made available as \code{R_int}, \code{A_kh}, and \code{e_kh}.
 }

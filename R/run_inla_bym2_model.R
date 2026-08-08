@@ -1,17 +1,19 @@
 #' Fit a BYM2 model with INLA
 #'
-#' Fits an INLA model using data prepared by [prepare_inla_bym2_data()].
-#' A BYM2 spatial term is added automatically when the supplied formula does
-#' not already contain one.
+#' Fits a complete user-supplied INLA formula using data prepared by
+#' [prepare_inla_bym2_data()]. The formula must include the BYM2 spatial term.
+#'
+#' The prepared spatial graph is available inside the formula as
+#' `spatial_graph`. When the formula contains `space_time_id`, the prepared
+#' Knorr-Held Type IV objects are made available as `R_int`, `A_kh`, and `e_kh`.
 #'
 #' @param dataset An `inla_bym2_data_prep` object, a path to a saved preparation
 #'   object, or `NULL`.
-#' @param formula Formula or character string specifying the fixed and
-#'   non-spatial random effects.
+#' @param formula Complete INLA formula, including the BYM2 spatial term.
 #' @param family INLA likelihood family. Defaults to `"binomial"`.
-#' @param Ntrials Optional binomial trial counts. When `NULL`, one trial per
-#'   observation is used.
-#' @param bym2_hyper Optional BYM2 hyperprior specification.
+#' @param Ntrials Optional binomial trial counts.
+#' @param bym2_hyper Optional BYM2 hyperprior specification available inside
+#'   the formula as `bym2_hyper`.
 #' @param temporal_resolution Either `"daily"` or `"hourly"`.
 #' @param iso3,admin_level,admin_name Location identifiers used when
 #'   `dataset = NULL`.
@@ -61,10 +63,6 @@ run_inla_bym2_model <- function(
     temporal_resolution
   )
 
-  # ---------------------------------------------------------------------------
-  # 1. Dependencies and formula
-  # ---------------------------------------------------------------------------
-
   if (!requireNamespace("INLA", quietly = TRUE)) {
     stop(
       "Package `INLA` must be installed.",
@@ -84,10 +82,12 @@ run_inla_bym2_model <- function(
       deparse(formula),
       collapse = " "
     )
-  } else if (is.character(formula) &&
-             length(formula) == 1L &&
-             !is.na(formula) &&
-             nzchar(formula)) {
+  } else if (
+    is.character(formula) &&
+      length(formula) == 1L &&
+      !is.na(formula) &&
+      nzchar(formula)
+  ) {
     formula_text <- formula
   } else {
     stop(
@@ -103,16 +103,28 @@ run_inla_bym2_model <- function(
     )
   }
 
-  # ---------------------------------------------------------------------------
-  # 2. Load prepared INLA BYM2 data
-  # ---------------------------------------------------------------------------
+  if (
+    length(inla_args) > 0L &&
+      (
+        is.null(names(inla_args)) ||
+          any(!nzchar(names(inla_args)))
+      )
+  ) {
+    stop(
+      "`inla_args` must be a named list.",
+      call. = FALSE
+    )
+  }
 
+  # Load prepared data.
   input_path <- NULL
 
   if (is.null(dataset)) {
-    if (is.null(iso3) ||
+    if (
+      is.null(iso3) ||
         is.null(admin_level) ||
-        is.null(admin_name)) {
+        is.null(admin_name)
+    ) {
       stop(
         "When `dataset = NULL`, supply `iso3`, `admin_level`, and ",
         "`admin_name`.",
@@ -154,8 +166,10 @@ run_inla_bym2_model <- function(
     dataset <- readRDS(
       input_path
     )
-  } else if (is.character(dataset) &&
-             length(dataset) == 1L) {
+  } else if (
+    is.character(dataset) &&
+      length(dataset) == 1L
+  ) {
     input_path <- dataset
 
     if (!file.exists(input_path)) {
@@ -180,8 +194,8 @@ run_inla_bym2_model <- function(
 
   if (!inherits(dataset, "inla_bym2_data_prep")) {
     stop(
-      "`dataset` must be an object returned by ",
-      "`prepare_inla_bym2_data()` or a path to one.",
+      "`dataset` must be returned by `prepare_inla_bym2_data()` ",
+      "or be a path to one.",
       call. = FALSE
     )
   }
@@ -189,8 +203,10 @@ run_inla_bym2_model <- function(
   model_data <- dataset$model_data
   spatial_graph <- dataset$spatial_graph
 
-  if (!is.data.frame(model_data) ||
-      !nrow(model_data)) {
+  if (
+    !is.data.frame(model_data) ||
+      nrow(model_data) == 0L
+  ) {
     stop(
       "The prepared object does not contain valid model data.",
       call. = FALSE
@@ -217,10 +233,48 @@ run_inla_bym2_model <- function(
     temporal_resolution <- prepared_resolution
   }
 
-  # ---------------------------------------------------------------------------
-  # 3. Add the BYM2 term
-  # ---------------------------------------------------------------------------
+  # Require the complete BYM2 term in the supplied formula.
+  has_bym2_term <- grepl(
+    "model\\s*=\\s*[\"']bym2[\"']",
+    formula_text
+  )
 
+  if (!has_bym2_term) {
+    stop(
+      "`formula` must include a BYM2 term, for example: ",
+      "`f(spatial_id, model = \"bym2\", graph = spatial_graph, ...)`.",
+      call. = FALSE
+    )
+  }
+
+  uses_space_time <- grepl(
+    "\\bspace_time_id\\b",
+    formula_text
+  )
+
+  if (uses_space_time) {
+    if (!"space_time_id" %in% names(model_data)) {
+      stop(
+        "The formula uses `space_time_id`, but it is missing from ",
+        "`model_data`.",
+        call. = FALSE
+      )
+    }
+
+    if (
+      is.null(dataset$space_time_precision) ||
+        is.null(dataset$space_time_constraints) ||
+        is.null(dataset$space_time_constraint_values)
+    ) {
+      stop(
+        "The formula uses `space_time_id`, but the prepared Type IV ",
+        "objects are missing. Run `prepare_inla_bym2_data()` again.",
+        call. = FALSE
+      )
+    }
+  }
+
+  # Supply a default BYM2 prior when requested by the formula.
   if (is.null(bym2_hyper)) {
     bym2_hyper <- list(
       prec = list(
@@ -234,59 +288,48 @@ run_inla_bym2_model <- function(
     )
   }
 
-  has_bym2_term <- grepl(
-    "model\\s*=\\s*[\"']bym2[\"']",
-    formula_text
-  )
-
-  if (!has_bym2_term) {
-    bym2_term <- paste(
-      "f(",
-      "spatial_id,",
-      "model = \"bym2\",",
-      "graph = .bym2_graph,",
-      "constr = TRUE,",
-      "scale.model = TRUE,",
-      "adjust.for.con.comp = TRUE,",
-      "hyper = .bym2_hyper",
-      ")"
-    )
-
-    formula_text <- paste(
-      formula_text,
-      "+",
-      bym2_term
-    )
-
-    if (isTRUE(verbose)) {
-      message("Appending INLA BYM2 spatial term.")
-    }
-  }
-
+  # Make prepared model objects available inside the formula.
   formula_env <- new.env(
     parent = baseenv()
   )
 
   formula_env$model.frame <- stats::model.frame
   formula_env$f <- INLA::f
-  formula_env$.bym2_graph <- spatial_graph
-  formula_env$.bym2_hyper <- bym2_hyper
+  formula_env$spatial_graph <- spatial_graph
+  formula_env$bym2_hyper <- bym2_hyper
+
+  if (uses_space_time) {
+    formula_env$R_int <-
+      dataset$space_time_precision
+    formula_env$A_kh <-
+      dataset$space_time_constraints
+    formula_env$e_kh <-
+      dataset$space_time_constraint_values
+  }
 
   model_formula <- stats::as.formula(
     formula_text,
     env = formula_env
   )
 
-  # ---------------------------------------------------------------------------
-  # 4. Validate formula variables
-  # ---------------------------------------------------------------------------
+  # Validate data columns while ignoring model-level objects.
+  model_objects <- c(
+    "spatial_graph",
+    "bym2_hyper"
+  )
+
+  if (uses_space_time) {
+    model_objects <- c(
+      model_objects,
+      "R_int",
+      "A_kh",
+      "e_kh"
+    )
+  }
 
   formula_variables <- setdiff(
     all.vars(model_formula),
-    c(
-      ".bym2_graph",
-      ".bym2_hyper"
-    )
+    model_objects
   )
 
   missing_variables <- setdiff(
@@ -294,7 +337,7 @@ run_inla_bym2_model <- function(
     names(model_data)
   )
 
-  if (length(missing_variables)) {
+  if (length(missing_variables) > 0L) {
     stop(
       "Formula variables missing from model data: ",
       paste(
@@ -318,13 +361,11 @@ run_inla_bym2_model <- function(
 
   response <- model_data[[response_name]]
 
-  # ---------------------------------------------------------------------------
-  # 5. Binomial settings
-  # ---------------------------------------------------------------------------
-
   if (identical(family, "binomial")) {
-    if (!is.numeric(response) &&
-        !is.integer(response)) {
+    if (
+      !is.numeric(response) &&
+        !is.integer(response)
+    ) {
       stop(
         "Binomial response `",
         response_name,
@@ -335,10 +376,15 @@ run_inla_bym2_model <- function(
 
     if (is.null(Ntrials)) {
       if (!all(
-        response %in% c(0L, 1L, NA_integer_)
+        response %in% c(
+          0L,
+          1L,
+          NA_integer_
+        )
       )) {
         stop(
-          "With `Ntrials = NULL`, the response must contain only 0, 1, or NA.",
+          "With `Ntrials = NULL`, the response must contain only ",
+          "0, 1, or NA.",
           call. = FALSE
         )
       }
@@ -349,10 +395,6 @@ run_inla_bym2_model <- function(
       )
     }
   }
-
-  # ---------------------------------------------------------------------------
-  # 6. Fit model
-  # ---------------------------------------------------------------------------
 
   fit_args <- list(
     formula = model_formula,
@@ -373,6 +415,12 @@ run_inla_bym2_model <- function(
   )
 
   if (isTRUE(verbose)) {
+    if (uses_space_time) {
+      message(
+        "Using prepared Knorr-Held Type IV space-time interaction."
+      )
+    }
+
     message(
       "Fitting INLA BYM2 ",
       family,
@@ -389,28 +437,29 @@ run_inla_bym2_model <- function(
     fit_args
   )
 
-  # ---------------------------------------------------------------------------
-  # 7. Attach metadata
-  # ---------------------------------------------------------------------------
-
   location_slug <- dataset$meta$slug
 
   attr(model_fit, "formula_text") <- formula_text
-  attr(model_fit, "temporal_resolution") <- temporal_resolution
-  attr(model_fit, "spatial_model") <- "BYM2"
+  attr(model_fit, "temporal_resolution") <-
+    temporal_resolution
+  attr(model_fit, "spatial_model") <- if (uses_space_time) {
+    "BYM2 + Type IV"
+  } else {
+    "BYM2"
+  }
 
   if (!is.null(input_path)) {
-    attr(model_fit, "source_dataset") <- input_path
+    attr(model_fit, "source_dataset") <-
+      input_path
   }
 
-  if (!is.null(location_slug) &&
-      nzchar(location_slug)) {
-    attr(model_fit, "location_slug") <- location_slug
+  if (
+    !is.null(location_slug) &&
+      nzchar(location_slug)
+  ) {
+    attr(model_fit, "location_slug") <-
+      location_slug
   }
-
-  # ---------------------------------------------------------------------------
-  # 8. Optionally save model
-  # ---------------------------------------------------------------------------
 
   if (isTRUE(write_output)) {
     path_is_file <- grepl(
@@ -421,18 +470,27 @@ run_inla_bym2_model <- function(
     if (path_is_file) {
       final_output_path <- output_path
     } else {
-      slug <- if (!is.null(location_slug) &&
-                  nzchar(location_slug)) {
+      slug <- if (
+        !is.null(location_slug) &&
+          nzchar(location_slug)
+      ) {
         location_slug
       } else {
         "custom"
       }
 
+      model_name <- if (uses_space_time) {
+        "inla_bym2_type4"
+      } else {
+        "inla_bym2"
+      }
+
       final_output_path <- file.path(
         output_path,
         sprintf(
-          "model_%s_inla_bym2_%s.rds",
+          "model_%s_%s_%s.rds",
           slug,
+          model_name,
           temporal_resolution
         )
       )
@@ -444,7 +502,8 @@ run_inla_bym2_model <- function(
       showWarnings = FALSE
     )
 
-    attr(model_fit, "output_path") <- final_output_path
+    attr(model_fit, "output_path") <-
+      final_output_path
 
     saveRDS(
       model_fit,

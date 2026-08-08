@@ -8,7 +8,7 @@ prepare_inla_data(
   dataset,
   landcover_reference = "Built-up",
   source_reference = NULL,
-  temperature_groups = 30,
+  group_specs = NULL,
   output_dir = "data/proc",
   write = FALSE,
   verbose = TRUE
@@ -21,7 +21,9 @@ prepare_inla_data(
 
 \item{source_reference}{Optional reference level for \code{source}.}
 
-\item{temperature_groups}{Number of groups used for \code{maxTM_z}.}
+\item{group_specs}{Optional named list of continuous predictors to group.
+Each specification must contain \code{input}, \code{output}, and \code{n}. The optional
+\code{method} defaults to \code{"quantile"}.}
 
 \item{output_dir}{Directory used when \code{write = TRUE}.}
 
@@ -30,21 +32,10 @@ prepare_inla_data(
 \item{verbose}{Whether to emit progress messages.}
 }
 \value{
-An object of class \code{inla_data_prep} containing the original
-preparation information and INLA-ready \code{model_data}.
+An object of class \code{inla_data_prep}.
 }
 \description{
-Takes the object returned by \code{\link[=prepare_model_data]{prepare_model_data()}} and adds the variables
-required by the standard INLA occupancy model:
-}
-\details{
-\itemize{
-\item integer binary response;
-\item factor reference levels;
-\item integer year index;
-\item consistent 365-day seasonal index;
-\item grouped maximum temperature.
-}
-
-Filtering, aggregation, and scaling are not repeated.
+Takes the object returned by \code{\link[=prepare_model_data]{prepare_model_data()}} and adds indices required
+by INLA. Hourly datasets also receive a cyclic 1-to-24 hour index.
+Continuous predictors can optionally be grouped for INLA smooths.
 }
