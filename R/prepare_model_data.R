@@ -49,7 +49,7 @@
 #'   \item{meta}{Metadata for file naming and reproducibility.}
 #'
 #' @export
-prepare_brms_data <- function(
+prepare_model_data <- function(
     dataset,
     cellsize_m = 800,
     temporal_resolution = c("daily", "hourly"),

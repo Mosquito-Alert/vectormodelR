@@ -18,34 +18,25 @@ get_malert_data(
 \item{source}{String. Source to download from. Options are "github" or "zenodo".}
 
 \item{doi}{String. Zenodo DOI if downloading from Zenodo.
-Default is the DOI that will always point to the most recent version:
+Default is the DOI that always points to the most recent version:
 10.5281/zenodo.597466.}
 
-\item{iso3}{Optional three-letter ISO code used to locate a perimeter file for
-spatial filtering.}
+\item{iso3}{Optional three-letter ISO code used for spatial filtering.}
 
-\item{admin_level}{Optional administrative level associated with the
-perimeter file.}
+\item{admin_level}{Optional administrative level used for spatial filtering.}
 
-\item{admin_name}{Optional administrative unit name associated with the
-perimeter file. When the expected perimeter RDS is missing, it is generated
-automatically via \code{\link[=get_gadm_data]{get_gadm_data()}}.}
+\item{admin_name}{Optional administrative unit name. When \code{NULL}, all
+administrative units at \code{admin_level} are included.}
 
 \item{desired_cols}{Optional character vector (or list) of column names to
 retain after spatial filtering. When \code{NULL}, all available columns are kept.}
 
 \item{filters}{Optional named list of values to filter by. Each element name
-should correspond to a column in the dataset, and the value describes what to
-keep (e.g., \code{list(type = "adult")}).
-
-The function always writes the raw combined download to
-\code{data/vector/vector_global_malert.Rds}. When a perimeter is supplied, the
-filtered output (after column selection) is persisted to
-\verb{data/proc/vector_<iso3>_<admin_level>_<admin_name>_malert.Rds}.}
+should correspond to a column in the dataset, and the value describes what
+to keep (e.g. \code{list(type = "adult")}).}
 }
 \value{
-A tibble of Mosquito Alert reports (filtered and column-selected if
-the optional perimeter inputs are supplied).
+A tibble of Mosquito Alert reports.
 }
 \description{
 Download Mosquito Alert report data from GitHub or Zenodo

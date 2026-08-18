@@ -2,7 +2,7 @@
 % Please edit documentation in R/build_tgb_daily.R
 \name{build_tgb_daily}
 \alias{build_tgb_daily}
-\title{Build GBIF target-group background daily weights on the TRS/Tigacell geometry}
+\title{Build GBIF target-group background data at original locations}
 \usage{
 build_tgb_daily(
   iso3,
@@ -12,44 +12,35 @@ build_tgb_daily(
   data_dir = "data/proc",
   weight_col = "tgb_w",
   time_bin = c("day", "year"),
-  max_dist_m = NULL,
   write_output = TRUE,
   overwrite = FALSE
 )
 }
 \arguments{
-\item{iso3}{Three-letter ISO3 country code used in artefact names.}
+\item{iso3}{Three-letter ISO3 country code.}
 
-\item{admin_level}{Administrative level identifier used in artefact names.}
+\item{admin_level}{Administrative level identifier.}
 
-\item{admin_name}{Administrative unit name used in artefact names.}
+\item{admin_name}{Administrative unit name.}
 
-\item{vector_dir}{Directory containing \verb{vector_<slug>_gbif.Rds}. Defaults to
-"data/proc".}
+\item{vector_dir}{Directory containing \verb{vector_<slug>_gbif.Rds}.}
 
-\item{data_dir}{Directory containing \verb{model_prep_<slug>_trs_daily.Rds} and
-where the TGB output should be written. Defaults to "data/proc".}
+\item{data_dir}{Directory where the output should be written.}
 
-\item{weight_col}{Name of the aggregated weight column. Defaults to "tgb_w".}
+\item{weight_col}{Name of the target-group weight column.}
 
-\item{time_bin}{Either "day" (default) or "year"; controls how occurrence
-timestamps are binned.}
+\item{time_bin}{Either \code{"day"} or \code{"year"}.}
 
-\item{max_dist_m}{Optional maximum distance threshold (in meters) for
-nearest-neighbour assignments. Occurrences farther than this distance from
-their nearest TRS point are dropped.}
+\item{write_output}{Whether to write the output RDS file.}
 
-\item{write_output}{Logical; write the output RDS when TRUE (default).}
-
-\item{overwrite}{Logical; if FALSE (default) and the output already exists,
-an error is raised.}
+\item{overwrite}{Whether to replace an existing output file.}
 }
 \value{
-An \code{sf} object with columns \code{date}, \code{year}, and the chosen weight
-column. Attributes include \code{output_path}, \code{gbif_source}, and \code{trs_source}.
+An \code{sf} point object containing \code{lon}, \code{lat}, \code{date}, \code{year}, and
+the target-group weight column.
 }
 \description{
-Creates \verb{model_prep_<iso3>_<admin_level>_<admin_name>_tgb_daily.Rds} by
-matching GBIF occurrences to the nearest TRS/Tigacell point and aggregating
-daily counts.
+Loads GBIF target-group records, retains their original coordinates, and
+aggregates duplicate records by location and time period. Spatial grid IDs
+are assigned later by the model preparation function.
 }
