@@ -1,7 +1,7 @@
 # Fit a BYM2 Mosquito Alert occupancy model with brms
 
-Fits a Bayesian occupancy model using `brms` with a spatial BYM2/CAR
-random effect based on a grid adjacency matrix.
+Fits a Bayesian occupancy model using `brms` with a BYM2 spatial random
+effect based on a grid adjacency matrix.
 
 ## Usage
 
@@ -34,103 +34,89 @@ run_brms_bym2_model(
 
 - dataset:
 
-  An in-memory modelling dataset, a `brms_data_prep` object, a
-  `bym2_data_prep` object, a data.frame, a path to a prepared RDS file,
-  or `NULL`. If `NULL`, `iso3`, `admin_level`, and `admin_name` are used
-  to locate a prepared BYM2 object in `input_dir`.
+  A `brms_bym2_data_prep` object, a data frame, a path to a prepared RDS
+  file, or `NULL`. When `NULL`, location information is used to locate
+  the prepared file in `input_dir`.
 
 - formula:
 
-  Character string or formula object specifying the fixed and
-  non-spatial random effects structure. This is required. If the formula
-  does not contain a `car()` term, the BYM2 term
-  `+ car(W, gr = <grid_col>, type = "bym2")` is appended automatically.
-  If the formula already contains `car(...)`, it is used as supplied.
+  Formula or character string specifying the fixed and non-spatial
+  random effects. The BYM2 term is added automatically when the formula
+  does not already contain `car()`.
 
 - cellsize_m:
 
-  Numeric cell size in meters. Defaults to `800`, expecting a grid
-  column such as `grid_id_800`.
+  Numeric grid-cell size in metres.
 
 - temporal_resolution:
 
-  Character. Either `"daily"` or `"hourly"`. Determines which
-  prepared-file name is used when `dataset = NULL`.
+  Either `"daily"` or `"hourly"`.
 
 - adjacency:
 
-  Optional pre-computed adjacency matrix whose row/column names match
-  the grid identifier column.
+  Optional adjacency matrix used when preparing a raw data frame.
 
 - adjacency_args:
 
-  Named list of additional arguments forwarded to
-  [`build_grid_adjacency()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_grid_adjacency.md)
-  when adjacency needs to be built.
+  Additional arguments passed to
+  [`build_grid_adjacency()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_grid_adjacency.md).
 
 - priors:
 
-  Optional `brms::set_prior` object. If `NULL`, default BYM2 priors are
-  used.
+  Optional brms prior specification.
 
 - nchains:
 
-  Integer. Number of MCMC chains.
+  Number of MCMC chains.
 
 - threads_per_chain:
 
-  Integer. Number of threads per chain.
+  Number of threads per chain.
 
 - adapt_delta:
 
-  Numeric. Target average proposal acceptance probability.
+  Target acceptance probability.
 
 - max_treedepth:
 
-  Integer. Maximum tree depth for NUTS.
+  Maximum NUTS tree depth.
 
 - backend:
 
-  Character. `"cmdstanr"` or `"rstan"`.
+  Either `"cmdstanr"` or `"rstan"`.
 
 - iso3, admin_level, admin_name:
 
-  Optional location identifiers used for prepared-file lookup and
-  adjacency construction.
+  Location identifiers.
 
 - write_output:
 
-  Logical. Whether to save the fitted model to disk.
+  Whether to save the fitted model.
 
 - output_path:
 
-  Directory or file path for saved model output.
+  Output directory or RDS filename.
 
 - input_dir:
 
-  Directory used when automatically locating prepared data.
+  Directory containing prepared data.
 
 - save_pars:
 
-  Logical. Forwarded to `brms::brm()`.
+  Whether to save latent parameters.
 
 - verbose:
 
-  Logical. Emit messages when `TRUE`.
+  Whether to emit progress messages.
 
 ## Value
 
-A fitted `brmsfit` object with attributes for model data, adjacency IDs,
-grid column, source dataset, location slug, formula text, and output
-path.
+A fitted `brmsfit` object.
 
 ## Details
 
-This function is the spatial counterpart to
-[`run_brms_model()`](https://labs.mosquitoalert.com/mosquitoR/reference/run_brms_model.md).
-It expects either a `bym2_data_prep` object created by
-[`prepare_bym2_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/prepare_bym2_data.md),
-a path to a prepared BYM2 RDS file, a `brms_data_prep` object plus
-enough information to build/provide adjacency, or a raw modelling data
-frame that can be passed through
-[`prepare_bym2_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/prepare_bym2_data.md).
+The function expects an object created by
+[`prepare_brms_bym2_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/prepare_brms_bym2_data.md),
+a path to a saved preparation object, or a raw data frame that can be
+passed to
+[`prepare_brms_bym2_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/prepare_brms_bym2_data.md).

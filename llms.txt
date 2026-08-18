@@ -255,6 +255,8 @@ NextGenerationEU/PRTR](reference/figures/funding/MICIU+NextG+PRTR+AEI_page-0001.
   : Attach hex-grid identifiers to Mosquito Alert model inputs
 - [`add_landcover_features()`](https://labs.mosquitoalert.com/mosquitoR/reference/add_landcover_features.md)
   : Add land-cover codes and classes to Mosquito Alert model inputs
+- [`add_landcover_group()`](https://labs.mosquitoalert.com/mosquitoR/reference/add_landcover_group.md)
+  : Add a supported land-cover grouping to prepared model data
 - [`add_ndvi_features()`](https://labs.mosquitoalert.com/mosquitoR/reference/add_ndvi_features.md)
   : Add high-NDVI proximity metrics to Mosquito Alert model inputs
 - [`add_popdensity_features()`](https://labs.mosquitoalert.com/mosquitoR/reference/add_popdensity_features.md)
@@ -269,8 +271,7 @@ NextGenerationEU/PRTR](reference/figures/funding/MICIU+NextG+PRTR+AEI_page-0001.
 - [`build_spatial_grid()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_spatial_grid.md)
   : Build a regular grid for a supplied polygon
 - [`build_tgb_daily()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_tgb_daily.md)
-  : Build GBIF target-group background daily weights on the TRS/Tigacell
-  geometry
+  : Build GBIF target-group background data at original locations
 - [`build_tigacell_grid()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_tigacell_grid.md)
   : Build a TIGA-like grid over a GADM admin unit
 - [`build_trs_daily()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_trs_daily.md)
@@ -301,6 +302,8 @@ NextGenerationEU/PRTR](reference/figures/funding/MICIU+NextG+PRTR+AEI_page-0001.
   : Aggregates mosquito alert report data by country or city
 - [`get_malert_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_malert_data.md)
   : Download Mosquito Alert report data from GitHub or Zenodo
+- [`get_malert_species_counts()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_malert_species_counts.md)
+  : Count Mosquito Alert reports by species
 - [`get_vector_counts()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_vector_counts.md)
   : Aggregate Mosquito Alert + GBIF occurrence counts by GADM
   administrative level
@@ -310,10 +313,14 @@ NextGenerationEU/PRTR](reference/figures/funding/MICIU+NextG+PRTR+AEI_page-0001.
   : Build a unified vector presence dataset
 - [`interpret_brms_model()`](https://labs.mosquitoalert.com/mosquitoR/reference/interpret_brms_model.md)
   : Generate a diagnostic report for a fitted brms model
-- [`prepare_brms_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/prepare_brms_data.md)
-  : Prepare data for brms modelling
-- [`prepare_bym2_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/prepare_bym2_data.md)
+- [`prepare_brms_bym2_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/prepare_brms_bym2_data.md)
   : Prepare data and adjacency matrix for BYM2 brms modelling
+- [`prepare_inla_bym2_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/prepare_inla_bym2_data.md)
+  : Add BYM2 spatial data to prepared INLA data
+- [`prepare_inla_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/prepare_inla_data.md)
+  : Prepare base model data for INLA
+- [`prepare_model_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/prepare_model_data.md)
+  : Prepare data for brms modelling
 - [`process_era5_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/process_era5_data.md)
   : Build daily & lagged weather features from processed ERA5 CSVs
 - [`process_landcover_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/process_landcover_data.md)
@@ -327,6 +334,10 @@ NextGenerationEU/PRTR](reference/figures/funding/MICIU+NextG+PRTR+AEI_page-0001.
   : Fit a BYM2 Mosquito Alert occupancy model with brms
 - [`run_brms_model()`](https://labs.mosquitoalert.com/mosquitoR/reference/run_brms_model.md)
   : Fit a Standard Mosquito Alert occupancy model with brms
+- [`run_inla_bym2_model()`](https://labs.mosquitoalert.com/mosquitoR/reference/run_inla_bym2_model.md)
+  : Fit a BYM2 model with INLA
+- [`run_inla_model()`](https://labs.mosquitoalert.com/mosquitoR/reference/run_inla_model.md)
+  : Fit a general model with INLA
 - [`run_maxent_model()`](https://labs.mosquitoalert.com/mosquitoR/reference/run_maxent_model.md)
   : Fit a baseline Mosquito Alert MaxEnt model (maxnet)
 

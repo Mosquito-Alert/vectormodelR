@@ -25,23 +25,20 @@ get_malert_data(
 - doi:
 
   String. Zenodo DOI if downloading from Zenodo. Default is the DOI that
-  will always point to the most recent version: 10.5281/zenodo.597466.
+  always points to the most recent version: 10.5281/zenodo.597466.
 
 - iso3:
 
-  Optional three-letter ISO code used to locate a perimeter file for
-  spatial filtering.
+  Optional three-letter ISO code used for spatial filtering.
 
 - admin_level:
 
-  Optional administrative level associated with the perimeter file.
+  Optional administrative level used for spatial filtering.
 
 - admin_name:
 
-  Optional administrative unit name associated with the perimeter file.
-  When the expected perimeter RDS is missing, it is generated
-  automatically via
-  [`get_gadm_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/get_gadm_data.md).
+  Optional administrative unit name. When `NULL`, all administrative
+  units at `admin_level` are included.
 
 - desired_cols:
 
@@ -52,17 +49,11 @@ get_malert_data(
 
   Optional named list of values to filter by. Each element name should
   correspond to a column in the dataset, and the value describes what to
-  keep (e.g., `list(type = "adult")`).
-
-  The function always writes the raw combined download to
-  `data/vector/vector_global_malert.Rds`. When a perimeter is supplied,
-  the filtered output (after column selection) is persisted to
-  `data/proc/vector_<iso3>_<admin_level>_<admin_name>_malert.Rds`.
+  keep (e.g. `list(type = "adult")`).
 
 ## Value
 
-A tibble of Mosquito Alert reports (filtered and column-selected if the
-optional perimeter inputs are supplied).
+A tibble of Mosquito Alert reports.
 
 ## Examples
 
