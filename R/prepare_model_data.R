@@ -7,7 +7,7 @@
 #' Optionally saves the prepared object to disk.
 #'
 #' @inheritParams run_brms_model
-#' @param cellsize_m Numeric cell size in meters. Defaults to 800.
+#' @param cellsize Numeric cell size in meters. Defaults to 800.
 #' @param temporal_resolution Character. Either `"daily"` or `"hourly"`.
 #'   When `"daily"`, records are aggregated to source-grid-date units.
 #'   When `"hourly"`, records are aggregated to source-grid-date-hour units.

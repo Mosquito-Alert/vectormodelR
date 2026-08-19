@@ -26,6 +26,8 @@ prepare_model_data(
 \item{dataset}{An in-memory modelling dataset (data.frame), a \code{brms_data_prep} object,
 a \code{bym2_data_prep} object, or a path to a prepared RDS file.}
 
+\item{cellsize}{Numeric cell size in meters. Defaults to 800.}
+
 \item{temporal_resolution}{Character. Either \code{"daily"} or \code{"hourly"}.
 When \code{"daily"}, records are aggregated to source-grid-date units.
 When \code{"hourly"}, records are aggregated to source-grid-date-hour units.}
@@ -66,8 +68,6 @@ predictors or grouping variables.}
 Defaults to \code{FALSE}.}
 
 \item{verbose}{Logical. Emit informative messages when \code{TRUE}.}
-
-\item{cellsize_m}{Numeric cell size in meters. Defaults to 800.}
 }
 \value{
 A list of class \code{brms_data_prep} containing:
