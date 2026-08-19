@@ -38,3 +38,66 @@ decimal_places <- function(x) {
     return(0)
   }
 }
+
+#' Resolve the grid identifier column
+#'
+#' Converts a numeric hex-grid cell size or an H3 specification into the
+#' corresponding grid identifier column name.
+#'
+#' @param cellsize A positive numeric hex-grid cell size in metres, or an H3
+#'   specification such as `"h3_9"`.
+#'
+#' @return A character string containing the grid identifier column name.
+#' @noRd
+#'
+#' @examples
+#' resolve_grid_col(800)
+#' resolve_grid_col("h3_9")
+resolve_grid_col <- function(cellsize) {
+  is_h3 <- (
+    is.character(cellsize) &&
+      length(cellsize) == 1L &&
+      grepl("^h3_[0-9]+$", tolower(cellsize))
+  )
+
+  if (is_h3) {
+    resolution <- as.integer(
+      sub("^h3_", "", tolower(cellsize))
+    )
+
+    if (!resolution %in% 0:15) {
+      stop(
+        "H3 resolution must be between 0 and 15.",
+        call. = FALSE
+      )
+    }
+
+    return(
+      paste0("h3_id_", resolution)
+    )
+  }
+
+  if (
+    !is.numeric(cellsize) ||
+      length(cellsize) != 1L ||
+      is.na(cellsize) ||
+      cellsize <= 0
+  ) {
+    stop(
+      "`cellsize` must be a positive number or an H3 value such as `h3_9`.",
+      call. = FALSE
+    )
+  }
+
+  cellsize_token <- gsub(
+    "\\.",
+    "_",
+    format(
+      cellsize,
+      trim = TRUE,
+      scientific = FALSE
+    )
+  )
+
+  paste0("grid_id_", cellsize_token)
+}
