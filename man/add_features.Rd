@@ -2,7 +2,7 @@
 % Please edit documentation in R/add_features.R
 \name{add_features}
 \alias{add_features}
-\title{Sequentially enrich Mosquito Alert model-preparation datasets}
+\title{Sequentially enrich model-preparation datasets}
 \usage{
 add_features(
   iso3,
@@ -11,70 +11,49 @@ add_features(
   features,
   vector_sources = c("malert", "gbif"),
   data_dir = "data/proc",
-  weather_resolution = c("daily", "hourly"),
   verbose = TRUE
 )
 }
 \arguments{
 \item{iso3}{Three-letter ISO3 country code.}
 
-\item{admin_level}{Administrative level used when preparing the inputs.}
+\item{admin_level}{Administrative level used when preparing the dataset.}
 
-\item{admin_name}{Administrative unit name used in the file naming scheme.}
+\item{admin_name}{Administrative unit name.}
 
-\item{features}{Character vector (or comma-separated string) indicating which
-feature steps to run. Accepted values: \code{"hex"},
-\code{"hex_<cellsize>"} (for example \code{hex_800}), \code{"wx_land"}/\code{"wx_single"}/\code{"weather_land"}/\code{"weather_single"},
-\code{"lc"}/\code{"landcover"}, \code{"ndvi"}, \code{"el"}/\code{"elevation"},
-\code{"pd"}/\code{"popdensity"}, \code{"se"}/\code{"pseudoabsence"}. For weather features,
-specify the dataset: \code{wx_land} for ERA5-Land or \code{wx_single} for ERA5 Single Levels.}
+\item{features}{Character vector or comma-separated feature codes. Available
+codes are \code{"hex"}, \code{"hex_<cellsize>"}, \code{"h3_<resolution>"},
+\code{"wx_daily_land"}, \code{"wx_hourly_land"}, \code{"wx_daily_single"},
+\code{"wx_hourly_single"}, \code{"lc"}, \code{"ndvi"}, \code{"el"}, \code{"pd"}, and \code{"se"}.}
 
-\item{vector_sources}{Character vector (or comma-separated string) describing
-which vector data sources were used to build the base dataset. Accepted
-values: "malert", "gbif". Determines the filename suffix that is located.}
+\item{vector_sources}{Vector data sources used to prepare the base dataset.
+Accepted values are \code{"malert"} and \code{"gbif"}.}
 
-\item{data_dir}{Directory containing the model-preparation datasets and
-derived artefacts. Defaults to \code{"data/proc"}.}
+\item{data_dir}{Directory containing processed data.}
 
-\item{weather_resolution}{Character. Resolution used when adding weather
-features. Passed to \code{\link[=add_weather_features]{add_weather_features()}}. Use \code{"daily"} for daily
-summaries and lagged windows or \code{"hourly"} for hourly ERA5 cell features.}
-
-\item{verbose}{Logical; if \code{TRUE}, prints progress messages while processing.}
-
-\item{grid_cellsize_m}{Numeric cell size (meters) corresponding to the stored
-hex grid. Defaults to 400.}
+\item{verbose}{Logical. Print progress messages.}
 }
 \value{
-The enriched dataset returned by the final helper that ran. The
-object retains the \code{output_path} attribute referencing the file written by
-that helper.
+The enriched dataset.
 }
 \description{
-Convenience wrapper that locates the base \verb{model_prep_*_base.Rds} file for a
-given location and applies one or more enrichment helpers (hex-grid IDs,
-weather, landcover, NDVI, elevation, population density, pseudoabsences) in
-the order supplied.
-Helpers run sequentially, with the last step persisting the enriched
-dataset alongside the base inputs. Intermediate helpers update metadata
-(notably the \code{output_path} attribute) so suffixes accumulate as expected.
+Locates a prepared model dataset and adds the requested features in the
+order supplied.
 }
 \examples{
 \dontrun{
-# Add ERA5-Land weather and landcover features
-add_features(
+daily_data <- add_features(
   iso3 = "ESP",
-  admin_level = 2,
+  admin_level = 4,
   admin_name = "Barcelona",
-  features = "wx_land,lc"
+  features = "se,el,pd,wx_daily_land,ndvi,lc,h3_6"
 )
 
-# Add ERA5 Single Levels weather with hex grid
-add_features(
-  iso3 = "ITA",
-  admin_level = 1,
-  admin_name = "Lombardia",
-  features = "hex_800,wx_single,ndvi,el"
+hourly_data <- add_features(
+  iso3 = "ESP",
+  admin_level = 4,
+  admin_name = "Barcelona",
+  features = "se,el,pd,wx_hourly_land,ndvi,lc,h3_6"
 )
 }
 }
