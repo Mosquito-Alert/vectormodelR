@@ -13,11 +13,11 @@
 #'
 #' @export
 add_hourly_weather_features <- function(
-    dataset,
-    dataset_type,
-    data_dir = "data/proc",
-    write_output = TRUE,
-    verbose = TRUE
+  dataset,
+  dataset_type,
+  data_dir = "data/proc",
+  write_output = TRUE,
+  verbose = TRUE
 ) {
   valid_datasets <- c(
     "reanalysis-era5-land",
@@ -45,13 +45,20 @@ add_hourly_weather_features <- function(
     dataset_path <- dataset
 
     if (!file.exists(dataset_path)) {
-      stop("Dataset not found at ", dataset_path, call. = FALSE)
+      stop(
+        "Dataset not found at ",
+        dataset_path,
+        call. = FALSE
+      )
     }
 
     base_dataset <- readRDS(dataset_path)
   } else {
     base_dataset <- dataset
-    dataset_path <- attr(base_dataset, "output_path")
+    dataset_path <- attr(
+      base_dataset,
+      "output_path"
+    )
   }
 
   if (is.null(dataset_path)) {
@@ -79,14 +86,20 @@ add_hourly_weather_features <- function(
   }
 
   # Determine location.
-  location_slug <- attr(base_dataset, "location_slug")
+  location_slug <- attr(
+    base_dataset,
+    "location_slug"
+  )
 
   if (is.null(location_slug)) {
     filename <- basename(dataset_path)
 
     match <- regmatches(
       filename,
-      regexec("^model_prep_(.+?)_base", filename)
+      regexec(
+        "^model_prep_(.+?)_base",
+        filename
+      )
     )[[1L]]
 
     if (length(match) >= 2L) {
@@ -95,7 +108,10 @@ add_hourly_weather_features <- function(
   }
 
   if (is.null(location_slug)) {
-    stop("Could not determine the location slug.", call. = FALSE)
+    stop(
+      "Could not determine the location slug.",
+      call. = FALSE
+    )
   }
 
   # Load hourly weather.
@@ -119,11 +135,17 @@ add_hourly_weather_features <- function(
   }
 
   if (isTRUE(verbose)) {
-    message("Reading hourly weather from: ", weather_path)
+    message(
+      "Reading hourly weather from: ",
+      weather_path
+    )
   }
 
   weather <- readRDS(weather_path)
-  weather$time <- as.POSIXct(weather$time, tz = "UTC")
+  weather$time <- as.POSIXct(
+    weather$time,
+    tz = "UTC"
+  )
 
   # Create report hour.
   report_hour <- rep(
@@ -133,7 +155,10 @@ add_hourly_weather_features <- function(
 
   if ("datetime" %in% names(base_dataset)) {
     report_hour <- lubridate::floor_date(
-      as.POSIXct(base_dataset$datetime, tz = "UTC"),
+      as.POSIXct(
+        base_dataset$datetime,
+        tz = "UTC"
+      ),
       unit = "hour"
     )
   }
@@ -163,8 +188,20 @@ add_hourly_weather_features <- function(
     dplyr::arrange(.data$lon, .data$lat)
 
   nearest_index <- FNN::get.knnx(
-    data = as.matrix(weather_cells[c("lon", "lat")]),
-    query = as.matrix(base_dataset[c("lon", "lat")]),
+    data = as.matrix(
+      dplyr::select(
+        weather_cells,
+        .data$lon,
+        .data$lat
+      )
+    ),
+    query = as.matrix(
+      dplyr::select(
+        base_dataset,
+        .data$lon,
+        .data$lat
+      )
+    ),
     k = 1
   )$nn.index[, 1L]
 
@@ -177,7 +214,9 @@ add_hourly_weather_features <- function(
 
   # The model data already contain their own date.
   weather <- weather |>
-    dplyr::select(-dplyr::any_of("date"))
+    dplyr::select(
+      -dplyr::any_of("date")
+    )
 
   # Join every hourly weather column.
   enriched <- enriched |>
@@ -207,7 +246,10 @@ add_hourly_weather_features <- function(
   attr(enriched, "output_path") <- output_path
 
   if (isTRUE(write_output)) {
-    saveRDS(enriched, output_path)
+    saveRDS(
+      enriched,
+      output_path
+    )
 
     if (isTRUE(verbose)) {
       message(
