@@ -14,11 +14,11 @@
 #'
 #' @export
 add_daily_weather_features <- function(
-    dataset,
-    dataset_type,
-    data_dir = "data/proc",
-    write_output = TRUE,
-    verbose = TRUE
+  dataset,
+  dataset_type,
+  data_dir = "data/proc",
+  write_output = TRUE,
+  verbose = TRUE
 ) {
   valid_datasets <- c(
     "reanalysis-era5-land",
@@ -198,14 +198,28 @@ add_daily_weather_features <- function(
     "date"
   )
 
-  if (anyDuplicated(wx_daily[weather_keys])) {
+  if (
+    anyDuplicated(
+      dplyr::select(
+        wx_daily,
+        dplyr::all_of(weather_keys)
+      )
+    )
+  ) {
     stop(
       "Daily weather contains duplicate lon-lat-date rows.",
       call. = FALSE
     )
   }
 
-  if (anyDuplicated(ppt_lags[weather_keys])) {
+  if (
+    anyDuplicated(
+      dplyr::select(
+        ppt_lags,
+        dplyr::all_of(weather_keys)
+      )
+    )
+  ) {
     stop(
       "Precipitation lags contain duplicate lon-lat-date rows.",
       call. = FALSE
@@ -223,13 +237,19 @@ add_daily_weather_features <- function(
       .data$lat
     )
 
-  report_coordinates <- as.matrix(
-    base_dataset[c("lon", "lat")]
-  )
+  report_coordinates <- base_dataset |>
+    dplyr::select(
+      .data$lon,
+      .data$lat
+    ) |>
+    as.matrix()
 
-  weather_coordinates <- as.matrix(
-    weather_cells[c("lon", "lat")]
-  )
+  weather_coordinates <- weather_cells |>
+    dplyr::select(
+      .data$lon,
+      .data$lat
+    ) |>
+    as.matrix()
 
   nearest_index <- FNN::get.knnx(
     data = weather_coordinates,
@@ -312,7 +332,10 @@ add_daily_weather_features <- function(
     )
 
     if (isTRUE(verbose)) {
-      message("Daily weather dataset written to: ", output_path)
+      message(
+        "Daily weather dataset written to: ",
+        output_path
+      )
     }
   }
 
