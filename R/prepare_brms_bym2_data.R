@@ -10,9 +10,9 @@
 #'
 #' @inheritParams prepare_model_data
 #' @param adjacency Optional precomputed adjacency matrix. If `NULL`, one is
-#'   built using [build_grid_adjacency()].
-#' @param adjacency_args Named list of additional arguments passed to
-#'   [build_grid_adjacency()] when `adjacency = NULL`.
+#'   built using [build_grid_adjacency()] or [build_h3_adjacency()].
+#' @param adjacency_args Named list of additional arguments passed to the
+#'   selected adjacency builder when `adjacency = NULL`.
 #'
 #' @return A list of class `bym2_data_prep` containing:
 #'   \item{model_data}{The prepared data frame ready for brms.}
@@ -27,7 +27,7 @@
 #' @export
 prepare_brms_bym2_data <- function(
     dataset,
-    cellsize_m = 800,
+    cellsize = 800,
     temporal_resolution = c("daily", "hourly"),
     base_required_cols = NULL,
     vars_to_check = NULL,
@@ -121,7 +121,7 @@ prepare_brms_bym2_data <- function(
   
   prepared <- prepare_model_data(
     dataset = dataset,
-    cellsize_m = cellsize_m,
+    cellsize = cellsize,
     temporal_resolution = temporal_resolution,
     base_required_cols = base_required_cols,
     vars_to_check = vars_to_check,
@@ -139,6 +139,7 @@ prepare_brms_bym2_data <- function(
   
   df <- prepared$model_data
   grid_col <- prepared$grid_col
+  is_h3 <- startsWith(grid_col, "h3_id_")
   
   if (!is.data.frame(df)) {
     stop(
@@ -187,9 +188,10 @@ prepare_brms_bym2_data <- function(
   # ---------------------------------------------------------------------------
   
   if (is.null(adjacency)) {
-    if (is.null(iso3) ||
+    if (!is_h3 &&
+        (is.null(iso3) ||
         is.null(admin_level) ||
-        is.null(admin_name)) {
+        is.null(admin_name))) {
       stop(
         "`iso3`, `admin_level`, and `admin_name` are required when ",
         "`adjacency = NULL`.",
@@ -205,14 +207,26 @@ prepare_brms_bym2_data <- function(
       )
     }
     
-    default_adjacency_args <- list(
-      iso3 = iso3,
-      admin_level = admin_level,
-      admin_name = admin_name,
-      cellsize_m = cellsize_m,
-      model = df,
-      sparse = TRUE
-    )
+    if (is_h3) {
+      adjacency_builder <- build_h3_adjacency
+      
+      default_adjacency_args <- list(
+        model = df,
+        cellsize = cellsize,
+        sparse = TRUE
+      )
+    } else {
+      adjacency_builder <- build_grid_adjacency
+      
+      default_adjacency_args <- list(
+        iso3 = iso3,
+        admin_level = admin_level,
+        admin_name = admin_name,
+        cellsize_m = cellsize,
+        model = df,
+        sparse = TRUE
+      )
+    }
     
     adjacency_args <- utils::modifyList(
       default_adjacency_args,
@@ -220,7 +234,7 @@ prepare_brms_bym2_data <- function(
     )
     
     adjacency_matrix <- do.call(
-      build_grid_adjacency,
+      adjacency_builder,
       adjacency_args
     )
   } else {
