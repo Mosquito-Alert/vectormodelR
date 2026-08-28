@@ -3,22 +3,15 @@
 #' Fits a Bayesian occupancy model using `brms` with a BYM2 spatial
 #' random effect based on a grid adjacency matrix.
 #'
-#' The function expects an object created by
-#' [prepare_brms_bym2_data()], a path to a saved preparation object, or a raw
-#' data frame that can be passed to [prepare_brms_bym2_data()].
-#'
-#' @param dataset A `brms_bym2_data_prep` object, a data frame, a path to a
-#'   prepared RDS file, or `NULL`. When `NULL`, location information is used
-#'   to locate the prepared file in `input_dir`.
-#' @param formula Formula or character string specifying the fixed and
-#'   non-spatial random effects. The BYM2 term is added automatically when
-#'   the formula does not already contain `car()`.
-#' @param cellsize_m Numeric grid-cell size in metres.
+#' @param dataset A `brms_bym2_data_prep` object, data frame, prepared RDS
+#'   path, or `NULL`.
+#' @param formula Formula or character string. The BYM2 term is added
+#'   automatically when the formula does not contain `car()`.
+#' @param cellsize Numeric hex-grid cell size in metres, or an H3 specification
+#'   such as `"h3_9"`.
 #' @param temporal_resolution Either `"daily"` or `"hourly"`.
-#' @param adjacency Optional adjacency matrix used when preparing a raw data
-#'   frame.
-#' @param adjacency_args Additional arguments passed to
-#'   [build_grid_adjacency()].
+#' @param adjacency Optional adjacency matrix when preparing raw data.
+#' @param adjacency_args Additional adjacency-builder arguments.
 #' @param priors Optional brms prior specification.
 #' @param nchains Number of MCMC chains.
 #' @param threads_per_chain Number of threads per chain.
@@ -33,36 +26,31 @@
 #' @param verbose Whether to emit progress messages.
 #'
 #' @return A fitted `brmsfit` object.
-#'
 #' @export
 run_brms_bym2_model <- function(
-    dataset = NULL,
-    formula,
-    cellsize_m = 800,
-    temporal_resolution = c("daily", "hourly"),
-    adjacency = NULL,
-    adjacency_args = list(),
-    priors = NULL,
-    nchains = 4,
-    threads_per_chain = 1,
-    adapt_delta = 0.99,
-    max_treedepth = 15,
-    backend = c("cmdstanr", "rstan"),
-    iso3 = NULL,
-    admin_level = NULL,
-    admin_name = NULL,
-    write_output = TRUE,
-    output_path = "data/proc",
-    input_dir = "data/proc",
-    save_pars = TRUE,
-    verbose = TRUE
+  dataset = NULL,
+  formula,
+  cellsize = 800,
+  temporal_resolution = c("daily", "hourly"),
+  adjacency = NULL,
+  adjacency_args = list(),
+  priors = NULL,
+  nchains = 4,
+  threads_per_chain = 1,
+  adapt_delta = 0.99,
+  max_treedepth = 15,
+  backend = c("cmdstanr", "rstan"),
+  iso3 = NULL,
+  admin_level = NULL,
+  admin_name = NULL,
+  write_output = TRUE,
+  output_path = "data/proc",
+  input_dir = "data/proc",
+  save_pars = TRUE,
+  verbose = TRUE
 ) {
   backend <- match.arg(backend)
   temporal_resolution <- match.arg(temporal_resolution)
-
-  # ---------------------------------------------------------------------------
-  # 1. Dependencies and arguments
-  # ---------------------------------------------------------------------------
 
   for (pkg in c("brms", "Matrix")) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
@@ -73,8 +61,10 @@ run_brms_bym2_model <- function(
     }
   }
 
-  if (identical(backend, "cmdstanr") &&
-      !requireNamespace("cmdstanr", quietly = TRUE)) {
+  if (
+    identical(backend, "cmdstanr") &&
+      !requireNamespace("cmdstanr", quietly = TRUE)
+  ) {
     stop(
       "Backend `cmdstanr` was selected but package `cmdstanr` is not installed.",
       call. = FALSE
@@ -82,57 +72,54 @@ run_brms_bym2_model <- function(
   }
 
   if (missing(formula)) {
-    stop(
-      "`formula` is required.",
-      call. = FALSE
-    )
+    stop("`formula` is required.", call. = FALSE)
   }
 
-  if (!is.numeric(cellsize_m) ||
-      length(cellsize_m) != 1L ||
-      is.na(cellsize_m) ||
-      cellsize_m <= 0) {
-    stop(
-      "`cellsize_m` must be a positive numeric scalar.",
-      call. = FALSE
-    )
-  }
+  resolve_grid_col(cellsize)
 
-  if (!is.numeric(nchains) ||
+  if (
+    !is.numeric(nchains) ||
       length(nchains) != 1L ||
       is.na(nchains) ||
-      nchains < 1) {
+      nchains < 1
+  ) {
     stop(
       "`nchains` must be a positive numeric scalar.",
       call. = FALSE
     )
   }
 
-  if (!is.numeric(threads_per_chain) ||
+  if (
+    !is.numeric(threads_per_chain) ||
       length(threads_per_chain) != 1L ||
       is.na(threads_per_chain) ||
-      threads_per_chain < 1) {
+      threads_per_chain < 1
+  ) {
     stop(
       "`threads_per_chain` must be a positive numeric scalar.",
       call. = FALSE
     )
   }
 
-  if (!is.numeric(adapt_delta) ||
+  if (
+    !is.numeric(adapt_delta) ||
       length(adapt_delta) != 1L ||
       is.na(adapt_delta) ||
       adapt_delta <= 0 ||
-      adapt_delta >= 1) {
+      adapt_delta >= 1
+  ) {
     stop(
       "`adapt_delta` must be between 0 and 1.",
       call. = FALSE
     )
   }
 
-  if (!is.numeric(max_treedepth) ||
+  if (
+    !is.numeric(max_treedepth) ||
       length(max_treedepth) != 1L ||
       is.na(max_treedepth) ||
-      max_treedepth < 1) {
+      max_treedepth < 1
+  ) {
     stop(
       "`max_treedepth` must be a positive numeric scalar.",
       call. = FALSE
@@ -150,19 +137,16 @@ run_brms_bym2_model <- function(
   threads_per_chain <- as.integer(threads_per_chain)
   max_treedepth <- as.integer(max_treedepth)
 
-  # ---------------------------------------------------------------------------
-  # 2. Load prepared data
-  # ---------------------------------------------------------------------------
-
   dataset_path <- NULL
 
   if (is.null(dataset)) {
-    if (is.null(iso3) ||
+    if (
+      is.null(iso3) ||
         is.null(admin_level) ||
-        is.null(admin_name)) {
+        is.null(admin_name)
+    ) {
       stop(
-        "When `dataset = NULL`, supply `iso3`, `admin_level`, and ",
-        "`admin_name`.",
+        "When `dataset = NULL`, supply `iso3`, `admin_level`, and `admin_name`.",
         call. = FALSE
       )
     }
@@ -200,8 +184,10 @@ run_brms_bym2_model <- function(
 
     dataset <- readRDS(target_file)
     dataset_path <- target_file
-  } else if (is.character(dataset) &&
-             length(dataset) == 1L) {
+  } else if (
+    is.character(dataset) &&
+      length(dataset) == 1L
+  ) {
     if (!file.exists(dataset)) {
       stop(
         "Dataset file not found: ",
@@ -218,17 +204,15 @@ run_brms_bym2_model <- function(
     dataset <- readRDS(dataset)
   }
 
-  # ---------------------------------------------------------------------------
-  # 3. Resolve the preparation object
-  # ---------------------------------------------------------------------------
-
   if (inherits(dataset, "brms_bym2_data_prep")) {
     prep_obj <- dataset
 
     prepared_resolution <- prep_obj$meta$temporal_resolution
 
-    if (!is.null(prepared_resolution) &&
-        !identical(prepared_resolution, temporal_resolution)) {
+    if (
+      !is.null(prepared_resolution) &&
+        !identical(prepared_resolution, temporal_resolution)
+    ) {
       if (isTRUE(verbose)) {
         message(
           "Using temporal resolution from prepared data: ",
@@ -257,7 +241,7 @@ run_brms_bym2_model <- function(
 
     prep_obj <- prepare_brms_bym2_data(
       dataset = dataset,
-      cellsize_m = cellsize_m,
+      cellsize = cellsize,
       temporal_resolution = temporal_resolution,
       iso3 = iso3,
       admin_level = admin_level,
@@ -276,10 +260,6 @@ run_brms_bym2_model <- function(
     )
   }
 
-  # ---------------------------------------------------------------------------
-  # 4. Extract and validate model data
-  # ---------------------------------------------------------------------------
-
   model_data <- prep_obj$model_data
   adjacency_aligned <- prep_obj$adjacency
   grid_col <- prep_obj$grid_col
@@ -292,9 +272,11 @@ run_brms_bym2_model <- function(
     )
   }
 
-  if (is.null(grid_col) ||
+  if (
+    is.null(grid_col) ||
       !nzchar(grid_col) ||
-      !grid_col %in% names(model_data)) {
+      !grid_col %in% names(model_data)
+  ) {
     stop(
       "The prepared object does not contain a valid grid column.",
       call. = FALSE
@@ -315,8 +297,10 @@ run_brms_bym2_model <- function(
     )
   }
 
-  if (is.null(rownames(adjacency_aligned)) ||
-      is.null(colnames(adjacency_aligned))) {
+  if (
+    is.null(rownames(adjacency_aligned)) ||
+      is.null(colnames(adjacency_aligned))
+  ) {
     stop(
       "Adjacency matrix must have row and column names.",
       call. = FALSE
@@ -377,18 +361,16 @@ run_brms_bym2_model <- function(
   )
 
   if (identical(temporal_resolution, "hourly")) {
-    if (!"hour" %in% names(model_data) ||
-        all(is.na(model_data$hour))) {
+    if (
+      !"hour" %in% names(model_data) ||
+        all(is.na(model_data$hour))
+    ) {
       stop(
         "Hourly model data require a non-missing `hour` column.",
         call. = FALSE
       )
     }
   }
-
-  # ---------------------------------------------------------------------------
-  # 5. Priors
-  # ---------------------------------------------------------------------------
 
   if (is.null(priors)) {
     priors <- c(
@@ -423,10 +405,6 @@ run_brms_bym2_model <- function(
     }
   }
 
-  # ---------------------------------------------------------------------------
-  # 6. Build formula
-  # ---------------------------------------------------------------------------
-
   if (inherits(formula, "formula")) {
     formula_text <- paste(
       deparse(formula),
@@ -434,9 +412,9 @@ run_brms_bym2_model <- function(
     )
   } else if (
     is.character(formula) &&
-    length(formula) >= 1L &&
-    !anyNA(formula) &&
-    all(nzchar(formula))
+      length(formula) >= 1L &&
+      !anyNA(formula) &&
+      all(nzchar(formula))
   ) {
     formula_text <- paste(
       formula,
@@ -447,7 +425,7 @@ run_brms_bym2_model <- function(
       "`formula` must be a formula or a non-empty character vector.",
       call. = FALSE
     )
-}
+  }
 
   car_term <- paste0(
     "car(W, gr = ",
@@ -508,16 +486,14 @@ run_brms_bym2_model <- function(
     model_formula[[2L]]
   )
 
-  if (length(response_var) == 1L &&
-      is.logical(model_data[[response_var]])) {
+  if (
+    length(response_var) == 1L &&
+      is.logical(model_data[[response_var]])
+  ) {
     model_data[[response_var]] <- as.integer(
       model_data[[response_var]]
     )
   }
-
-  # ---------------------------------------------------------------------------
-  # 7. Fit model
-  # ---------------------------------------------------------------------------
 
   thread_arg <- if (threads_per_chain > 1L) {
     brms::threading(threads_per_chain)
@@ -564,10 +540,6 @@ run_brms_bym2_model <- function(
     save_pars = save_pars_arg
   )
 
-  # ---------------------------------------------------------------------------
-  # 8. Attach metadata
-  # ---------------------------------------------------------------------------
-
   attr(model_fit, "model_data") <- model_data
   attr(model_fit, "adjacency") <- adjacency_aligned
   attr(model_fit, "adjacency_ids") <- grid_ids
@@ -579,14 +551,12 @@ run_brms_bym2_model <- function(
     attr(model_fit, "source_dataset") <- dataset_path
   }
 
-  if (!is.null(location_slug) &&
-      nzchar(location_slug)) {
+  if (
+    !is.null(location_slug) &&
+      nzchar(location_slug)
+  ) {
     attr(model_fit, "location_slug") <- location_slug
   }
-
-  # ---------------------------------------------------------------------------
-  # 9. Optionally save model
-  # ---------------------------------------------------------------------------
 
   if (isTRUE(write_output)) {
     path_is_file <- grepl(
@@ -597,8 +567,10 @@ run_brms_bym2_model <- function(
     if (path_is_file) {
       final_output_path <- output_path
     } else {
-      slug <- if (!is.null(location_slug) &&
-                  nzchar(location_slug)) {
+      slug <- if (
+        !is.null(location_slug) &&
+          nzchar(location_slug)
+      ) {
         location_slug
       } else {
         "custom"

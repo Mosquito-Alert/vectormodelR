@@ -7,7 +7,7 @@
 #' Optionally saves the prepared object to disk.
 #'
 #' @inheritParams run_brms_model
-#' @param cellsize_m Numeric cell size in meters. Defaults to 800.
+#' @param cellsize Numeric cell size in meters. Defaults to 800.
 #' @param temporal_resolution Character. Either `"daily"` or `"hourly"`.
 #'   When `"daily"`, records are aggregated to source-grid-date units.
 #'   When `"hourly"`, records are aggregated to source-grid-date-hour units.
@@ -51,7 +51,7 @@
 #' @export
 prepare_model_data <- function(
     dataset,
-    cellsize_m = 800,
+    cellsize = 800,
     temporal_resolution = c("daily", "hourly"),
     base_required_cols = NULL,
     vars_to_check = NULL,
@@ -123,13 +123,6 @@ prepare_model_data <- function(
   # 3. Argument validation
   # ---------------------------------------------------------------------------
 
-  if (!is.numeric(cellsize_m) ||
-      length(cellsize_m) != 1L ||
-      is.na(cellsize_m) ||
-      cellsize_m <= 0) {
-    stop("`cellsize_m` must be a positive numeric scalar.", call. = FALSE)
-  }
-
   if (!is.logical(remove_unused_cols) ||
     length(remove_unused_cols) != 1L ||
     is.na(remove_unused_cols)) {
@@ -167,13 +160,7 @@ prepare_model_data <- function(
   scale_specs <- normalize_scale_specs(scale_specs)
   aggregation_specs <- normalize_aggregation_specs(aggregation_specs)
 
-  cellsize_token <- gsub(
-    "\\.",
-    "_",
-    format(cellsize_m, trim = TRUE, scientific = FALSE)
-  )
-
-  grid_col <- paste0("grid_id_", cellsize_token)
+  grid_col <- resolve_grid_col(cellsize)
 
   if (isTRUE(verbose)) {
     message("Using grid column: ", grid_col)

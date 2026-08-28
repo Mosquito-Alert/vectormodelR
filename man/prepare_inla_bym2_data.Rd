@@ -6,7 +6,7 @@
 \usage{
 prepare_inla_bym2_data(
   dataset,
-  cellsize_m = 800,
+  cellsize = 800,
   adjacency = NULL,
   adjacency_args = list(),
   iso3 = NULL,
@@ -20,13 +20,14 @@ prepare_inla_bym2_data(
 \arguments{
 \item{dataset}{Object returned by \code{\link[=prepare_inla_data]{prepare_inla_data()}}.}
 
-\item{cellsize_m}{Grid-cell size in metres.}
+\item{cellsize}{Numeric hex-grid cell size in metres, or an H3 specification
+such as \code{"h3_9"}.}
 
 \item{adjacency}{Optional precomputed adjacency matrix. When \code{NULL}, it is
-created with \code{\link[=build_grid_adjacency]{build_grid_adjacency()}}.}
+created with \code{\link[=build_grid_adjacency]{build_grid_adjacency()}} or \code{\link[=build_h3_adjacency]{build_h3_adjacency()}}.}
 
-\item{adjacency_args}{Additional arguments passed to
-\code{\link[=build_grid_adjacency]{build_grid_adjacency()}}.}
+\item{adjacency_args}{Additional arguments passed to the selected adjacency
+builder.}
 
 \item{iso3, admin_level, admin_name}{Optional location identifiers.}
 

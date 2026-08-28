@@ -6,7 +6,7 @@
 \usage{
 prepare_brms_bym2_data(
   dataset,
-  cellsize_m = 800,
+  cellsize = 800,
   temporal_resolution = c("daily", "hourly"),
   base_required_cols = NULL,
   vars_to_check = NULL,
@@ -28,7 +28,7 @@ prepare_brms_bym2_data(
 \item{dataset}{An in-memory modelling dataset (data.frame), a \code{brms_data_prep} object,
 a \code{bym2_data_prep} object, or a path to a prepared RDS file.}
 
-\item{cellsize_m}{Numeric cell size in meters. Defaults to 800.}
+\item{cellsize}{Numeric cell size in meters. Defaults to 800.}
 
 \item{temporal_resolution}{Character. Either \code{"daily"} or \code{"hourly"}.
 When \code{"daily"}, records are aggregated to source-grid-date units.
@@ -64,10 +64,10 @@ predictors or grouping variables.}
 \item{iso3, admin_level, admin_name}{Optional strings to locate the dataset if \code{dataset} is NULL.}
 
 \item{adjacency}{Optional precomputed adjacency matrix. If \code{NULL}, one is
-built using \code{\link[=build_grid_adjacency]{build_grid_adjacency()}}.}
+built using \code{\link[=build_grid_adjacency]{build_grid_adjacency()}} or \code{\link[=build_h3_adjacency]{build_h3_adjacency()}}.}
 
-\item{adjacency_args}{Named list of additional arguments passed to
-\code{\link[=build_grid_adjacency]{build_grid_adjacency()}} when \code{adjacency = NULL}.}
+\item{adjacency_args}{Named list of additional arguments passed to the
+selected adjacency builder when \code{adjacency = NULL}.}
 
 \item{output_dir}{Directory where the prepared dataset is written when
 \code{write = TRUE}. Defaults to \code{"data/proc"}.}

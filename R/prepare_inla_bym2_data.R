@@ -4,11 +4,12 @@
 #' matrix, and creates the spatial and space-time objects required by INLA.
 #'
 #' @param dataset Object returned by [prepare_inla_data()].
-#' @param cellsize_m Grid-cell size in metres.
+#' @param cellsize Numeric hex-grid cell size in metres, or an H3 specification
+#'   such as `"h3_9"`.
 #' @param adjacency Optional precomputed adjacency matrix. When `NULL`, it is
-#'   created with [build_grid_adjacency()].
-#' @param adjacency_args Additional arguments passed to
-#'   [build_grid_adjacency()].
+#'   created with [build_grid_adjacency()] or [build_h3_adjacency()].
+#' @param adjacency_args Additional arguments passed to the selected adjacency
+#'   builder.
 #' @param iso3,admin_level,admin_name Optional location identifiers.
 #' @param output_dir Directory used when `write = TRUE`.
 #' @param write Whether to save the prepared object.
@@ -19,16 +20,16 @@
 #'
 #' @export
 prepare_inla_bym2_data <- function(
-    dataset,
-    cellsize_m = 800,
-    adjacency = NULL,
-    adjacency_args = list(),
-    iso3 = NULL,
-    admin_level = NULL,
-    admin_name = NULL,
-    output_dir = "data/proc",
-    write = FALSE,
-    verbose = TRUE
+  dataset,
+  cellsize = 800,
+  adjacency = NULL,
+  adjacency_args = list(),
+  iso3 = NULL,
+  admin_level = NULL,
+  admin_name = NULL,
+  output_dir = "data/proc",
+  write = FALSE,
+  verbose = TRUE
 ) {
   if (!inherits(dataset, "inla_data_prep")) {
     stop(
@@ -51,6 +52,7 @@ prepare_inla_bym2_data <- function(
 
   df <- dataset$model_data
   grid_col <- dataset$grid_col
+  is_h3 <- startsWith(grid_col, "h3_id_")
 
   if (!is.data.frame(df) || nrow(df) == 0L) {
     stop(
@@ -89,12 +91,16 @@ prepare_inla_bym2_data <- function(
   }
 
   if (is.null(adjacency)) {
-    if (is.null(iso3) ||
-        is.null(admin_level) ||
-        is.null(admin_name)) {
+    if (
+      !is_h3 &&
+        (
+          is.null(iso3) ||
+            is.null(admin_level) ||
+            is.null(admin_name)
+        )
+    ) {
       stop(
-        "`iso3`, `admin_level`, and `admin_name` are required when ",
-        "`adjacency = NULL`.",
+        "`iso3`, `admin_level`, and `admin_name` are required for hex adjacency.",
         call. = FALSE
       )
     }
@@ -107,20 +113,34 @@ prepare_inla_bym2_data <- function(
       )
     }
 
-    build_args <- utils::modifyList(
-      list(
+    if (is_h3) {
+      adjacency_builder <- build_h3_adjacency
+
+      default_args <- list(
+        model = df,
+        cellsize = cellsize,
+        sparse = TRUE
+      )
+    } else {
+      adjacency_builder <- build_grid_adjacency
+
+      default_args <- list(
         iso3 = iso3,
         admin_level = admin_level,
         admin_name = admin_name,
-        cellsize_m = cellsize_m,
+        cellsize_m = cellsize,
         model = df,
         sparse = TRUE
-      ),
+      )
+    }
+
+    build_args <- utils::modifyList(
+      default_args,
       adjacency_args
     )
 
     adjacency <- do.call(
-      build_grid_adjacency,
+      adjacency_builder,
       build_args
     )
   } else if (isTRUE(verbose)) {
@@ -134,8 +154,10 @@ prepare_inla_bym2_data <- function(
     )
   }
 
-  if (is.null(rownames(adjacency)) ||
-      is.null(colnames(adjacency))) {
+  if (
+    is.null(rownames(adjacency)) ||
+      is.null(colnames(adjacency))
+  ) {
     stop(
       "Adjacency matrix must have row and column names.",
       call. = FALSE
@@ -252,7 +274,7 @@ prepare_inla_bym2_data <- function(
   obj$meta$spatial_index <- "spatial_id"
   obj$meta$space_time_model <- "Type IV"
   obj$meta$space_time_index <- "space_time_id"
-  obj$meta$cellsize_m <- cellsize_m
+  obj$meta$cellsize <- cellsize
   obj$meta$n_spatial_cells <- length(grid_ids)
   obj$meta$n_space_time_cells <-
     length(space_time$spatial_cells)
@@ -307,8 +329,10 @@ prepare_inla_bym2_data <- function(
 
     temporal_resolution <- obj$meta$temporal_resolution
 
-    if (is.null(temporal_resolution) ||
-        !nzchar(temporal_resolution)) {
+    if (
+      is.null(temporal_resolution) ||
+        !nzchar(temporal_resolution)
+    ) {
       temporal_resolution <- "daily"
     }
 
