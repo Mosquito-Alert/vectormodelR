@@ -46,7 +46,7 @@ matrix, and creates the spatial and space-time objects required by INLA.</p>
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prepare_inla_bym2_data</span><span class="op">(</span></span>
 <span>  <span class="va">dataset</span>,</span>
-<span>  cellsize_m <span class="op">=</span> <span class="fl">800</span>,</span>
+<span>  cellsize <span class="op">=</span> <span class="fl">800</span>,</span>
 <span>  adjacency <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  adjacency_args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  iso3 <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -66,18 +66,19 @@ matrix, and creates the spatial and space-time objects required by INLA.</p>
 <dd><p>Object returned by <code><a href="prepare_inla_data.html">prepare_inla_data()</a></code>.</p></dd>
 
 
-<dt id="arg-cellsize-m">cellsize_m<a class="anchor" aria-label="anchor" href="#arg-cellsize-m"></a></dt>
-<dd><p>Grid-cell size in metres.</p></dd>
+<dt id="arg-cellsize">cellsize<a class="anchor" aria-label="anchor" href="#arg-cellsize"></a></dt>
+<dd><p>Numeric hex-grid cell size in metres, or an H3 specification
+such as <code>"h3_9"</code>.</p></dd>
 
 
 <dt id="arg-adjacency">adjacency<a class="anchor" aria-label="anchor" href="#arg-adjacency"></a></dt>
 <dd><p>Optional precomputed adjacency matrix. When <code>NULL</code>, it is
-created with <code><a href="build_grid_adjacency.html">build_grid_adjacency()</a></code>.</p></dd>
+created with <code><a href="build_grid_adjacency.html">build_grid_adjacency()</a></code> or <code><a href="build_h3_adjacency.html">build_h3_adjacency()</a></code>.</p></dd>
 
 
 <dt id="arg-adjacency-args">adjacency_args<a class="anchor" aria-label="anchor" href="#arg-adjacency-args"></a></dt>
-<dd><p>Additional arguments passed to
-<code><a href="build_grid_adjacency.html">build_grid_adjacency()</a></code>.</p></dd>
+<dd><p>Additional arguments passed to the selected adjacency
+builder.</p></dd>
 
 
 <dt id="arg-iso-admin-level-admin-name">iso3, admin_level, admin_name<a class="anchor" aria-label="anchor" href="#arg-iso-admin-level-admin-name"></a></dt>

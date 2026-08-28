@@ -9,7 +9,7 @@ then builds or aligns a spatial adjacency matrix for BYM2 modelling.
 ``` r
 prepare_brms_bym2_data(
   dataset,
-  cellsize_m = 800,
+  cellsize = 800,
   temporal_resolution = c("daily", "hourly"),
   base_required_cols = NULL,
   vars_to_check = NULL,
@@ -35,7 +35,7 @@ prepare_brms_bym2_data(
   An in-memory modelling dataset (data.frame), a `brms_data_prep`
   object, a `bym2_data_prep` object, or a path to a prepared RDS file.
 
-- cellsize_m:
+- cellsize:
 
   Numeric cell size in meters. Defaults to 800.
 
@@ -90,13 +90,14 @@ prepare_brms_bym2_data(
 - adjacency:
 
   Optional precomputed adjacency matrix. If `NULL`, one is built using
-  [`build_grid_adjacency()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_grid_adjacency.md).
+  [`build_grid_adjacency()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_grid_adjacency.md)
+  or
+  [`build_h3_adjacency()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_h3_adjacency.md).
 
 - adjacency_args:
 
-  Named list of additional arguments passed to
-  [`build_grid_adjacency()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_grid_adjacency.md)
-  when `adjacency = NULL`.
+  Named list of additional arguments passed to the selected adjacency
+  builder when `adjacency = NULL`.
 
 - output_dir:
 

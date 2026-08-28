@@ -1,12 +1,7 @@
-# Sequentially enrich Mosquito Alert model-preparation datasets
+# Sequentially enrich model-preparation datasets
 
-Convenience wrapper that locates the base `model_prep_*_base.Rds` file
-for a given location and applies one or more enrichment helpers
-(hex-grid IDs, weather, landcover, NDVI, elevation, population density,
-pseudoabsences) in the order supplied. Helpers run sequentially, with
-the last step persisting the enriched dataset alongside the base inputs.
-Intermediate helpers update metadata (notably the `output_path`
-attribute) so suffixes accumulate as expected.
+Locates a prepared model dataset and adds the requested features in the
+order supplied.
 
 ## Usage
 
@@ -18,7 +13,6 @@ add_features(
   features,
   vector_sources = c("malert", "gbif"),
   data_dir = "data/proc",
-  weather_resolution = c("daily", "hourly"),
   verbose = TRUE
 )
 ```
@@ -31,74 +25,52 @@ add_features(
 
 - admin_level:
 
-  Administrative level used when preparing the inputs.
+  Administrative level used when preparing the dataset.
 
 - admin_name:
 
-  Administrative unit name used in the file naming scheme.
+  Administrative unit name.
 
 - features:
 
-  Character vector (or comma-separated string) indicating which feature
-  steps to run. Accepted values: `"hex"`, `"hex_<cellsize>"` (for
-  example `hex_800`),
-  `"wx_land"`/`"wx_single"`/`"weather_land"`/`"weather_single"`,
-  `"lc"`/`"landcover"`, `"ndvi"`, `"el"`/`"elevation"`,
-  `"pd"`/`"popdensity"`, `"se"`/`"pseudoabsence"`. For weather features,
-  specify the dataset: `wx_land` for ERA5-Land or `wx_single` for ERA5
-  Single Levels.
+  Character vector or comma-separated feature codes. Available codes are
+  `"hex"`, `"hex_<cellsize>"`, `"h3_<resolution>"`, `"wx_daily_land"`,
+  `"wx_hourly_land"`, `"wx_daily_single"`, `"wx_hourly_single"`, `"lc"`,
+  `"ndvi"`, `"el"`, `"pd"`, and `"se"`.
 
 - vector_sources:
 
-  Character vector (or comma-separated string) describing which vector
-  data sources were used to build the base dataset. Accepted values:
-  "malert", "gbif". Determines the filename suffix that is located.
+  Vector data sources used to prepare the base dataset. Accepted values
+  are `"malert"` and `"gbif"`.
 
 - data_dir:
 
-  Directory containing the model-preparation datasets and derived
-  artefacts. Defaults to `"data/proc"`.
-
-- weather_resolution:
-
-  Character. Resolution used when adding weather features. Passed to
-  [`add_weather_features()`](https://labs.mosquitoalert.com/mosquitoR/reference/add_weather_features.md).
-  Use `"daily"` for daily summaries and lagged windows or `"hourly"` for
-  hourly ERA5 cell features.
+  Directory containing processed data.
 
 - verbose:
 
-  Logical; if `TRUE`, prints progress messages while processing.
-
-- grid_cellsize_m:
-
-  Numeric cell size (meters) corresponding to the stored hex grid.
-  Defaults to 400.
+  Logical. Print progress messages.
 
 ## Value
 
-The enriched dataset returned by the final helper that ran. The object
-retains the `output_path` attribute referencing the file written by that
-helper.
+The enriched dataset.
 
 ## Examples
 
 ``` r
 if (FALSE) { # \dontrun{
-# Add ERA5-Land weather and landcover features
-add_features(
+daily_data <- add_features(
   iso3 = "ESP",
-  admin_level = 2,
+  admin_level = 4,
   admin_name = "Barcelona",
-  features = "wx_land,lc"
+  features = "se,el,pd,wx_daily_land,ndvi,lc,h3_6"
 )
 
-# Add ERA5 Single Levels weather with hex grid
-add_features(
-  iso3 = "ITA",
-  admin_level = 1,
-  admin_name = "Lombardia",
-  features = "hex_800,wx_single,ndvi,el"
+hourly_data <- add_features(
+  iso3 = "ESP",
+  admin_level = 4,
+  admin_name = "Barcelona",
+  features = "se,el,pd,wx_hourly_land,ndvi,lc,h3_6"
 )
 } # }
 ```

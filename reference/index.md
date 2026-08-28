@@ -2,12 +2,18 @@
 
 ## All functions
 
+- [`add_daily_weather_features()`](https://labs.mosquitoalert.com/mosquitoR/reference/add_daily_weather_features.md)
+  : Add daily ERA5 weather features to model inputs
 - [`add_elevation_features()`](https://labs.mosquitoalert.com/mosquitoR/reference/add_elevation_features.md)
   : Add elevation to Mosquito Alert model inputs
 - [`add_features()`](https://labs.mosquitoalert.com/mosquitoR/reference/add_features.md)
-  : Sequentially enrich Mosquito Alert model-preparation datasets
+  : Sequentially enrich model-preparation datasets
+- [`add_h3_grid()`](https://labs.mosquitoalert.com/mosquitoR/reference/add_h3_grid.md)
+  : Attach H3 identifiers to model inputs
 - [`add_hex_grid()`](https://labs.mosquitoalert.com/mosquitoR/reference/add_hex_grid.md)
   : Attach hex-grid identifiers to Mosquito Alert model inputs
+- [`add_hourly_weather_features()`](https://labs.mosquitoalert.com/mosquitoR/reference/add_hourly_weather_features.md)
+  : Add hourly ERA5 weather features to model inputs
 - [`add_landcover_features()`](https://labs.mosquitoalert.com/mosquitoR/reference/add_landcover_features.md)
   : Add land-cover codes and classes to Mosquito Alert model inputs
 - [`add_landcover_group()`](https://labs.mosquitoalert.com/mosquitoR/reference/add_landcover_group.md)
@@ -23,6 +29,10 @@
   : Add ERA5 weather features to Mosquito Alert model inputs
 - [`build_grid_adjacency()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_grid_adjacency.md)
   : Build adjacency matrix for a grid (global-safe)
+- [`build_h3_adjacency()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_h3_adjacency.md)
+  : Build an adjacency matrix for H3 cells
+- [`build_h3_grid()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_h3_grid.md)
+  : Build an H3 grid for a supplied polygon
 - [`build_spatial_grid()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_spatial_grid.md)
   : Build a regular grid for a supplied polygon
 - [`build_tgb_daily()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_tgb_daily.md)

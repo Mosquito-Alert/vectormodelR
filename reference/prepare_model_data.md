@@ -13,7 +13,7 @@ Optionally saves the prepared object to disk.
 ``` r
 prepare_model_data(
   dataset,
-  cellsize_m = 800,
+  cellsize = 800,
   temporal_resolution = c("daily", "hourly"),
   base_required_cols = NULL,
   vars_to_check = NULL,
@@ -37,7 +37,7 @@ prepare_model_data(
   An in-memory modelling dataset (data.frame), a `brms_data_prep`
   object, a `bym2_data_prep` object, or a path to a prepared RDS file.
 
-- cellsize_m:
+- cellsize:
 
   Numeric cell size in meters. Defaults to 800.
 

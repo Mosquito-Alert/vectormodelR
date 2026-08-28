@@ -5,9 +5,12 @@
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/articles/mosquito_alert_modeling_pipeline.html</loc></url>
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/authors.html</loc></url>
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/index.html</loc></url>
+<url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/add_daily_weather_features.html</loc></url>
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/add_elevation_features.html</loc></url>
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/add_features.html</loc></url>
+<url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/add_h3_grid.html</loc></url>
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/add_hex_grid.html</loc></url>
+<url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/add_hourly_weather_features.html</loc></url>
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/add_landcover_features.html</loc></url>
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/add_landcover_group.html</loc></url>
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/add_ndvi_features.html</loc></url>
@@ -15,6 +18,8 @@
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/add_pseudoabsences_se.html</loc></url>
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/add_weather_features.html</loc></url>
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/build_grid_adjacency.html</loc></url>
+<url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/build_h3_adjacency.html</loc></url>
+<url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/build_h3_grid.html</loc></url>
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/build_inla_type4.html</loc></url>
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/build_spatial_grid.html</loc></url>
 <url><loc>https://labs.mosquitoalert.com/mosquitoR/reference/build_tgb_daily.html</loc></url>

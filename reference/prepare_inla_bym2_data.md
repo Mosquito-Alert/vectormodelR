@@ -10,7 +10,7 @@ space-time objects required by INLA.
 ``` r
 prepare_inla_bym2_data(
   dataset,
-  cellsize_m = 800,
+  cellsize = 800,
   adjacency = NULL,
   adjacency_args = list(),
   iso3 = NULL,
@@ -29,19 +29,21 @@ prepare_inla_bym2_data(
   Object returned by
   [`prepare_inla_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/prepare_inla_data.md).
 
-- cellsize_m:
+- cellsize:
 
-  Grid-cell size in metres.
+  Numeric hex-grid cell size in metres, or an H3 specification such as
+  `"h3_9"`.
 
 - adjacency:
 
   Optional precomputed adjacency matrix. When `NULL`, it is created with
-  [`build_grid_adjacency()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_grid_adjacency.md).
+  [`build_grid_adjacency()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_grid_adjacency.md)
+  or
+  [`build_h3_adjacency()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_h3_adjacency.md).
 
 - adjacency_args:
 
-  Additional arguments passed to
-  [`build_grid_adjacency()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_grid_adjacency.md).
+  Additional arguments passed to the selected adjacency builder.
 
 - iso3, admin_level, admin_name:
 
