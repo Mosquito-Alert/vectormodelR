@@ -12,6 +12,7 @@ build_tgb_daily(
   data_dir = "data/proc",
   weight_col = "tgb_w",
   time_bin = c("day", "year"),
+  presence_only = TRUE,
   write_output = TRUE,
   overwrite = FALSE
 )
@@ -30,6 +31,9 @@ build_tgb_daily(
 \item{weight_col}{Name of the target-group weight column.}
 
 \item{time_bin}{Either \code{"day"} or \code{"year"}.}
+
+\item{presence_only}{Logical. If \code{TRUE}, retain only records whose
+\code{occurrenceStatus} is \code{PRESENT} (case-insensitive).}
 
 \item{write_output}{Whether to write the output RDS file.}
 

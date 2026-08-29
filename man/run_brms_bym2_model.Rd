@@ -7,7 +7,7 @@
 run_brms_bym2_model(
   dataset = NULL,
   formula,
-  cellsize_m = 800,
+  cellsize = 800,
   temporal_resolution = c("daily", "hourly"),
   adjacency = NULL,
   adjacency_args = list(),
@@ -28,23 +28,20 @@ run_brms_bym2_model(
 )
 }
 \arguments{
-\item{dataset}{A \code{brms_bym2_data_prep} object, a data frame, a path to a
-prepared RDS file, or \code{NULL}. When \code{NULL}, location information is used
-to locate the prepared file in \code{input_dir}.}
+\item{dataset}{A \code{brms_bym2_data_prep} object, data frame, prepared RDS
+path, or \code{NULL}.}
 
-\item{formula}{Formula or character string specifying the fixed and
-non-spatial random effects. The BYM2 term is added automatically when
-the formula does not already contain \code{car()}.}
+\item{formula}{Formula or character string. The BYM2 term is added
+automatically when the formula does not contain \code{car()}.}
 
-\item{cellsize_m}{Numeric grid-cell size in metres.}
+\item{cellsize}{Numeric hex-grid cell size in metres, or an H3 specification
+such as \code{"h3_9"}.}
 
 \item{temporal_resolution}{Either \code{"daily"} or \code{"hourly"}.}
 
-\item{adjacency}{Optional adjacency matrix used when preparing a raw data
-frame.}
+\item{adjacency}{Optional adjacency matrix when preparing raw data.}
 
-\item{adjacency_args}{Additional arguments passed to
-\code{\link[=build_grid_adjacency]{build_grid_adjacency()}}.}
+\item{adjacency_args}{Additional adjacency-builder arguments.}
 
 \item{priors}{Optional brms prior specification.}
 
@@ -76,9 +73,4 @@ A fitted \code{brmsfit} object.
 \description{
 Fits a Bayesian occupancy model using \code{brms} with a BYM2 spatial
 random effect based on a grid adjacency matrix.
-}
-\details{
-The function expects an object created by
-\code{\link[=prepare_brms_bym2_data]{prepare_brms_bym2_data()}}, a path to a saved preparation object, or a raw
-data frame that can be passed to \code{\link[=prepare_brms_bym2_data]{prepare_brms_bym2_data()}}.
 }

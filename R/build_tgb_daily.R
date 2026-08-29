@@ -11,6 +11,8 @@
 #' @param data_dir Directory where the output should be written.
 #' @param weight_col Name of the target-group weight column.
 #' @param time_bin Either `"day"` or `"year"`.
+#' @param presence_only Logical. If `TRUE`, retain only records whose
+#'   `occurrenceStatus` is `PRESENT` (case-insensitive).
 #' @param write_output Whether to write the output RDS file.
 #' @param overwrite Whether to replace an existing output file.
 #'
@@ -25,6 +27,7 @@ build_tgb_daily <- function(
     data_dir = "data/proc",
     weight_col = "tgb_w",
     time_bin = c("day", "year"),
+    presence_only = TRUE,
     write_output = TRUE,
     overwrite = FALSE
 ) {
@@ -34,29 +37,38 @@ build_tgb_daily <- function(
       call. = FALSE
     )
   }
-  
+
   if (!requireNamespace("sf", quietly = TRUE)) {
     stop(
       "Package 'sf' is required.",
       call. = FALSE
     )
   }
-  
+
+  if (!is.logical(presence_only) ||
+      length(presence_only) != 1L ||
+      is.na(presence_only)) {
+    stop(
+      "`presence_only` must be either TRUE or FALSE.",
+      call. = FALSE
+    )
+  }
+
   time_bin <- match.arg(time_bin)
-  
+
   ids <- build_location_identifiers(
     iso3,
     admin_level,
     admin_name
   )
-  
+
   slug <- ids$slug
-  
+
   gbif_path <- file.path(
     vector_dir,
     sprintf("vector_%s_gbif.Rds", slug)
   )
-  
+
   if (!file.exists(gbif_path)) {
     stop(
       "GBIF vector file not found at ",
@@ -64,96 +76,128 @@ build_tgb_daily <- function(
       call. = FALSE
     )
   }
-  
+
   message("Loading GBIF occurrences from: ", gbif_path)
-  
+
   gbif_data <- readRDS(gbif_path)
-  
+
   if (!nrow(gbif_data)) {
     stop(
       "The GBIF dataset contains no rows.",
       call. = FALSE
     )
   }
-  
+
   find_column <- function(data, candidates) {
     column_names <- names(data)
-    
+
     matches <- match(
       tolower(candidates),
       tolower(column_names),
       nomatch = 0L
     )
-    
+
     matches <- matches[matches > 0L]
-    
+
     if (!length(matches)) {
       return(NA_character_)
     }
-    
+
     column_names[matches[1L]]
   }
-  
+
   lon_col <- find_column(
     gbif_data,
     c("decimal_longitude", "decimalLongitude", "longitude", "lon")
   )
-  
+
   lat_col <- find_column(
     gbif_data,
     c("decimal_latitude", "decimalLatitude", "latitude", "lat")
   )
-  
+
   date_col <- find_column(
     gbif_data,
     c("event_date", "eventDate", "date")
   )
-  
+
   year_col <- find_column(
     gbif_data,
     "year"
   )
-  
+
+  if (isTRUE(presence_only)) {
+    if (!"occurrenceStatus" %in% names(gbif_data)) {
+      stop(
+        "`presence_only = TRUE` requires an occurrenceStatus column.",
+        call. = FALSE
+      )
+    }
+
+    occurrence_status <- toupper(
+      trimws(as.character(gbif_data$occurrenceStatus))
+    )
+
+    gbif_data <- gbif_data[
+      !is.na(occurrence_status) & occurrence_status == "PRESENT",
+      ,
+      drop = FALSE
+    ]
+
+    if (!nrow(gbif_data)) {
+      stop(
+        "No PRESENT GBIF records remained after filtering.",
+        call. = FALSE
+      )
+    }
+
+    message(
+      "Presence-only filtering retained ",
+      nrow(gbif_data),
+      " records."
+    )
+  }
+
   if (is.na(lon_col) || is.na(lat_col)) {
     stop(
       "GBIF data must contain longitude and latitude columns.",
       call. = FALSE
     )
   }
-  
+
   if (is.na(date_col) && is.na(year_col)) {
     stop(
       "GBIF data must contain a date or year column.",
       call. = FALSE
     )
   }
-  
+
   gbif_data$lon <- suppressWarnings(
     as.numeric(gbif_data[[lon_col]])
   )
-  
+
   gbif_data$lat <- suppressWarnings(
     as.numeric(gbif_data[[lat_col]])
   )
-  
+
   if (!is.na(date_col)) {
     if (inherits(gbif_data[[date_col]], "Date")) {
       gbif_data$date <- as.Date(gbif_data[[date_col]])
     } else {
       date_text <- substr(
-        as.character(gbif_data[[date_col]]),
+        trimws(as.character(gbif_data[[date_col]])),
         1L,
         10L
       )
-      
+
       gbif_data$date <- suppressWarnings(
-        as.Date(date_text)
+        as.Date(date_text, format = "%Y-%m-%d")
       )
     }
   } else {
     gbif_data$date <- as.Date(NA)
   }
-  
+
   if (!is.na(year_col)) {
     gbif_data$year <- suppressWarnings(
       as.integer(gbif_data[[year_col]])
@@ -161,27 +205,33 @@ build_tgb_daily <- function(
   } else {
     gbif_data$year <- NA_integer_
   }
-  
+
   missing_year <- is.na(gbif_data$year) &
     !is.na(gbif_data$date)
-  
+
   gbif_data$year[missing_year] <- as.integer(
     format(gbif_data$date[missing_year], "%Y")
   )
-  
+
   if (time_bin == "year") {
-    gbif_data$date <- as.Date(
-      paste0(gbif_data$year, "-01-01")
+    gbif_data$date <- suppressWarnings(
+      as.Date(
+        paste0(gbif_data$year, "-01-01"),
+        format = "%Y-%m-%d"
+      )
     )
   } else {
     missing_date <- is.na(gbif_data$date) &
       !is.na(gbif_data$year)
-    
-    gbif_data$date[missing_date] <- as.Date(
-      paste0(gbif_data$year[missing_date], "-01-01")
+
+    gbif_data$date[missing_date] <- suppressWarnings(
+      as.Date(
+        paste0(gbif_data$year[missing_date], "-01-01"),
+        format = "%Y-%m-%d"
+      )
     )
   }
-  
+
   gbif_data <- gbif_data[
     !is.na(gbif_data$lon) &
       !is.na(gbif_data$lat) &
@@ -190,14 +240,14 @@ build_tgb_daily <- function(
     ,
     drop = FALSE
   ]
-  
+
   if (!nrow(gbif_data)) {
     stop(
       "No complete GBIF records remained after preparation.",
       call. = FALSE
     )
   }
-  
+
   tgb_data <- dplyr::count(
     gbif_data,
     lon,
@@ -206,19 +256,19 @@ build_tgb_daily <- function(
     year,
     name = weight_col
   )
-  
+
   tgb_data <- sf::st_as_sf(
     tgb_data,
     coords = c("lon", "lat"),
     crs = 4326,
     remove = FALSE
   )
-  
+
   output_path <- file.path(
     data_dir,
     sprintf("model_prep_%s_tgb_daily.Rds", slug)
   )
-  
+
   if (isTRUE(write_output)) {
     if (file.exists(output_path) && !isTRUE(overwrite)) {
       stop(
@@ -228,19 +278,20 @@ build_tgb_daily <- function(
         call. = FALSE
       )
     }
-    
+
     dir.create(
       dirname(output_path),
       recursive = TRUE,
       showWarnings = FALSE
     )
-    
+
     saveRDS(tgb_data, output_path)
     message("Target-group background saved to: ", output_path)
   }
-  
+
   attr(tgb_data, "output_path") <- output_path
   attr(tgb_data, "gbif_source") <- gbif_path
-  
+  attr(tgb_data, "presence_only") <- presence_only
+
   tgb_data
 }
