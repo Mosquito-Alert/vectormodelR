@@ -9,7 +9,7 @@ effect based on a grid adjacency matrix.
 run_brms_bym2_model(
   dataset = NULL,
   formula,
-  cellsize_m = 800,
+  cellsize = 800,
   temporal_resolution = c("daily", "hourly"),
   adjacency = NULL,
   adjacency_args = list(),
@@ -34,19 +34,18 @@ run_brms_bym2_model(
 
 - dataset:
 
-  A `brms_bym2_data_prep` object, a data frame, a path to a prepared RDS
-  file, or `NULL`. When `NULL`, location information is used to locate
-  the prepared file in `input_dir`.
+  A `brms_bym2_data_prep` object, data frame, prepared RDS path, or
+  `NULL`.
 
 - formula:
 
-  Formula or character string specifying the fixed and non-spatial
-  random effects. The BYM2 term is added automatically when the formula
-  does not already contain `car()`.
+  Formula or character string. The BYM2 term is added automatically when
+  the formula does not contain `car()`.
 
-- cellsize_m:
+- cellsize:
 
-  Numeric grid-cell size in metres.
+  Numeric hex-grid cell size in metres, or an H3 specification such as
+  `"h3_9"`.
 
 - temporal_resolution:
 
@@ -54,12 +53,11 @@ run_brms_bym2_model(
 
 - adjacency:
 
-  Optional adjacency matrix used when preparing a raw data frame.
+  Optional adjacency matrix when preparing raw data.
 
 - adjacency_args:
 
-  Additional arguments passed to
-  [`build_grid_adjacency()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_grid_adjacency.md).
+  Additional adjacency-builder arguments.
 
 - priors:
 
@@ -112,11 +110,3 @@ run_brms_bym2_model(
 ## Value
 
 A fitted `brmsfit` object.
-
-## Details
-
-The function expects an object created by
-[`prepare_brms_bym2_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/prepare_brms_bym2_data.md),
-a path to a saved preparation object, or a raw data frame that can be
-passed to
-[`prepare_brms_bym2_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/prepare_brms_bym2_data.md).

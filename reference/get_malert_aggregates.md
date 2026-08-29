@@ -97,7 +97,7 @@ get_malert_aggregates(aggregate_type = "city", filter_year = "2014-2024", countr
 #> Loading year: 2025
 #> Loading year: 2026
 #> Saved raw Mosquito Alert reports to data/vector/vector_global_malert.Rds
-#> Reading layer `ADM_ADM_2' from data source `/tmp/Rtmp4q9epH/file1dd9af5918.gpkg' using driver `GPKG'
+#> Reading layer `ADM_ADM_2' from data source `/tmp/RtmpVaYVLB/file1e43e1f1856.gpkg' using driver `GPKG'
 #> Simple feature collection with 52 features and 13 fields
 #> Geometry type: MULTIPOLYGON
 #> Dimension:     XY

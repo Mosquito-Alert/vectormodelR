@@ -55,6 +55,7 @@ are assigned later by the model preparation function.</p>
 <span>  data_dir <span class="op">=</span> <span class="st">"data/proc"</span>,</span>
 <span>  weight_col <span class="op">=</span> <span class="st">"tgb_w"</span>,</span>
 <span>  time_bin <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"day"</span>, <span class="st">"year"</span><span class="op">)</span>,</span>
+<span>  presence_only <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  write_output <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  overwrite <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -90,6 +91,11 @@ are assigned later by the model preparation function.</p>
 
 <dt id="arg-time-bin">time_bin<a class="anchor" aria-label="anchor" href="#arg-time-bin"></a></dt>
 <dd><p>Either <code>"day"</code> or <code>"year"</code>.</p></dd>
+
+
+<dt id="arg-presence-only">presence_only<a class="anchor" aria-label="anchor" href="#arg-presence-only"></a></dt>
+<dd><p>Logical. If <code>TRUE</code>, retain only records whose
+<code>occurrenceStatus</code> is <code>PRESENT</code> (case-insensitive).</p></dd>
 
 
 <dt id="arg-write-output">write_output<a class="anchor" aria-label="anchor" href="#arg-write-output"></a></dt>

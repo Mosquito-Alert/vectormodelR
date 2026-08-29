@@ -15,6 +15,7 @@ build_tgb_daily(
   data_dir = "data/proc",
   weight_col = "tgb_w",
   time_bin = c("day", "year"),
+  presence_only = TRUE,
   write_output = TRUE,
   overwrite = FALSE
 )
@@ -49,6 +50,11 @@ build_tgb_daily(
 - time_bin:
 
   Either `"day"` or `"year"`.
+
+- presence_only:
+
+  Logical. If `TRUE`, retain only records whose `occurrenceStatus` is
+  `PRESENT` (case-insensitive).
 
 - write_output:
 
