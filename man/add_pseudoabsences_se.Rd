@@ -7,9 +7,12 @@
 add_pseudoabsences_se(
   dataset,
   data_dir = "data/proc",
+  temporal_resolution = c("daily", "hourly"),
   sampling_factor_ma = 10,
   sampling_factor_gbif = 10,
+  cell_id_col = "cell_id",
   date_col = "date",
+  hour_col = "hour",
   lon_col = "lon",
   lat_col = "lat",
   source_col = "source",
@@ -21,53 +24,45 @@ add_pseudoabsences_se(
 )
 }
 \arguments{
-\item{dataset}{Either the in-memory modelling dataset or a path to the
-corresponding RDS file.}
+\item{dataset}{Either the in-memory modelling dataset or an RDS path.}
 
-\item{data_dir}{Directory holding processed datasets (TRS/TGB artefacts) and
-where the pseudoabsence dataset will be written. Defaults to "data/proc".}
+\item{data_dir}{Directory holding processed datasets and outputs.}
 
-\item{sampling_factor_ma}{Mosquito Alert pseudoabsences per MA presence
-(default 10).}
+\item{temporal_resolution}{Either \code{"daily"} or \code{"hourly"}.}
 
-\item{sampling_factor_gbif}{GBIF pseudoabsences per GBIF presence (default 10).}
+\item{sampling_factor_ma}{Mosquito Alert pseudoabsences per MA presence.}
 
-\item{date_col}{Name of the date column shared by the presence and effort
-tables (default \code{"date"}).}
+\item{sampling_factor_gbif}{GBIF pseudoabsences per GBIF presence.}
 
-\item{lon_col}{Name of longitude column in the presence dataset (default \code{"lon"}).}
+\item{cell_id_col}{Name of the spatial-cell column shared by the presence and
+effort datasets. The column is required in both datasets.}
 
-\item{lat_col}{Name of latitude column in the presence dataset (default \code{"lat"}).}
+\item{date_col}{Name of the date column.}
 
-\item{source_col}{Name of the data-source column in the presence dataset
-(default \code{"source"}).}
+\item{hour_col}{Name of the hour column.}
 
-\item{se_col}{Name of the TRS sampling-effort column (default \code{"SE_expected"}).}
+\item{lon_col}{Name of the longitude column.}
 
-\item{tgb_col}{Name of the GBIF target-group background weight column (default
-\code{"tgb_w"}).}
+\item{lat_col}{Name of the latitude column.}
 
-\item{ma_source}{Label used for Mosquito Alert records in \code{source_col}
-(default \code{"malert"}).}
+\item{source_col}{Name of the source column.}
 
-\item{gbif_source}{Label used for GBIF records in \code{source_col} (default
-\code{"gbif"}).}
+\item{se_col}{Name of the TRS effort column.}
 
-\item{write_output}{Logical; when \code{TRUE} (default) persists the combined
-presence+pseudoabsence dataset to disk.}
+\item{tgb_col}{Name of the GBIF target-group background weight column.}
+
+\item{ma_source}{Label used for Mosquito Alert records.}
+
+\item{gbif_source}{Label used for GBIF records.}
+
+\item{write_output}{Whether to save the result.}
 }
 \value{
-A tibble combining presences (\code{presence = TRUE}) and pseudoabsences
-(\code{presence = FALSE}) with numeric coordinate columns (\code{lon_col}/\code{lat_col})
-plus \code{pa_method} metadata. Attributes mirror the input dataset with updated
-\code{output_path} and \code{location_slug} values.
+A tibble combining presences and generated pseudoabsences.
 }
 \description{
 Samples pseudoabsences separately for Mosquito Alert (TRS-based effort
-surface) and GBIF (target-group background weights). The function expects the
-presence dataset to include coordinates (configurable via \code{lon_col}/\code{lat_col}),
-the specified date column, and a source column distinguishing Mosquito Alert vs
-GBIF records. When supplied an in-memory dataset it must carry an \code{output_path}
-attribute so the helper can infer the location slug and persist the augmented
-output.
+surface) and GBIF (target-group background weights). Candidate backgrounds
+matching any known presence in the same spatial and temporal unit are
+excluded before sampling.
 }
