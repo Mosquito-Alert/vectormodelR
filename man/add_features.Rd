@@ -9,6 +9,7 @@ add_features(
   admin_level,
   admin_name,
   features,
+  temporal_resolution = c("daily", "hourly"),
   vector_sources = c("malert", "gbif"),
   data_dir = "data/proc",
   verbose = TRUE
@@ -22,9 +23,11 @@ add_features(
 \item{admin_name}{Administrative unit name.}
 
 \item{features}{Character vector or comma-separated feature codes. Available
-codes are \code{"hex"}, \code{"hex_<cellsize>"}, \code{"h3_<resolution>"},
-\code{"wx_daily_land"}, \code{"wx_hourly_land"}, \code{"wx_daily_single"},
-\code{"wx_hourly_single"}, \code{"lc"}, \code{"ndvi"}, \code{"el"}, \code{"pd"}, and \code{"se"}.}
+codes are \code{"hex"}, \code{"hex_<cellsize>"}, \code{"h3_<resolution>"}, \code{"wx_land"},
+\code{"wx_single"}, \code{"lc"}, \code{"ndvi"}, \code{"el"}, \code{"pd"}, and \code{"se"}.}
+
+\item{temporal_resolution}{Either \code{"daily"} or \code{"hourly"}. This controls
+weather enrichment and pseudoabsence generation.}
 
 \item{vector_sources}{Vector data sources used to prepare the base dataset.
 Accepted values are \code{"malert"} and \code{"gbif"}.}
@@ -37,8 +40,11 @@ Accepted values are \code{"malert"} and \code{"gbif"}.}
 The enriched dataset.
 }
 \description{
-Locates a prepared model dataset and adds the requested features in the
-order supplied.
+Locates a prepared model dataset and adds requested features in the supplied
+order. Weather resolution is controlled by \code{temporal_resolution}. When \code{se}
+is requested, the most recent preceding grid feature determines the shared
+cell-ID column: \verb{h3_<resolution>} maps to \verb{h3_id_<resolution>}, and
+\verb{hex_<cellsize>} maps to \verb{hex_id_<cellsize>}.
 }
 \examples{
 \dontrun{
@@ -46,14 +52,16 @@ daily_data <- add_features(
   iso3 = "ESP",
   admin_level = 4,
   admin_name = "Barcelona",
-  features = "se,el,pd,wx_daily_land,ndvi,lc,h3_6"
+  temporal_resolution = "daily",
+  features = "h3_9,se,el,pd,wx_land,ndvi,lc"
 )
 
 hourly_data <- add_features(
   iso3 = "ESP",
   admin_level = 4,
   admin_name = "Barcelona",
-  features = "se,el,pd,wx_hourly_land,ndvi,lc,h3_6"
+  temporal_resolution = "hourly",
+  features = "hex_1200,se,el,pd,wx_land,ndvi,lc"
 )
 }
 }

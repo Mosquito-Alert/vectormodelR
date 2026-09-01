@@ -2,10 +2,13 @@
 % Please edit documentation in R/add_pseudo_absences.R
 \name{add_pseudoabsences_se}
 \alias{add_pseudoabsences_se}
-\title{Generate pseudoabsences using TRS effort (Mosquito Alert) and TGB (GBIF)}
+\title{Generate pseudoabsences using TRS effort and TGB weights}
 \usage{
 add_pseudoabsences_se(
   dataset,
+  iso3 = NULL,
+  admin_level = NULL,
+  admin_name = NULL,
   data_dir = "data/proc",
   temporal_resolution = c("daily", "hourly"),
   sampling_factor_ma = 10,
@@ -24,45 +27,49 @@ add_pseudoabsences_se(
 )
 }
 \arguments{
-\item{dataset}{Either the in-memory modelling dataset or an RDS path.}
+\item{dataset}{In-memory modelling dataset or path to an RDS file.}
 
-\item{data_dir}{Directory holding processed datasets and outputs.}
+\item{iso3}{Three-letter country code.}
+
+\item{admin_level}{Administrative level.}
+
+\item{admin_name}{Administrative-area name.}
+
+\item{data_dir}{Directory containing processed datasets.}
 
 \item{temporal_resolution}{Either \code{"daily"} or \code{"hourly"}.}
 
-\item{sampling_factor_ma}{Mosquito Alert pseudoabsences per MA presence.}
+\item{sampling_factor_ma}{Pseudoabsences per Mosquito Alert presence.}
 
-\item{sampling_factor_gbif}{GBIF pseudoabsences per GBIF presence.}
+\item{sampling_factor_gbif}{Pseudoabsences per GBIF presence.}
 
-\item{cell_id_col}{Name of the spatial-cell column shared by the presence and
-effort datasets. The column is required in both datasets.}
+\item{cell_id_col}{Spatial-cell column, such as \code{h3_id_9} or \code{hex_id_1200}.}
 
-\item{date_col}{Name of the date column.}
+\item{date_col}{Date column.}
 
-\item{hour_col}{Name of the hour column.}
+\item{hour_col}{Hour column.}
 
-\item{lon_col}{Name of the longitude column.}
+\item{lon_col}{Longitude column.}
 
-\item{lat_col}{Name of the latitude column.}
+\item{lat_col}{Latitude column.}
 
-\item{source_col}{Name of the source column.}
+\item{source_col}{Data-source column.}
 
-\item{se_col}{Name of the TRS effort column.}
+\item{se_col}{TRS sampling-effort weight column.}
 
-\item{tgb_col}{Name of the GBIF target-group background weight column.}
+\item{tgb_col}{GBIF target-group background weight column.}
 
-\item{ma_source}{Label used for Mosquito Alert records.}
+\item{ma_source}{Mosquito Alert source label.}
 
-\item{gbif_source}{Label used for GBIF records.}
+\item{gbif_source}{GBIF source label.}
 
 \item{write_output}{Whether to save the result.}
 }
 \value{
-A tibble combining presences and generated pseudoabsences.
+A tibble containing known presences and generated pseudoabsences.
 }
 \description{
-Samples pseudoabsences separately for Mosquito Alert (TRS-based effort
-surface) and GBIF (target-group background weights). Candidate backgrounds
-matching any known presence in the same spatial and temporal unit are
-excluded before sampling.
+Samples pseudoabsences separately for Mosquito Alert and GBIF. Before
+sampling, the requested model grid is added to each effort dataset and
+candidates overlapping known presences are removed.
 }
