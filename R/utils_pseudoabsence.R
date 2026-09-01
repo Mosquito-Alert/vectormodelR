@@ -20,6 +20,20 @@ prepare_pseudoabsence_effort <- function(
       call. = FALSE
     )
   }
+  missing_coordinates <- !all(c(lon_col, lat_col) %in% names(effort))
+
+  if (missing_coordinates && inherits(effort, "sf")) {
+    effort_wgs84 <- sf::st_transform(effort, 4326)
+    coordinates <- sf::st_coordinates(effort_wgs84)
+
+    if (nrow(coordinates) != nrow(effort)) {
+      stop("Effort geometry must contain one point per row.", call. = FALSE)
+    }
+
+    effort[[lon_col]] <- coordinates[, 1]
+    effort[[lat_col]] <- coordinates[, 2]
+  }
+
   if (!all(c(lon_col, lat_col) %in% names(effort))) {
     stop("Effort dataset must contain `", lon_col, "` and `", lat_col, "`.", call. = FALSE)
   }
