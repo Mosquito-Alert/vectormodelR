@@ -301,3 +301,222 @@ sample_from_effort <- function(
 
   sampled
 }
+
+
+#' Expand coarse TRS effort cells onto a model grid
+#'
+#' Converts daily TRS sampling-effort data recorded on coarse geographic cells
+#' into an effort surface using the cells of a selected H3 or regular hexagonal
+#' model grid.
+#'
+#' Each unique TRS location is treated as the centre of a square cell whose
+#' width and height are given by `sampling_cell_degrees`. Model-grid cells are
+#' assigned the TRS effort values of the coarse cell containing their centre.
+#'
+#' @param trs_daily An `sf` object containing the daily TRS effort data. It must
+#'   contain `masked_lon`, `masked_lat`, and `date`. Any additional columns,
+#'   including sampling-effort values such as `SE_expected`, are retained.
+#' @param grid Character scalar identifying the target model grid. H3 grids use
+#'   the form `"h3_<resolution>"`, for example `"h3_9"`. Regular hexagonal grids
+#'   use the form `"hex_<cellsize>"`, for example `"hex_1200"`.
+#' @param iso3 Three-letter ISO country code used to identify the study area.
+#' @param admin_level Administrative level of the study area.
+#' @param admin_name Name of the administrative area.
+#' @param data_dir Directory containing the saved spatial grids. Defaults to
+#'   `"data/proc"`.
+#' @param sampling_cell_degrees Width and height, in decimal degrees, of the
+#'   original square TRS sampling cells. Defaults to `0.025`.
+#'
+#' @return An `sf` object with point geometry containing one row for every
+#'   matched model-grid cell and TRS daily effort record. The result includes
+#'   `lon`, `lat`, the appropriate model-grid identifier, and the columns from
+#'   `trs_daily`.
+#'
+#'   The following attributes are added:
+#'
+#'   * `"grid"`: the supplied grid specification.
+#'   * `"cell_id_col"`: the name of the generated model-cell identifier column.
+#'
+#' @details
+#' The selected model grid is loaded from `data_dir`. If an H3 grid is not
+#' already available, it is created with `build_h3_grid()`. Hexagonal grids
+#' must already exist.
+#'
+#' Spatial matching uses the centre point of each model-grid cell. Consequently,
+#' the returned geometry remains point geometry for use by downstream
+#' pseudoabsence sampling functions.
+#'
+#' Because each coarse TRS cell can contain many model-grid cells, the returned
+#' dataset can be substantially larger than `trs_daily`. This is the intended
+#' expansion of the effort surface.
+#'
+#' @noRd
+expand_trs_to_model_grid <- function(
+    trs_daily,
+    grid,
+    iso3,
+    admin_level,
+    admin_name,
+    data_dir = "data/proc",
+    sampling_cell_degrees = 0.025
+) {
+  grid <- tolower(trimws(grid))
+  is_h3 <- grepl("^h3_[0-9]+$", grid)
+  is_hex <- grepl("^hex_[0-9]+(\\.[0-9]+)?$", grid)
+
+  if (!is_h3 && !is_hex) {
+    stop("`grid` must look like `h3_9` or `hex_1200`.", call. = FALSE)
+  }
+  if (!inherits(trs_daily, "sf")) {
+    stop("`trs_daily` must be an sf object.", call. = FALSE)
+  }
+  if (!all(c("masked_lon", "masked_lat", "date") %in% names(trs_daily))) {
+    stop(
+      "TRS data must contain `masked_lon`, `masked_lat`, and `date`.",
+      call. = FALSE
+    )
+  }
+
+  ids <- build_location_identifiers(iso3, admin_level, admin_name)
+  slug <- ids$slug
+
+  # Make one polygon for each original 0.025-degree effort cell.
+  effort_centres <- trs_daily |>
+    sf::st_drop_geometry() |>
+    dplyr::distinct(.data$masked_lon, .data$masked_lat)
+
+  half_cell <- sampling_cell_degrees / 2
+  effort_geometry <- mapply(
+    function(x, y) {
+      sf::st_polygon(list(matrix(
+        c(
+          x - half_cell, y - half_cell,
+          x + half_cell, y - half_cell,
+          x + half_cell, y + half_cell,
+          x - half_cell, y + half_cell,
+          x - half_cell, y - half_cell
+        ),
+        ncol = 2,
+        byrow = TRUE
+      )))
+    },
+    effort_centres$masked_lon,
+    effort_centres$masked_lat,
+    SIMPLIFY = FALSE
+  )
+
+  effort_cells <- sf::st_sf(
+    effort_centres,
+    geometry = sf::st_sfc(effort_geometry, crs = 4326)
+  )
+
+  # Load or create the selected model grid.
+  if (is_h3) {
+    resolution <- as.integer(sub("^h3_", "", grid))
+    if (!resolution %in% 0:15) {
+      stop("H3 resolution must be between 0 and 15.", call. = FALSE)
+    }
+
+    grid_paths <- file.path(
+      data_dir,
+      c(
+        sprintf("spatial_%s_h3_grid_%s.Rds", slug, resolution),
+        sprintf("spatial_%s_h3_grid_%s.rds", slug, resolution)
+      )
+    )
+    grid_path <- grid_paths[file.exists(grid_paths)][1]
+
+    if (is.na(grid_path)) {
+      model_grid <- build_h3_grid(
+        iso3 = iso3,
+        admin_level = admin_level,
+        admin_name = admin_name,
+        resolution = resolution,
+        data_dir = data_dir,
+        write = TRUE,
+        verbose = FALSE
+      )
+    } else {
+      model_grid <- readRDS(grid_path)
+    }
+
+    cell_id_col <- paste0("h3_id_", resolution)
+    if (!cell_id_col %in% names(model_grid)) {
+      if (!"h3_id" %in% names(model_grid)) {
+        stop("H3 grid does not contain an H3 identifier.", call. = FALSE)
+      }
+      model_grid[[cell_id_col]] <- model_grid$h3_id
+    }
+  } else {
+    cellsize_m <- as.numeric(sub("^hex_", "", grid))
+    token <- gsub(
+      "\\.",
+      "_",
+      format(cellsize_m, trim = TRUE, scientific = FALSE)
+    )
+
+    grid_paths <- file.path(
+      data_dir,
+      c(
+        sprintf("spatial_%s_hex_grid_%s.Rds", slug, token),
+        sprintf("spatial_%s_hex_grid_%s.rds", slug, token),
+        sprintf("spatial_%s_hex_grid.Rds", slug),
+        sprintf("spatial_%s_hex_grid.rds", slug)
+      )
+    )
+    grid_path <- grid_paths[file.exists(grid_paths)][1]
+
+    if (is.na(grid_path)) {
+      stop("Hex grid not found for `", grid, "`.", call. = FALSE)
+    }
+
+    model_grid <- readRDS(grid_path)
+    cell_id_col <- paste0("hex_id_", token)
+    source_id_col <- c(
+      cell_id_col,
+      paste0("grid_id_", token),
+      "grid_id"
+    )
+    source_id_col <- source_id_col[source_id_col %in% names(model_grid)][1]
+
+    if (is.na(source_id_col)) {
+      stop("Hex grid does not contain a grid identifier.", call. = FALSE)
+    }
+    model_grid[[cell_id_col]] <- model_grid[[source_id_col]]
+  }
+
+  model_grid <- sf::st_as_sf(model_grid) |>
+    sf::st_transform(4326)
+
+  # Use one point per model cell so downstream sampling retains point geometry.
+  model_centres <- suppressWarnings(
+    sf::st_point_on_surface(model_grid[cell_id_col])
+  )
+  model_centres <- sf::st_join(
+    model_centres,
+    effort_cells,
+    join = sf::st_within,
+    left = FALSE
+  )
+
+  if (!nrow(model_centres)) {
+    stop("No model cells matched the TRS effort cells.", call. = FALSE)
+  }
+
+  coordinates <- sf::st_coordinates(model_centres)
+  model_centres$lon <- coordinates[, 1]
+  model_centres$lat <- coordinates[, 2]
+
+  effort_values <- sf::st_drop_geometry(trs_daily)
+  expanded <- model_centres |>
+    dplyr::left_join(
+      effort_values,
+      by = c("masked_lon", "masked_lat"),
+      relationship = "many-to-many"
+    ) |>
+    dplyr::filter(!is.na(.data$date))
+
+  attr(expanded, "grid") <- grid
+  attr(expanded, "cell_id_col") <- cell_id_col
+  expanded
+}
