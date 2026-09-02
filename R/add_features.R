@@ -6,12 +6,17 @@
 #' cell-ID column: `h3_<resolution>` maps to `h3_id_<resolution>`, and
 #' `hex_<cellsize>` maps to `hex_id_<cellsize>`.
 #'
+#' Sampling-effort codes can optionally specify pseudoabsence sampling factors:
+#' `"se"` uses the defaults from `add_pseudoabsences_se()`, `"se_7"` uses 7 for
+#' both TRS and TGB, and `"se_7_5"` uses 7 for TRS and 5 for TGB.
+#'
 #' @param iso3 Three-letter ISO3 country code.
 #' @param admin_level Administrative level used when preparing the dataset.
 #' @param admin_name Administrative unit name.
 #' @param features Character vector or comma-separated feature codes. Available
 #'   codes are `"hex"`, `"hex_<cellsize>"`, `"h3_<resolution>"`, `"wx_land"`,
-#'   `"wx_single"`, `"lc"`, `"ndvi"`, `"el"`, `"pd"`, and `"se"`.
+#'   `"wx_single"`, `"lc"`, `"ndvi"`, `"el"`, `"pd"`, `"se"`,
+#'   `"se_<factor>"`, and `"se_<trs_factor>_<tgb_factor>"`.
 #' @param temporal_resolution Either `"daily"` or `"hourly"`. This controls
 #'   weather enrichment and pseudoabsence generation.
 #' @param vector_sources Vector data sources used to prepare the base dataset.
@@ -29,7 +34,7 @@
 #'   admin_level = 4,
 #'   admin_name = "Barcelona",
 #'   temporal_resolution = "daily",
-#'   features = "h3_9,se,el,pd,wx_land,ndvi,lc"
+#'   features = "h3_9,se_7,el,pd,wx_land,ndvi,lc"
 #' )
 #'
 #' hourly_data <- add_features(
@@ -37,7 +42,7 @@
 #'   admin_level = 4,
 #'   admin_name = "Barcelona",
 #'   temporal_resolution = "hourly",
-#'   features = "hex_1200,se,el,pd,wx_land,ndvi,lc"
+#'   features = "hex_1200,se_7_5,el,pd,wx_land,ndvi,lc"
 #' )
 #' }
 add_features <- function(
@@ -125,6 +130,12 @@ add_features <- function(
   )
 
   parse_feature <- function(feature) {
+    se_spec <- parse_se_feature(feature)
+
+    if (!is.null(se_spec)) {
+      return(se_spec)
+    }
+
     if (grepl("^hex(?:_[0-9]+(?:\\.[0-9]+)?)?$", feature)) {
       cellsize <- sub("^hex_?", "", feature)
 
@@ -186,21 +197,32 @@ add_features <- function(
 
     list(
       code = code,
-      value = NA,
+      value = NA_real_,
       raw = feature,
       cell_id_col = NA_character_
     )
   }
 
   feature_specs <- lapply(features, parse_feature)
+
   feature_codes <- vapply(
     feature_specs,
     function(x) x$code,
     character(1L)
   )
 
-  if ("se" %in% feature_codes) {
-    se_index <- match("se", feature_codes)
+  se_positions <- which(feature_codes == "se")
+
+  if (length(se_positions) > 1L) {
+    stop(
+      "Only one sampling-effort feature can be supplied.",
+      call. = FALSE
+    )
+  }
+
+  if (length(se_positions) == 1L) {
+    se_index <- se_positions[1]
+
     preceding_grid <- which(
       seq_along(feature_codes) < se_index &
         feature_codes %in% c("hex", "h3")
@@ -209,7 +231,7 @@ add_features <- function(
     if (!length(preceding_grid)) {
       stop(
         "The `se` feature requires a grid feature before it. ",
-        "For example, use `h3_9,se,...` or `hex_1200,se,...`.",
+        "For example, use `h3_9,se_7,...` or `hex_1200,se_7_5,...`.",
         call. = FALSE
       )
     }
@@ -377,7 +399,8 @@ add_features <- function(
         if (is.null(active_grid_spec) ||
             !active_grid_spec$cell_id_col %in% names(current)) {
           stop(
-            "Pseudoabsence generation requires the preceding grid column in the current dataset.",
+            "Pseudoabsence generation requires the preceding grid column ",
+            "in the current dataset.",
             call. = FALSE
           )
         }
@@ -388,9 +411,21 @@ add_features <- function(
             active_grid_spec$cell_id_col,
             "` as the pseudoabsence cell ID."
           )
+
+          if (is.null(spec$sampling_factor_ma)) {
+            message("Using the default pseudoabsence sampling factors.")
+          } else {
+            message(
+              "Using pseudoabsence sampling factors: TRS = ",
+              spec$sampling_factor_ma,
+              ", TGB = ",
+              spec$sampling_factor_gbif,
+              "."
+            )
+          }
         }
 
-        add_pseudoabsences_se(
+        se_args <- list(
           dataset = current,
           iso3 = iso3,
           admin_level = admin_level,
@@ -400,6 +435,13 @@ add_features <- function(
           cell_id_col = active_grid_spec$cell_id_col,
           write_output = write_current
         )
+
+        if (!is.null(spec$sampling_factor_ma)) {
+          se_args$sampling_factor_ma <- spec$sampling_factor_ma
+          se_args$sampling_factor_gbif <- spec$sampling_factor_gbif
+        }
+
+        do.call(add_pseudoabsences_se, se_args)
       },
 
       stop(

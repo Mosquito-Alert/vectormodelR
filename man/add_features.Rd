@@ -24,7 +24,8 @@ add_features(
 
 \item{features}{Character vector or comma-separated feature codes. Available
 codes are \code{"hex"}, \code{"hex_<cellsize>"}, \code{"h3_<resolution>"}, \code{"wx_land"},
-\code{"wx_single"}, \code{"lc"}, \code{"ndvi"}, \code{"el"}, \code{"pd"}, and \code{"se"}.}
+\code{"wx_single"}, \code{"lc"}, \code{"ndvi"}, \code{"el"}, \code{"pd"}, \code{"se"},
+\code{"se_<factor>"}, and \code{"se_<trs_factor>_<tgb_factor>"}.}
 
 \item{temporal_resolution}{Either \code{"daily"} or \code{"hourly"}. This controls
 weather enrichment and pseudoabsence generation.}
@@ -46,6 +47,11 @@ is requested, the most recent preceding grid feature determines the shared
 cell-ID column: \verb{h3_<resolution>} maps to \verb{h3_id_<resolution>}, and
 \verb{hex_<cellsize>} maps to \verb{hex_id_<cellsize>}.
 }
+\details{
+Sampling-effort codes can optionally specify pseudoabsence sampling factors:
+\code{"se"} uses the defaults from \code{add_pseudoabsences_se()}, \code{"se_7"} uses 7 for
+both TRS and TGB, and \code{"se_7_5"} uses 7 for TRS and 5 for TGB.
+}
 \examples{
 \dontrun{
 daily_data <- add_features(
@@ -53,7 +59,7 @@ daily_data <- add_features(
   admin_level = 4,
   admin_name = "Barcelona",
   temporal_resolution = "daily",
-  features = "h3_9,se,el,pd,wx_land,ndvi,lc"
+  features = "h3_9,se_7,el,pd,wx_land,ndvi,lc"
 )
 
 hourly_data <- add_features(
@@ -61,7 +67,7 @@ hourly_data <- add_features(
   admin_level = 4,
   admin_name = "Barcelona",
   temporal_resolution = "hourly",
-  features = "hex_1200,se,el,pd,wx_land,ndvi,lc"
+  features = "hex_1200,se_7_5,el,pd,wx_land,ndvi,lc"
 )
 }
 }

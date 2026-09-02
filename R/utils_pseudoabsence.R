@@ -520,3 +520,65 @@ expand_trs_to_model_grid <- function(
   attr(expanded, "cell_id_col") <- cell_id_col
   expanded
 }
+
+
+#' Parse a sampling-effort feature code
+#'
+#' Parses `"se"`, `"se_<factor>"`, and
+#' `"se_<trs_factor>_<tgb_factor>"` feature codes.
+#'
+#' @param feature Character feature code.
+#'
+#' @return `NULL` if the feature is not an `se` feature. Otherwise, a parsed
+#'   feature-specification list.
+#'
+#' @noRd
+parse_se_feature <- function(feature) {
+  feature <- tolower(trimws(feature))
+
+  if (!grepl("^se(?:_|$)", feature)) {
+    return(NULL)
+  }
+
+  if (!grepl("^se(?:_[0-9]+(?:\\.[0-9]+)?){0,2}$", feature)) {
+    stop(
+      "Invalid sampling-effort feature `", feature,
+      "`. Use `se`, `se_7`, or `se_7_5`.",
+      call. = FALSE
+    )
+  }
+
+  parts <- strsplit(feature, "_", fixed = TRUE)[[1]]
+  factors <- suppressWarnings(as.numeric(parts[-1]))
+
+  if (length(factors) &&
+      any(!is.finite(factors) | factors <= 0)) {
+    stop(
+      "Sampling factors in `", feature,
+      "` must be positive numbers.",
+      call. = FALSE
+    )
+  }
+
+  sampling_factor_ma <- NULL
+  sampling_factor_gbif <- NULL
+
+  if (length(factors) == 1L) {
+    sampling_factor_ma <- factors[1]
+    sampling_factor_gbif <- factors[1]
+  }
+
+  if (length(factors) == 2L) {
+    sampling_factor_ma <- factors[1]
+    sampling_factor_gbif <- factors[2]
+  }
+
+  list(
+    code = "se",
+    value = NA_real_,
+    raw = feature,
+    cell_id_col = NA_character_,
+    sampling_factor_ma = sampling_factor_ma,
+    sampling_factor_gbif = sampling_factor_gbif
+  )
+}
