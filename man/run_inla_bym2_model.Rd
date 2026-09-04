@@ -9,7 +9,6 @@ run_inla_bym2_model(
   formula,
   family = "binomial",
   Ntrials = NULL,
-  bym2_hyper = NULL,
   temporal_resolution = c("daily", "hourly"),
   iso3 = NULL,
   admin_level = NULL,
@@ -33,9 +32,6 @@ object, or \code{NULL}.}
 \item{family}{INLA likelihood family. Defaults to \code{"binomial"}.}
 
 \item{Ntrials}{Optional binomial trial counts.}
-
-\item{bym2_hyper}{Optional BYM2 hyperprior specification available inside
-the formula as \code{bym2_hyper}.}
 
 \item{temporal_resolution}{Either \code{"daily"} or \code{"hourly"}.}
 
@@ -70,4 +66,7 @@ Fits a complete user-supplied INLA formula using data prepared by
 The prepared spatial graph is available inside the formula as
 \code{spatial_graph}. When the formula contains \code{space_time_id}, the prepared
 Knorr-Held Type IV objects are made available as \code{R_int}, \code{A_kh}, and \code{e_kh}.
+
+Objects defined in the environment where the formula was created, including
+hyperprior specifications, are also available when fitting the model.
 }
