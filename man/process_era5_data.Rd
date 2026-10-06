@@ -17,7 +17,8 @@ process_era5_data(
   verbose = TRUE,
   attach_to_global = FALSE,
   aggregation_unit = c("region", "cell", "hourly"),
-  polygon_buffer_km = 10
+  polygon_buffer_km = 10,
+  precip_negative_tolerance_mm = 1e-04
 )
 }
 \arguments{
@@ -49,6 +50,11 @@ Required. Determines which processed folder to read from (processed/single-level
 
 \item{polygon_buffer_km}{Numeric. If no ERA5 centroids fall inside the admin
 polygon, or too few are captured, expand it by this distance in kilometers.}
+
+\item{precip_negative_tolerance_mm}{Nonnegative numeric. Hourly rainfall
+amounts between minus this tolerance and zero are set to zero and reported.
+Larger negative amounts remain invalid and are set to NA. Default 0.0001 mm.
+This is a configurable numerical tolerance, not an ECMWF universal threshold.}
 }
 \value{
 For \code{aggregation_unit = "region"} or \code{"cell"}, invisibly returns a list with:

@@ -23,6 +23,11 @@
 #' @param polygon_buffer_km Numeric. If no ERA5 centroids fall inside the admin
 #'   polygon, or too few are captured, expand it by this distance in kilometers.
 #'
+#' @param precip_negative_tolerance_mm Nonnegative numeric. Hourly rainfall
+#'   amounts between minus this tolerance and zero are set to zero and reported.
+#'   Larger negative amounts remain invalid and are set to NA. Default 0.0001 mm.
+#'   This is a configurable numerical tolerance, not an ECMWF universal threshold.
+#'
 #' @return For `aggregation_unit = "region"` or `"cell"`, invisibly returns a list with:
 #'   `daily`, `lags_3d`, `lags_7d`, `lags_14d`, `lags_21d`, `lags_30d`,
 #'   `lags_3d_lag7`, `lags_7d_lag7`, `lags_14d_lag7`, `lags_21d_lag7`,
@@ -103,7 +108,8 @@ process_era5_data <- function(
     verbose  = TRUE,
     attach_to_global = FALSE,
     aggregation_unit = c("region", "cell", "hourly"),
-    polygon_buffer_km = 10
+    polygon_buffer_km = 10,
+    precip_negative_tolerance_mm = 0.0001
 ) {
   report_missing <- function(x, cols, label) {
     cols <- intersect(cols, names(x))
@@ -114,6 +120,13 @@ process_era5_data <- function(
               paste(names(counts), counts, sep = "=", collapse = "; "),
               ". Values remain NA; incomplete windows are not treated as zero rainfall.")
     }
+  }
+
+  if (!is.numeric(precip_negative_tolerance_mm) ||
+      length(precip_negative_tolerance_mm) != 1L ||
+      !is.finite(precip_negative_tolerance_mm) ||
+      precip_negative_tolerance_mm < 0) {
+    stop("precip_negative_tolerance_mm must be one finite nonnegative number.")
   }
 
   # Allow this replacement to be sourced without exposing package internals.
@@ -564,8 +577,23 @@ process_era5_data <- function(
     wide[, ppt_mm := ppt_accum_mm]
   } else stop("Unsupported ERA5 dataset.")
 
+  # Report small numerical negatives separately from invalid larger decreases.
+  small_negative <- which(
+    !is.na(wide$ppt_mm) & wide$ppt_mm < 0 &
+      wide$ppt_mm >= -precip_negative_tolerance_mm
+  )
+  if (length(small_negative)) {
+    message(
+      "PRECIPITATION ROUNDING: ", length(small_negative),
+      " small negative hourly amounts set to zero; maximum magnitude = ",
+      format(max(abs(wide$ppt_mm[small_negative])), scientific = TRUE),
+      " mm; tolerance = ", precip_negative_tolerance_mm, " mm."
+    )
+    wide[small_negative, ppt_mm := 0]
+  }
   # Do not silently turn material negative amounts into dry weather.
-  bad <- which(!is.na(wide$ppt_mm) & wide$ppt_mm < -1e-6)
+  bad <- which(!is.na(wide$ppt_mm) &
+                 wide$ppt_mm < -precip_negative_tolerance_mm)
   if (length(bad)) {
     message("INVALID PRECIPITATION: ", length(bad),
             " negative hourly amounts set to NA. Inspect source values/timestamps.")
@@ -573,7 +601,6 @@ process_era5_data <- function(
           row.names = FALSE)
     wide[bad, ppt_mm := NA_real_]
   }
-  wide[!is.na(ppt_mm) & ppt_mm < 0, ppt_mm := 0]
 
   
   wide_small <- wide[, .(lon, lat, time, t2m_C, d2m_C, RH, ws10, ppt_mm, ppt_accum_mm)]
