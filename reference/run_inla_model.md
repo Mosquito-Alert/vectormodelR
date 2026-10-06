@@ -2,6 +2,9 @@
 
 Fits a user-supplied INLA formula using data prepared by
 [`prepare_inla_data()`](https://labs.mosquitoalert.com/mosquitoR/reference/prepare_inla_data.md).
+External objects referenced by the formula, such as hyperparameter
+lists, are resolved from the environment in which the formula was
+created.
 
 ## Usage
 
@@ -94,10 +97,11 @@ A fitted `inla` object.
 
 ``` r
 if (FALSE) { # \dontrun{
-inla_data <- prepare_inla_data(
-  dataset = brms_dataset_daily,
-  landcover_reference = "Built-up",
-  temperature_groups = 30
+landcover_iid_hyper <- list(
+  prec = list(
+    prior = "pc.prec",
+    param = c(1, 0.05)
+  )
 )
 
 occupancy_formula <- presence ~
@@ -109,22 +113,13 @@ occupancy_formula <- presence ~
     constr = TRUE,
     scale.model = TRUE
   ) +
-  f(
-    maxTM_group,
-    model = "rw2",
-    constr = TRUE,
-    scale.model = TRUE
-  ) +
-  ppt_3d_lag7_z +
   ndvi_z +
   elev_z +
-  pop_z +
-  landcover_class +
-  source +
   f(
-    year_id,
+    landcover_class,
     model = "iid",
-    constr = TRUE
+    constr = TRUE,
+    hyper = landcover_iid_hyper
   )
 
 fit <- run_inla_model(

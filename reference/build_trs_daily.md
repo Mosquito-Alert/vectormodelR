@@ -1,13 +1,8 @@
 # Build TRS daily sampling effort surface for a location
 
-Clips the Mosquito Alert sampling effort dataset to an administrative
-area already prepared by
-[`initialize_ma_dataset()`](https://labs.mosquitoalert.com/mosquitoR/reference/initialize_ma_dataset.md),
-writes the resulting TRS layer, and saves auxiliary artefacts (minimum
-SE logit value and joined effort metrics). The required Mosquito Alert
-vector presences are loaded from `vector_<slug>_malert.Rds`, allowing
-the TRS artefact to be regenerated independently of the full
-initialisation pipeline.
+Clips the Mosquito Alert sampling-effort dataset to an administrative
+area, expands the original 0.025-degree effort cells onto a selected H3
+or hex model grid, and saves the resulting daily TRS surface.
 
 ## Usage
 
@@ -16,6 +11,7 @@ build_trs_daily(
   iso3,
   admin_level,
   admin_name,
+  grid = "h3_9",
   sampling_effort_url =
     "https://github.com/Mosquito-Alert/sampling_effort_data/raw/main/sampling_effort_daily_cellres_025.csv.gz",
   vector_dir = "data/proc",
@@ -38,38 +34,26 @@ build_trs_daily(
 
   Administrative unit name.
 
+- grid:
+
+  Model grid code, such as `"h3_9"` or `"hex_1200"`.
+
 - sampling_effort_url:
 
-  Remote CSV (gzipped) providing the Mosquito Alert sampling effort
-  surface. Defaults to the canonical GitHub source.
+  Remote CSV providing the Mosquito Alert sampling effort surface.
 
 - vector_dir:
 
-  Directory containing `vector_<slug>_malert.Rds`. Defaults to
-  "data/proc".
+  Directory containing `vector_<slug>_malert.Rds`.
 
 - data_dir:
 
-  Directory where perimeter artefacts live and where the TRS outputs
-  should be written. Defaults to "data/proc".
+  Directory containing spatial inputs and TRS outputs.
 
 - write_output:
 
-  Logical; when `TRUE` (default) write the TRS artefacts to disk.
+  Whether to write the TRS artefacts.
 
 ## Value
 
-An `sf` object containing the clipped TRS daily surface, or `NULL` when
-the artefact cannot be produced.
-
-## Examples
-
-``` r
-if (FALSE) { # \dontrun{
-artefacts <- build_trs_daily(
-  iso3 = "ESP",
-  admin_level = 4,
-  admin_name = "Barcelona"
-)
-} # }
-```
+An `sf` point object containing the expanded daily TRS surface.

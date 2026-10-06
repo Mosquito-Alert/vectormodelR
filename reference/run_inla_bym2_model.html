@@ -49,7 +49,6 @@ prepare_inla_bym2_data(). The formula must include the BYM2 spatial term."><meta
 <span>  <span class="va">formula</span>,</span>
 <span>  family <span class="op">=</span> <span class="st">"binomial"</span>,</span>
 <span>  Ntrials <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  bym2_hyper <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  temporal_resolution <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"daily"</span>, <span class="st">"hourly"</span><span class="op">)</span>,</span>
 <span>  iso3 <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  admin_level <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -84,11 +83,6 @@ object, or <code>NULL</code>.</p></dd>
 
 <dt id="arg-ntrials">Ntrials<a class="anchor" aria-label="anchor" href="#arg-ntrials"></a></dt>
 <dd><p>Optional binomial trial counts.</p></dd>
-
-
-<dt id="arg-bym-hyper">bym2_hyper<a class="anchor" aria-label="anchor" href="#arg-bym-hyper"></a></dt>
-<dd><p>Optional BYM2 hyperprior specification available inside
-the formula as <code>bym2_hyper</code>.</p></dd>
 
 
 <dt id="arg-temporal-resolution">temporal_resolution<a class="anchor" aria-label="anchor" href="#arg-temporal-resolution"></a></dt>
@@ -142,6 +136,8 @@ the formula as <code>bym2_hyper</code>.</p></dd>
     <p>The prepared spatial graph is available inside the formula as
 <code>spatial_graph</code>. When the formula contains <code>space_time_id</code>, the prepared
 Knorr-Held Type IV objects are made available as <code>R_int</code>, <code>A_kh</code>, and <code>e_kh</code>.</p>
+<p>Objects defined in the environment where the formula was created, including
+hyperprior specifications, are also available when fitting the model.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

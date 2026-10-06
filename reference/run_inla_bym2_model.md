@@ -12,7 +12,6 @@ run_inla_bym2_model(
   formula,
   family = "binomial",
   Ntrials = NULL,
-  bym2_hyper = NULL,
   temporal_resolution = c("daily", "hourly"),
   iso3 = NULL,
   admin_level = NULL,
@@ -46,11 +45,6 @@ run_inla_bym2_model(
 - Ntrials:
 
   Optional binomial trial counts.
-
-- bym2_hyper:
-
-  Optional BYM2 hyperprior specification available inside the formula as
-  `bym2_hyper`.
 
 - temporal_resolution:
 
@@ -102,3 +96,7 @@ The prepared spatial graph is available inside the formula as
 `spatial_graph`. When the formula contains `space_time_id`, the prepared
 Knorr-Held Type IV objects are made available as `R_int`, `A_kh`, and
 `e_kh`.
+
+Objects defined in the environment where the formula was created,
+including hyperprior specifications, are also available when fitting the
+model.

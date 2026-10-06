@@ -1,22 +1,24 @@
-# Generate pseudoabsences using TRS effort (Mosquito Alert) and TGB (GBIF)
+# Generate pseudoabsences using TRS effort and TGB weights
 
-Samples pseudoabsences separately for Mosquito Alert (TRS-based effort
-surface) and GBIF (target-group background weights). The function
-expects the presence dataset to include coordinates (configurable via
-`lon_col`/`lat_col`), the specified date column, and a source column
-distinguishing Mosquito Alert vs GBIF records. When supplied an
-in-memory dataset it must carry an `output_path` attribute so the helper
-can infer the location slug and persist the augmented output.
+Samples pseudoabsences separately for Mosquito Alert and GBIF. Before
+sampling, the requested model grid is added to each effort dataset and
+candidates overlapping known presences are removed.
 
 ## Usage
 
 ``` r
 add_pseudoabsences_se(
   dataset,
+  iso3 = NULL,
+  admin_level = NULL,
+  admin_name = NULL,
   data_dir = "data/proc",
+  temporal_resolution = c("daily", "hourly"),
   sampling_factor_ma = 10,
   sampling_factor_gbif = 10,
+  cell_id_col = "cell_id",
   date_col = "date",
+  hour_col = "hour",
   lon_col = "lon",
   lat_col = "lat",
   source_col = "source",
@@ -32,66 +34,80 @@ add_pseudoabsences_se(
 
 - dataset:
 
-  Either the in-memory modelling dataset or a path to the corresponding
-  RDS file.
+  In-memory modelling dataset or path to an RDS file.
+
+- iso3:
+
+  Three-letter country code.
+
+- admin_level:
+
+  Administrative level.
+
+- admin_name:
+
+  Administrative-area name.
 
 - data_dir:
 
-  Directory holding processed datasets (TRS/TGB artefacts) and where the
-  pseudoabsence dataset will be written. Defaults to "data/proc".
+  Directory containing processed datasets.
+
+- temporal_resolution:
+
+  Either `"daily"` or `"hourly"`.
 
 - sampling_factor_ma:
 
-  Mosquito Alert pseudoabsences per MA presence (default 10).
+  Pseudoabsences per Mosquito Alert presence.
 
 - sampling_factor_gbif:
 
-  GBIF pseudoabsences per GBIF presence (default 10).
+  Pseudoabsences per GBIF presence.
+
+- cell_id_col:
+
+  Spatial-cell column, such as `h3_id_9` or `hex_id_1200`.
 
 - date_col:
 
-  Name of the date column shared by the presence and effort tables
-  (default `"date"`).
+  Date column.
+
+- hour_col:
+
+  Hour column.
 
 - lon_col:
 
-  Name of longitude column in the presence dataset (default `"lon"`).
+  Longitude column.
 
 - lat_col:
 
-  Name of latitude column in the presence dataset (default `"lat"`).
+  Latitude column.
 
 - source_col:
 
-  Name of the data-source column in the presence dataset (default
-  `"source"`).
+  Data-source column.
 
 - se_col:
 
-  Name of the TRS sampling-effort column (default `"SE_expected"`).
+  TRS sampling-effort weight column.
 
 - tgb_col:
 
-  Name of the GBIF target-group background weight column (default
-  `"tgb_w"`).
+  GBIF target-group background weight column.
 
 - ma_source:
 
-  Label used for Mosquito Alert records in `source_col` (default
-  `"malert"`).
+  Mosquito Alert source label.
 
 - gbif_source:
 
-  Label used for GBIF records in `source_col` (default `"gbif"`).
+  GBIF source label.
 
 - write_output:
 
-  Logical; when `TRUE` (default) persists the combined
-  presence+pseudoabsence dataset to disk.
+  Whether to save the result.
 
 ## Value
 
-A tibble combining presences (`presence = TRUE`) and pseudoabsences
-(`presence = FALSE`) with numeric coordinate columns
-(`lon_col`/`lat_col`) plus `pa_method` metadata. Attributes mirror the
-input dataset with updated `output_path` and `location_slug` values.
+A tibble containing known presences and generated pseudoabsences.

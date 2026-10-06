@@ -268,8 +268,7 @@ NextGenerationEU/PRTR](reference/figures/funding/MICIU+NextG+PRTR+AEI_page-0001.
 - [`add_popdensity_features()`](https://labs.mosquitoalert.com/mosquitoR/reference/add_popdensity_features.md)
   : Add population density to Mosquito Alert model inputs
 - [`add_pseudoabsences_se()`](https://labs.mosquitoalert.com/mosquitoR/reference/add_pseudoabsences_se.md)
-  : Generate pseudoabsences using TRS effort (Mosquito Alert) and TGB
-  (GBIF)
+  : Generate pseudoabsences using TRS effort and TGB weights
 - [`add_weather_features()`](https://labs.mosquitoalert.com/mosquitoR/reference/add_weather_features.md)
   : Add ERA5 weather features to Mosquito Alert model inputs
 - [`build_grid_adjacency()`](https://labs.mosquitoalert.com/mosquitoR/reference/build_grid_adjacency.md)
