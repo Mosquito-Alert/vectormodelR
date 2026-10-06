@@ -1,7 +1,9 @@
 #' Fit a general model with INLA
 #'
 #' Fits a user-supplied INLA formula using data prepared by
-#' [prepare_inla_data()].
+#' [prepare_inla_data()]. External objects referenced by the formula, such as
+#' hyperparameter lists, are resolved from the environment in which the formula
+#' was created.
 #'
 #' @param dataset An `inla_data_prep` object, a path to a saved preparation
 #'   object, or `NULL`.
@@ -27,10 +29,11 @@
 #'
 #' @examples
 #' \dontrun{
-#' inla_data <- prepare_inla_data(
-#'   dataset = brms_dataset_daily,
-#'   landcover_reference = "Built-up",
-#'   temperature_groups = 30
+#' landcover_iid_hyper <- list(
+#'   prec = list(
+#'     prior = "pc.prec",
+#'     param = c(1, 0.05)
+#'   )
 #' )
 #'
 #' occupancy_formula <- presence ~
@@ -42,22 +45,13 @@
 #'     constr = TRUE,
 #'     scale.model = TRUE
 #'   ) +
-#'   f(
-#'     maxTM_group,
-#'     model = "rw2",
-#'     constr = TRUE,
-#'     scale.model = TRUE
-#'   ) +
-#'   ppt_3d_lag7_z +
 #'   ndvi_z +
 #'   elev_z +
-#'   pop_z +
-#'   landcover_class +
-#'   source +
 #'   f(
-#'     year_id,
+#'     landcover_class,
 #'     model = "iid",
-#'     constr = TRUE
+#'     constr = TRUE,
+#'     hyper = landcover_iid_hyper
 #'   )
 #'
 #' fit <- run_inla_model(
@@ -117,31 +111,31 @@ run_inla_model <- function(
     )
   }
 
-  if (is.character(formula)) {
-    if (length(formula) != 1L ||
-        is.na(formula) ||
-        !nzchar(formula)) {
-      stop(
-        "`formula` must be a formula or one character string.",
-        call. = FALSE
-      )
-    }
-
-    formula <- stats::as.formula(
-      formula,
-      env = parent.frame()
+  if (inherits(formula, "formula")) {
+    formula_text <- paste(
+      deparse(formula),
+      collapse = " "
     )
-  } else if (!inherits(formula, "formula")) {
+
+    formula_parent_env <- environment(formula)
+
+    if (is.null(formula_parent_env)) {
+      formula_parent_env <- parent.frame()
+    }
+  } else if (
+    is.character(formula) &&
+      length(formula) == 1L &&
+      !is.na(formula) &&
+      nzchar(formula)
+  ) {
+    formula_text <- formula
+    formula_parent_env <- parent.frame()
+  } else {
     stop(
       "`formula` must be a formula or one character string.",
       call. = FALSE
     )
   }
-
-  formula_text <- paste(
-    deparse(formula),
-    collapse = " "
-  )
 
   if (!is.character(family) ||
       length(family) != 1L ||
@@ -154,6 +148,19 @@ run_inla_model <- function(
   }
 
   if (!is.list(inla_args)) {
+    stop(
+      "`inla_args` must be a named list.",
+      call. = FALSE
+    )
+  }
+
+  if (
+    length(inla_args) > 0L &&
+      (
+        is.null(names(inla_args)) ||
+          any(!nzchar(names(inla_args)))
+      )
+  ) {
     stop(
       "`inla_args` must be a named list.",
       call. = FALSE
@@ -260,21 +267,41 @@ run_inla_model <- function(
   }
 
   # ---------------------------------------------------------------------------
-  # 3. Validate formula variables
+  # 3. Build the formula environment and validate variables
   # ---------------------------------------------------------------------------
 
+  formula_env <- new.env(
+    parent = formula_parent_env
+  )
+
+  formula_env$model.frame <- stats::model.frame
+  formula_env$f <- INLA::f
+
+  model_formula <- stats::as.formula(
+    formula_text,
+    env = formula_env
+  )
+
   formula_variables <- all.vars(
-    formula
+    model_formula
   )
 
-  missing_variables <- setdiff(
+  available_externally <- vapply(
     formula_variables,
-    names(model_data)
+    exists,
+    logical(1L),
+    envir = formula_env,
+    inherits = TRUE
   )
 
-  if (length(missing_variables)) {
+  missing_variables <- formula_variables[
+    !formula_variables %in% names(model_data) &
+      !available_externally
+  ]
+
+  if (length(missing_variables) > 0L) {
     stop(
-      "Formula variables missing from model data: ",
+      "Formula variables missing from model data or formula environment: ",
       paste(
         missing_variables,
         collapse = ", "
@@ -284,7 +311,7 @@ run_inla_model <- function(
   }
 
   response_name <- all.vars(
-    formula[[2L]]
+    model_formula[[2L]]
   )
 
   if (length(response_name) != 1L) {
@@ -333,7 +360,7 @@ run_inla_model <- function(
   # ---------------------------------------------------------------------------
 
   fit_args <- list(
-    formula = formula,
+    formula = model_formula,
     family = family,
     data = model_data,
     control.family = control.family,
@@ -371,7 +398,6 @@ run_inla_model <- function(
 
   location_slug <- dataset$meta$slug
 
-  # Store formula text rather than the formula object and its environment.
   attr(model_fit, "formula_text") <- formula_text
   attr(model_fit, "temporal_resolution") <- temporal_resolution
 

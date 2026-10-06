@@ -2,14 +2,20 @@
 % Please edit documentation in R/add_pseudo_absences.R
 \name{add_pseudoabsences_se}
 \alias{add_pseudoabsences_se}
-\title{Generate pseudoabsences using TRS effort (Mosquito Alert) and TGB (GBIF)}
+\title{Generate pseudoabsences using TRS effort and TGB weights}
 \usage{
 add_pseudoabsences_se(
   dataset,
+  iso3 = NULL,
+  admin_level = NULL,
+  admin_name = NULL,
   data_dir = "data/proc",
+  temporal_resolution = c("daily", "hourly"),
   sampling_factor_ma = 10,
   sampling_factor_gbif = 10,
+  cell_id_col = "cell_id",
   date_col = "date",
+  hour_col = "hour",
   lon_col = "lon",
   lat_col = "lat",
   source_col = "source",
@@ -21,53 +27,49 @@ add_pseudoabsences_se(
 )
 }
 \arguments{
-\item{dataset}{Either the in-memory modelling dataset or a path to the
-corresponding RDS file.}
+\item{dataset}{In-memory modelling dataset or path to an RDS file.}
 
-\item{data_dir}{Directory holding processed datasets (TRS/TGB artefacts) and
-where the pseudoabsence dataset will be written. Defaults to "data/proc".}
+\item{iso3}{Three-letter country code.}
 
-\item{sampling_factor_ma}{Mosquito Alert pseudoabsences per MA presence
-(default 10).}
+\item{admin_level}{Administrative level.}
 
-\item{sampling_factor_gbif}{GBIF pseudoabsences per GBIF presence (default 10).}
+\item{admin_name}{Administrative-area name.}
 
-\item{date_col}{Name of the date column shared by the presence and effort
-tables (default \code{"date"}).}
+\item{data_dir}{Directory containing processed datasets.}
 
-\item{lon_col}{Name of longitude column in the presence dataset (default \code{"lon"}).}
+\item{temporal_resolution}{Either \code{"daily"} or \code{"hourly"}.}
 
-\item{lat_col}{Name of latitude column in the presence dataset (default \code{"lat"}).}
+\item{sampling_factor_ma}{Pseudoabsences per Mosquito Alert presence.}
 
-\item{source_col}{Name of the data-source column in the presence dataset
-(default \code{"source"}).}
+\item{sampling_factor_gbif}{Pseudoabsences per GBIF presence.}
 
-\item{se_col}{Name of the TRS sampling-effort column (default \code{"SE_expected"}).}
+\item{cell_id_col}{Spatial-cell column, such as \code{h3_id_9} or \code{hex_id_1200}.}
 
-\item{tgb_col}{Name of the GBIF target-group background weight column (default
-\code{"tgb_w"}).}
+\item{date_col}{Date column.}
 
-\item{ma_source}{Label used for Mosquito Alert records in \code{source_col}
-(default \code{"malert"}).}
+\item{hour_col}{Hour column.}
 
-\item{gbif_source}{Label used for GBIF records in \code{source_col} (default
-\code{"gbif"}).}
+\item{lon_col}{Longitude column.}
 
-\item{write_output}{Logical; when \code{TRUE} (default) persists the combined
-presence+pseudoabsence dataset to disk.}
+\item{lat_col}{Latitude column.}
+
+\item{source_col}{Data-source column.}
+
+\item{se_col}{TRS sampling-effort weight column.}
+
+\item{tgb_col}{GBIF target-group background weight column.}
+
+\item{ma_source}{Mosquito Alert source label.}
+
+\item{gbif_source}{GBIF source label.}
+
+\item{write_output}{Whether to save the result.}
 }
 \value{
-A tibble combining presences (\code{presence = TRUE}) and pseudoabsences
-(\code{presence = FALSE}) with numeric coordinate columns (\code{lon_col}/\code{lat_col})
-plus \code{pa_method} metadata. Attributes mirror the input dataset with updated
-\code{output_path} and \code{location_slug} values.
+A tibble containing known presences and generated pseudoabsences.
 }
 \description{
-Samples pseudoabsences separately for Mosquito Alert (TRS-based effort
-surface) and GBIF (target-group background weights). The function expects the
-presence dataset to include coordinates (configurable via \code{lon_col}/\code{lat_col}),
-the specified date column, and a source column distinguishing Mosquito Alert vs
-GBIF records. When supplied an in-memory dataset it must carry an \code{output_path}
-attribute so the helper can infer the location slug and persist the augmented
-output.
+Samples pseudoabsences separately for Mosquito Alert and GBIF. Before
+sampling, the requested model grid is added to each effort dataset and
+candidates overlapping known presences are removed.
 }

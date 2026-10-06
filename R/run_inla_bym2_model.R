@@ -7,13 +7,14 @@
 #' `spatial_graph`. When the formula contains `space_time_id`, the prepared
 #' Knorr-Held Type IV objects are made available as `R_int`, `A_kh`, and `e_kh`.
 #'
+#' Objects defined in the environment where the formula was created, including
+#' hyperprior specifications, are also available when fitting the model.
+#'
 #' @param dataset An `inla_bym2_data_prep` object, a path to a saved preparation
 #'   object, or `NULL`.
 #' @param formula Complete INLA formula, including the BYM2 spatial term.
 #' @param family INLA likelihood family. Defaults to `"binomial"`.
 #' @param Ntrials Optional binomial trial counts.
-#' @param bym2_hyper Optional BYM2 hyperprior specification available inside
-#'   the formula as `bym2_hyper`.
 #' @param temporal_resolution Either `"daily"` or `"hourly"`.
 #' @param iso3,admin_level,admin_name Location identifiers used when
 #'   `dataset = NULL`.
@@ -35,7 +36,6 @@ run_inla_bym2_model <- function(
     formula,
     family = "binomial",
     Ntrials = NULL,
-    bym2_hyper = NULL,
     temporal_resolution = c("daily", "hourly"),
     iso3 = NULL,
     admin_level = NULL,
@@ -82,6 +82,12 @@ run_inla_bym2_model <- function(
       deparse(formula),
       collapse = " "
     )
+
+    formula_parent_env <- environment(formula)
+
+    if (is.null(formula_parent_env)) {
+      formula_parent_env <- parent.frame()
+    }
   } else if (
     is.character(formula) &&
       length(formula) == 1L &&
@@ -89,6 +95,7 @@ run_inla_bym2_model <- function(
       nzchar(formula)
   ) {
     formula_text <- formula
+    formula_parent_env <- parent.frame()
   } else {
     stop(
       "`formula` must be a formula or one character string.",
@@ -274,29 +281,14 @@ run_inla_bym2_model <- function(
     }
   }
 
-  # Supply a default BYM2 prior when requested by the formula.
-  if (is.null(bym2_hyper)) {
-    bym2_hyper <- list(
-      prec = list(
-        prior = "pc.prec",
-        param = c(1, 0.01)
-      ),
-      phi = list(
-        prior = "pc",
-        param = c(0.5, 2 / 3)
-      )
-    )
-  }
-
-  # Make prepared model objects available inside the formula.
+  # Make prepared and externally defined objects available inside the formula.
   formula_env <- new.env(
-    parent = baseenv()
+    parent = formula_parent_env
   )
 
   formula_env$model.frame <- stats::model.frame
   formula_env$f <- INLA::f
   formula_env$spatial_graph <- spatial_graph
-  formula_env$bym2_hyper <- bym2_hyper
 
   if (uses_space_time) {
     formula_env$R_int <-
@@ -312,34 +304,27 @@ run_inla_bym2_model <- function(
     env = formula_env
   )
 
-  # Validate data columns while ignoring model-level objects.
-  model_objects <- c(
-    "spatial_graph",
-    "bym2_hyper"
+  # Validate variables against the model data and formula environment.
+  formula_variables <- all.vars(
+    model_formula
   )
 
-  if (uses_space_time) {
-    model_objects <- c(
-      model_objects,
-      "R_int",
-      "A_kh",
-      "e_kh"
-    )
-  }
-
-  formula_variables <- setdiff(
-    all.vars(model_formula),
-    model_objects
-  )
-
-  missing_variables <- setdiff(
+  available_externally <- vapply(
     formula_variables,
-    names(model_data)
+    exists,
+    logical(1L),
+    envir = formula_env,
+    inherits = TRUE
   )
+
+  missing_variables <- formula_variables[
+    !formula_variables %in% names(model_data) &
+      !available_externally
+  ]
 
   if (length(missing_variables) > 0L) {
     stop(
-      "Formula variables missing from model data: ",
+      "Formula variables missing from model data or formula environment: ",
       paste(
         missing_variables,
         collapse = ", "

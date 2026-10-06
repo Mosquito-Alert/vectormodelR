@@ -1,73 +1,58 @@
 #' Build TRS daily sampling effort surface for a location
 #'
-#' Clips the Mosquito Alert sampling effort dataset to an administrative area
-#' already prepared by `initialize_ma_dataset()`, writes the resulting TRS layer,
-#' and saves auxiliary artefacts (minimum SE logit value and joined effort
-#' metrics). The required Mosquito Alert vector presences are loaded from
-#' `vector_<slug>_malert.Rds`, allowing the TRS artefact to be regenerated
-#' independently of the full initialisation pipeline.
+#' Clips the Mosquito Alert sampling-effort dataset to an administrative area,
+#' expands the original 0.025-degree effort cells onto a selected H3 or hex
+#' model grid, and saves the resulting daily TRS surface.
 #'
 #' @param iso3 Three-letter ISO3 code identifying the country.
 #' @param admin_level Administrative level used when the grid was created.
 #' @param admin_name Administrative unit name.
-#' @param sampling_effort_url Remote CSV (gzipped) providing the Mosquito Alert
-#'   sampling effort surface. Defaults to the canonical GitHub source.
-#' @param vector_dir Directory containing `vector_<slug>_malert.Rds`. Defaults to
-#'   "data/proc".
-#' @param data_dir Directory where perimeter artefacts live and where the TRS
-#'   outputs should be written. Defaults to "data/proc".
-#' @param write_output Logical; when `TRUE` (default) write the TRS artefacts to
-#'   disk.
+#' @param grid Model grid code, such as `"h3_9"` or `"hex_1200"`.
+#' @param sampling_effort_url Remote CSV providing the Mosquito Alert sampling
+#'   effort surface.
+#' @param vector_dir Directory containing `vector_<slug>_malert.Rds`.
+#' @param data_dir Directory containing spatial inputs and TRS outputs.
+#' @param write_output Whether to write the TRS artefacts.
 #'
-#' @return An `sf` object containing the clipped TRS daily surface, or `NULL`
-#'   when the artefact cannot be produced.
-#' @importFrom dplyr mutate filter left_join
-#' @importFrom sf st_as_sf st_transform st_drop_geometry
-#' @importFrom readr read_rds write_rds read_csv
-#' @importFrom tibble tibble as_tibble
-#' @importFrom lubridate year
-#' @importFrom rlang .data
+#' @return An `sf` point object containing the expanded daily TRS surface.
 #' @export
-#' @examples
-#' \dontrun{
-#' artefacts <- build_trs_daily(
-#'   iso3 = "ESP",
-#'   admin_level = 4,
-#'   admin_name = "Barcelona"
-#' )
-#' }
 build_trs_daily <- function(
   iso3,
   admin_level,
   admin_name,
+  grid = "h3_9",
   sampling_effort_url = "https://github.com/Mosquito-Alert/sampling_effort_data/raw/main/sampling_effort_daily_cellres_025.csv.gz",
   vector_dir = "data/proc",
   data_dir = "data/proc",
   write_output = TRUE
 ) {
   if (!requireNamespace("readr", quietly = TRUE)) {
-    stop("Package 'readr' is required. Install it with install.packages('readr').", call. = FALSE)
+    stop("Package 'readr' is required.", call. = FALSE)
   }
   if (!requireNamespace("dplyr", quietly = TRUE)) {
-    stop("Package 'dplyr' is required. Install it with install.packages('dplyr').", call. = FALSE)
+    stop("Package 'dplyr' is required.", call. = FALSE)
   }
   if (!requireNamespace("sf", quietly = TRUE)) {
-    stop("Package 'sf' is required. Install it with install.packages('sf').", call. = FALSE)
+    stop("Package 'sf' is required.", call. = FALSE)
   }
   if (!requireNamespace("tibble", quietly = TRUE)) {
-    stop("Package 'tibble' is required. Install it with install.packages('tibble').", call. = FALSE)
+    stop("Package 'tibble' is required.", call. = FALSE)
   }
   if (!requireNamespace("lubridate", quietly = TRUE)) {
-    stop("Package 'lubridate' is required. Install it with install.packages('lubridate').", call. = FALSE)
+    stop("Package 'lubridate' is required.", call. = FALSE)
   }
 
   ids <- build_location_identifiers(iso3, admin_level, admin_name)
   slug <- ids$slug
 
-  vector_path <- file.path(vector_dir, sprintf("vector_%s_malert.Rds", slug))
+  vector_path <- file.path(
+    vector_dir,
+    sprintf("vector_%s_malert.Rds", slug)
+  )
   if (!file.exists(vector_path)) {
     stop("Mosquito Alert vector dataset not found at ", vector_path, call. = FALSE)
   }
+
   message("• Loading Mosquito Alert vector data: ", vector_path)
   vector_raw <- readRDS(vector_path)
   vector_tbl <- tibble::as_tibble(vector_raw)
@@ -99,12 +84,25 @@ build_trs_daily <- function(
   }
 
   prepared <- vector_tbl |>
-    dplyr::filter(!is.na(.data$lon), !is.na(.data$lat), !is.na(.data$date)) |>
-    dplyr::mutate(TigacellID_small = make_samplingcell_ids(.data$lon, .data$lat, 0.025)) |>
+    dplyr::filter(
+      !is.na(.data$lon),
+      !is.na(.data$lat),
+      !is.na(.data$date)
+    ) |>
+    dplyr::mutate(
+      TigacellID_small = make_samplingcell_ids(
+        .data$lon,
+        .data$lat,
+        0.025
+      )
+    ) |>
     dplyr::select("lon", "lat", "date", "year", "TigacellID_small")
 
   message("• Downloading sampling effort from ", sampling_effort_url)
-  sampling_effort <- readr::read_csv(sampling_effort_url, show_col_types = FALSE)
+  sampling_effort <- readr::read_csv(
+    sampling_effort_url,
+    show_col_types = FALSE
+  )
 
   if (is.null(sampling_effort) || !nrow(sampling_effort)) {
     warning("Sampling effort dataset is empty.")
@@ -152,28 +150,58 @@ build_trs_daily <- function(
     warning("No administrative map RDS found for slug '", slug, "'.")
     return(NULL)
   }
-  message("• Using administrative map: ", map_path)
 
-  admin_map <- readr::read_rds(map_path) |> sf::st_transform(4326)
-  trs_daily <- sampling_effort_sf[admin_map, ]
-  if (!nrow(trs_daily)) {
-    warning("No sampling effort points intersect the administrative boundary for '", slug, "'.")
+  message("• Using administrative map: ", map_path)
+  admin_map <- readr::read_rds(map_path) |>
+    sf::st_transform(4326)
+
+  trs_daily_coarse <- sampling_effort_sf[admin_map, ]
+  if (!nrow(trs_daily_coarse)) {
+    warning(
+      "No sampling effort points intersect the administrative boundary for '",
+      slug,
+      "'."
+    )
     return(NULL)
   }
-  message("• Retained ", nrow(trs_daily), " sampling effort cells inside the boundary")
+
+  message(
+    "• Retained ",
+    nrow(trs_daily_coarse),
+    " sampling-effort rows inside the boundary"
+  )
+
+  # Only new processing step: expand the coarse TRS cells onto the model grid.
+  trs_daily <- expand_trs_to_model_grid(
+    trs_daily = trs_daily_coarse,
+    grid = grid,
+    iso3 = iso3,
+    admin_level = admin_level,
+    admin_name = admin_name,
+    data_dir = data_dir
+  )
+
+  trs_path <- paste0(output_stem, "trs_daily.Rds")
+  attr(trs_daily, "output_path") <- trs_path
+  attr(trs_daily, "location_slug") <- slug
 
   if (isTRUE(write_output)) {
-    trs_path <- paste0(output_stem, "trs_daily.Rds")
-    message("• Writing TRS daily surface to ", trs_path)
+    message("• Writing expanded TRS daily surface to ", trs_path)
     readr::write_rds(trs_daily, trs_path)
   }
 
   min_SE_logit <- NA_real_
   if ("SE" %in% names(trs_daily)) {
-    positive_se <- trs_daily$SE[trs_daily$SE > 0 & trs_daily$SE < 1]
+    positive_se <- trs_daily$SE[
+      !is.na(trs_daily$SE) &
+        trs_daily$SE > 0 &
+        trs_daily$SE < 1
+    ]
+
     if (length(positive_se) > 0) {
       min_SE <- min(positive_se, na.rm = TRUE)
       min_SE_logit <- log(min_SE / (1 - min_SE))
+
       if (isTRUE(write_output)) {
         se_path <- paste0(output_stem, "min_SE_logit.Rds")
         message("• Writing minimum SE logit to ", se_path)
@@ -186,7 +214,8 @@ build_trs_daily <- function(
     dplyr::mutate(TigacellID = .data$TigacellID_small) |>
     dplyr::filter(.data$year >= 2018)
 
-  joinable_effort <- sf::st_drop_geometry(trs_daily)
+  # Keep the original coarse surface for this existing auxiliary join.
+  joinable_effort <- sf::st_drop_geometry(trs_daily_coarse)
   join_cols <- intersect(c("TigacellID", "date"), names(joinable_effort))
   if (length(join_cols) > 0) {
     d_se <- d_se |>
@@ -196,6 +225,14 @@ build_trs_daily <- function(
   if (!isTRUE(write_output)) {
     message("• Skipped writing artefacts because write_output = FALSE")
   }
+
+  message(
+    "• Expanded TRS surface contains ",
+    dplyr::n_distinct(trs_daily[[attr(trs_daily, "cell_id_col")]]),
+    " model cells and ",
+    nrow(trs_daily),
+    " cell-day rows"
+  )
 
   trs_daily
 }

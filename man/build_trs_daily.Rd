@@ -8,6 +8,7 @@ build_trs_daily(
   iso3,
   admin_level,
   admin_name,
+  grid = "h3_9",
   sampling_effort_url =
     "https://github.com/Mosquito-Alert/sampling_effort_data/raw/main/sampling_effort_daily_cellres_025.csv.gz",
   vector_dir = "data/proc",
@@ -22,36 +23,22 @@ build_trs_daily(
 
 \item{admin_name}{Administrative unit name.}
 
-\item{sampling_effort_url}{Remote CSV (gzipped) providing the Mosquito Alert
-sampling effort surface. Defaults to the canonical GitHub source.}
+\item{grid}{Model grid code, such as \code{"h3_9"} or \code{"hex_1200"}.}
 
-\item{vector_dir}{Directory containing \verb{vector_<slug>_malert.Rds}. Defaults to
-"data/proc".}
+\item{sampling_effort_url}{Remote CSV providing the Mosquito Alert sampling
+effort surface.}
 
-\item{data_dir}{Directory where perimeter artefacts live and where the TRS
-outputs should be written. Defaults to "data/proc".}
+\item{vector_dir}{Directory containing \verb{vector_<slug>_malert.Rds}.}
 
-\item{write_output}{Logical; when \code{TRUE} (default) write the TRS artefacts to
-disk.}
+\item{data_dir}{Directory containing spatial inputs and TRS outputs.}
+
+\item{write_output}{Whether to write the TRS artefacts.}
 }
 \value{
-An \code{sf} object containing the clipped TRS daily surface, or \code{NULL}
-when the artefact cannot be produced.
+An \code{sf} point object containing the expanded daily TRS surface.
 }
 \description{
-Clips the Mosquito Alert sampling effort dataset to an administrative area
-already prepared by \code{initialize_ma_dataset()}, writes the resulting TRS layer,
-and saves auxiliary artefacts (minimum SE logit value and joined effort
-metrics). The required Mosquito Alert vector presences are loaded from
-\verb{vector_<slug>_malert.Rds}, allowing the TRS artefact to be regenerated
-independently of the full initialisation pipeline.
-}
-\examples{
-\dontrun{
-artefacts <- build_trs_daily(
-  iso3 = "ESP",
-  admin_level = 4,
-  admin_name = "Barcelona"
-)
-}
+Clips the Mosquito Alert sampling-effort dataset to an administrative area,
+expands the original 0.025-degree effort cells onto a selected H3 or hex
+model grid, and saves the resulting daily TRS surface.
 }
