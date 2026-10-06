@@ -30,6 +30,8 @@
 #'   `ppt_lags` contains accumulated precipitation windows of 3, 7, 14, 21,
 #'   and 30 days, plus the same windows lagged by 7 days. For
 #'   `aggregation_unit = "hourly"`, returns a list with `hourly` and `paths`.
+#'   Missing hours are inserted as NA and reported with message(). Incomplete
+#'   windows remain NA. Daily rainfall uses UTC interval boundaries.
 #'   The hourly table includes current-hour weather values plus short-window
 #'   precipitation and temperature/humidity summaries for each cell.
 #'
@@ -40,6 +42,15 @@
 #' Temperature and dewpoint values are treated as Kelvin and converted to Celsius
 #' with `x - 273.15`. This is intentional: in some GRIBs, `terra` may label the
 #' layers as `[C]`, but the values can still be Kelvin, e.g. 272–295.
+#'
+#' Input precipitation must be from the standard hourly CDS GRIB products,
+#' with GRIB validity timestamps, not already de-accumulated ERA5-Land data.
+#' ERA5-Land hourly rain is differenced within forecast cycles; its daily total
+#' uses the following midnight accumulation. ERA5 single-level rain is already
+#' hourly and is assigned to UTC days using interval-ending timestamps.
+#' Missing cell-hours are inserted, reported, and propagated through windows.
+#' Missing hourly values also make daily temperature/humidity/wind summaries NA.
+#' Padding is read from available CSVs; this function does not download it.
 #'
 #' Rolling weather summaries use rolling means for temperature, humidity, wind,
 #' and MWI-type indices. Accumulated precipitation is handled separately in
@@ -94,6 +105,24 @@ process_era5_data <- function(
     aggregation_unit = c("region", "cell", "hourly"),
     polygon_buffer_km = 10
 ) {
+  report_missing <- function(x, cols, label) {
+    cols <- intersect(cols, names(x))
+    counts <- vapply(cols, function(nm) sum(!is.finite(x[[nm]])), integer(1))
+    counts <- counts[counts > 0L]
+    if (length(counts)) {
+      message("INCOMPLETE ", label, ": ",
+              paste(names(counts), counts, sep = "=", collapse = "; "),
+              ". Values remain NA; incomplete windows are not treated as zero rainfall.")
+    }
+  }
+
+  # Allow this replacement to be sourced without exposing package internals.
+  if (!exists("build_location_identifiers", mode = "function", inherits = TRUE)) {
+    build_location_identifiers <- getFromNamespace("build_location_identifiers", "vectormodelR")
+  }
+  if (!exists("get_gadm_data", mode = "function", inherits = TRUE)) {
+    get_gadm_data <- getFromNamespace("get_gadm_data", "vectormodelR")
+  }
   .say  <- function(...) if (isTRUE(verbose)) message(sprintf(...))
   .fmtI <- function(x) format(as.integer(x), big.mark = ",", scientific = FALSE)
   aggregation_unit <- match.arg(aggregation_unit)
@@ -342,8 +371,16 @@ process_era5_data <- function(
   
   .say("Date window: %s to %s (inclusive).", format(start_date), format(end_date))
   
-  keep_range <- DT$time >= as.POSIXct(start_date, tz = "UTC") &
-    DT$time < as.POSIXct(end_date + 1, tz = "UTC")
+  start_date <- as.Date(start_date)
+  end_date <- as.Date(end_date)
+  if (is.na(start_date) || is.na(end_date) || start_date > end_date) {
+    stop("Invalid requested date range.")
+  }
+  # 30-day window ending seven days earlier starts 36 days earlier.
+  # Keep following midnight for the final day's rainfall.
+  input_from <- as.POSIXct(start_date - 36, tz = "UTC")
+  input_to <- as.POSIXct(end_date + 1, tz = "UTC")
+  keep_range <- DT$time >= input_from & DT$time <= input_to
   
   DT <- DT[keep_range]
   
@@ -419,6 +456,10 @@ process_era5_data <- function(
   # ---- wide per cell & hour ----
   .say("Casting to wide per (lon, lat, time) ...")
   
+  if (anyDuplicated(DT[, .(lon, lat, time, variable_name)])) {
+    stop("Duplicate cell/time/variable entries before reshaping; inspect input files.")
+  }
+
   wide <- data.table::dcast(
     DT[, .(lon, lat, time, variable_name, value)],
     lon + lat + time ~ variable_name,
@@ -450,6 +491,41 @@ process_era5_data <- function(
     )
   }
   
+  # Complete the hourly timeline before calculating differences.
+  wide <- data.table::copy(data.table::as.data.table(wide))
+  if (anyDuplicated(wide[, .(lon, lat, time)])) {
+    stop("Duplicate weather cell/timestamps: resolve duplicates before processing.")
+  }
+  cells <- unique(wide[, .(lon, lat)])
+  times <- seq(input_from, input_to, by = "hour")
+  if (any(!wide$time %in% times)) {
+    stop("Weather timestamps must lie on the requested whole-hour UTC grid.")
+  }
+  grid <- cells[, .(time = times), by = .(lon, lat)]
+  wide[, .present := TRUE]
+  out <- merge(grid, wide, by = c("lon", "lat", "time"), all.x = TRUE, sort = TRUE)
+  absent <- out[is.na(.present)]
+  if (nrow(absent)) {
+    message(
+      "INCOMPLETE WEATHER SERIES: inserted ", nrow(absent),
+      " missing cell-hours as NA across ",
+      nrow(unique(absent[, .(lon, lat)])), " cells. Range: ",
+      min(absent$time), " to ", max(absent$time), " UTC. ",
+      "This includes unavailable history/following-midnight padding."
+    )
+    print(utils::head(as.data.frame(absent[, .(lon, lat, time)]), 10L),
+          row.names = FALSE)
+  }
+  out[, .present := NULL]
+  wide <- out
+  rm(out, grid, absent, cells, times)
+  # Treat non-finite source values as missing, not as valid observations.
+  for (nm in standard_names) {
+    bad <- which(!is.finite(wide[[nm]]))
+    if (length(bad)) data.table::set(wide, i = bad, j = nm, value = NA_real_)
+  }
+  report_missing(wide, standard_names, "RAW WEATHER (INCLUDING PADDING)")
+
   # ---- derived hourly features ----
   .say("Computing hourly derived features ...")
   
@@ -469,10 +545,38 @@ process_era5_data <- function(
   rh_vals <- pmin(pmax(rh_from_T_Td(t2m_vals, d2m_vals), 0), 100)
   data.table::set(wide, j = "RH", value = rh_vals)
   
-  ppt_vals <- wide[["total_precipitation"]] * 1000
-  data.table::set(wide, j = "ppt_mm", value = ppt_vals)
+  # Convert source precipitation into hourly increments.
+  data.table::setorder(wide, lon, lat, time)
+  wide[, ppt_accum_mm := total_precipitation * 1000]
+  wide[!is.finite(ppt_accum_mm), ppt_accum_mm := NA_real_]
+  if (dataset == "reanalysis-era5-land") {
+    wide[, ppt_mm := {
+      previous <- data.table::shift(ppt_accum_mm)
+      contiguous <- as.numeric(difftime(time, data.table::shift(time),
+                                       units = "hours")) == 1
+      amount <- ppt_accum_mm - previous
+      amount[is.na(contiguous) | !contiguous] <- NA_real_
+      reset <- format(time, "%H", tz = "UTC") == "01"
+      amount[reset] <- ppt_accum_mm[reset]
+      amount
+    }, by = .(lon, lat)]
+  } else if (dataset == "reanalysis-era5-single-levels") {
+    wide[, ppt_mm := ppt_accum_mm]
+  } else stop("Unsupported ERA5 dataset.")
+
+  # Do not silently turn material negative amounts into dry weather.
+  bad <- which(!is.na(wide$ppt_mm) & wide$ppt_mm < -1e-6)
+  if (length(bad)) {
+    message("INVALID PRECIPITATION: ", length(bad),
+            " negative hourly amounts set to NA. Inspect source values/timestamps.")
+    print(utils::head(as.data.frame(wide[bad, .(lon, lat, time, ppt_mm)]), 10L),
+          row.names = FALSE)
+    wide[bad, ppt_mm := NA_real_]
+  }
+  wide[!is.na(ppt_mm) & ppt_mm < 0, ppt_mm := 0]
+
   
-  wide_small <- wide[, .(lon, lat, time, t2m_C, d2m_C, RH, ws10, ppt_mm)]
+  wide_small <- wide[, .(lon, lat, time, t2m_C, d2m_C, RH, ws10, ppt_mm, ppt_accum_mm)]
   
   hourly_cells <- data.table::copy(wide_small)
   data.table::set(hourly_cells, j = "date", value = as.Date(hourly_cells[["time"]], tz = "UTC"))
@@ -481,7 +585,7 @@ process_era5_data <- function(
   roll_by_cell <- function(values, n, roller) {
     out <- rep(NA_real_, length(values))
     for (idx in cell_groups) {
-      out[idx] <- roller(values[idx], n = n, align = "right", fill = NA, na.rm = TRUE)
+      out[idx] <- roller(values[idx], n = n, align = "right", fill = NA, na.rm = FALSE)
     }
     out
   }
@@ -501,10 +605,10 @@ process_era5_data <- function(
     hourly <- hourly_cells[
       ,
       .(
-        TM    = mean(t2m_C, na.rm = TRUE),
-        HRM   = mean(RH,    na.rm = TRUE),
-        VVM10 = mean(ws10,  na.rm = TRUE),
-        PPT   = sum(ppt_mm, na.rm = TRUE)
+        TM    = mean(t2m_C, na.rm = FALSE),
+        HRM   = mean(RH, na.rm = FALSE),
+        VVM10 = mean(ws10, na.rm = FALSE),
+        PPT   = mean(ppt_mm, na.rm = FALSE)
       ),
       by = .(time)
     ]
@@ -517,19 +621,19 @@ process_era5_data <- function(
     daily_dt <- hourly[
       ,
       .(
-        meanTM    = mean(TM,    na.rm = TRUE),
-        maxTM     = max(TM,     na.rm = TRUE),
-        minTM     = min(TM,     na.rm = TRUE),
+        meanTM    = mean(TM, na.rm = FALSE),
+        maxTM     = max(TM, na.rm = FALSE),
+        minTM     = min(TM, na.rm = FALSE),
         
-        meanHRM   = mean(HRM,   na.rm = TRUE),
-        maxHRM    = max(HRM,    na.rm = TRUE),
-        minHRM    = min(HRM,    na.rm = TRUE),
+        meanHRM   = mean(HRM, na.rm = FALSE),
+        maxHRM    = max(HRM, na.rm = FALSE),
+        minHRM    = min(HRM, na.rm = FALSE),
         
-        meanVVM10 = mean(VVM10, na.rm = TRUE),
-        maxVVX10  = max(VVM10,  na.rm = TRUE),
-        minVVX10  = min(VVM10,  na.rm = TRUE),
+        meanVVM10 = mean(VVM10, na.rm = FALSE),
+        maxVVX10  = max(VVM10, na.rm = FALSE),
+        minVVX10  = min(VVM10, na.rm = FALSE),
         
-        meanPPT24H = sum(PPT, na.rm = TRUE)
+        meanPPT24H = sum(PPT, na.rm = FALSE)
       ),
       by = .(date)
     ][order(date)]
@@ -546,19 +650,19 @@ process_era5_data <- function(
     daily_dt <- hourly[
       ,
       .(
-        meanTM    = mean(t2m_C, na.rm = TRUE),
-        maxTM     = max(t2m_C, na.rm = TRUE),
-        minTM     = min(t2m_C, na.rm = TRUE),
+        meanTM    = mean(t2m_C, na.rm = FALSE),
+        maxTM     = max(t2m_C, na.rm = FALSE),
+        minTM     = min(t2m_C, na.rm = FALSE),
         
-        meanHRM   = mean(RH,    na.rm = TRUE),
-        maxHRM    = max(RH,     na.rm = TRUE),
-        minHRM    = min(RH,     na.rm = TRUE),
+        meanHRM   = mean(RH, na.rm = FALSE),
+        maxHRM    = max(RH, na.rm = FALSE),
+        minHRM    = min(RH, na.rm = FALSE),
         
-        meanVVM10 = mean(ws10,  na.rm = TRUE),
-        maxVVX10  = max(ws10,   na.rm = TRUE),
-        minVVX10  = min(ws10,   na.rm = TRUE),
+        meanVVM10 = mean(ws10, na.rm = FALSE),
+        maxVVX10  = max(ws10, na.rm = FALSE),
+        minVVX10  = min(ws10, na.rm = FALSE),
         
-        meanPPT24H = sum(ppt_mm, na.rm = TRUE)
+        meanPPT24H = sum(ppt_mm, na.rm = FALSE)
       ),
       by = .(lon, lat, date)
     ][order(lon, lat, date)]
@@ -570,7 +674,42 @@ process_era5_data <- function(
     hourly <- hourly_cells
   }
   
+  # Report unavailable hourly rainfall windows in the requested period.
+  requested_hourly <- hourly_cells[date >= start_date & date <= end_date]
+  report_missing(
+    requested_hourly,
+    c("ppt_mm_hour", "ppt_mm_prev_6h", "ppt_mm_prev_24h",
+      "t2m_C_mean_prev_6h", "RH_mean_prev_6h"),
+    "HOURLY FEATURES"
+  )
+
   if (!identical(aggregation_unit, "hourly")) {
+    # Replace timestamp-date sums with correctly aligned UTC daily totals.
+    rain_daily <- data.table::copy(data.table::as.data.table(hourly_cells))
+    if (dataset == "reanalysis-era5-land") {
+      # Midnight is the completed accumulation for the PREVIOUS UTC day.
+      rain_daily <- rain_daily[format(time, "%H", tz = "UTC") == "00"]
+      rain_daily[, date := as.Date(time, tz = "UTC") - 1]
+      rain_daily[, meanPPT24H := ppt_accum_mm]
+      rain_daily[!is.finite(meanPPT24H) | meanPPT24H < -1e-6, meanPPT24H := NA_real_]
+      rain_daily[!is.na(meanPPT24H) & meanPPT24H < 0, meanPPT24H := 0]
+      daily_ppt <- rain_daily[, .(lon, lat, date, meanPPT24H)]
+    } else {
+    # An hour ending at midnight belongs to the preceding calendar day.
+    rain_daily[, date := as.Date(time - 1, tz = "UTC")]
+    daily_ppt <- rain_daily[, .(meanPPT24H =
+            if (.N == 24L && all(is.finite(ppt_mm))) sum(ppt_mm) else NA_real_),
+      by = .(lon, lat, date)]
+    }
+    rm(rain_daily)
+    if (aggregation_unit == "region") {
+      # Regional rainfall depth is a cell mean, not a sum of cell depths.
+      daily_ppt <- daily_ppt[, .(meanPPT24H = mean(meanPPT24H, na.rm = FALSE)),
+                             by = date]
+      keys <- "date"
+    } else keys <- c("lon", "lat", "date")
+    daily_dt[, meanPPT24H := NULL]
+    daily_dt <- merge(daily_dt, daily_ppt, by = keys, all.x = TRUE, sort = TRUE)
     .say("Daily table: %s rows.", .fmtI(nrow(daily_dt)))
     
     # ---- MWI logic ----
@@ -623,14 +762,14 @@ process_era5_data <- function(
           n = 14,
           align = "right",
           fill = NA,
-          na.rm = TRUE
+          na.rm = FALSE
         ),
         FH_zeros_past_14d = RcppRoll::roll_sum(
           FH_zero,
           n = 14,
           align = "right",
           fill = NA,
-          na.rm = TRUE
+          na.rm = FALSE
         )
       )
     
@@ -652,7 +791,7 @@ process_era5_data <- function(
             n = n,
             align = "right",
             fill = NA,
-            na.rm = TRUE
+            na.rm = FALSE
           )
         ) |>
         dplyr::ungroup() |>
@@ -692,11 +831,11 @@ process_era5_data <- function(
         dplyr::transmute(date, PPT = meanPPT24H) |>
         dplyr::arrange(date) |>
         dplyr::mutate(
-          PPT_3d  = RcppRoll::roll_sum(PPT, n = 3,  align = "right", fill = NA, na.rm = TRUE),
-          PPT_7d  = RcppRoll::roll_sum(PPT, n = 7,  align = "right", fill = NA, na.rm = TRUE),
-          PPT_14d = RcppRoll::roll_sum(PPT, n = 14, align = "right", fill = NA, na.rm = TRUE),
-          PPT_21d = RcppRoll::roll_sum(PPT, n = 21, align = "right", fill = NA, na.rm = TRUE),
-          PPT_30d = RcppRoll::roll_sum(PPT, n = 30, align = "right", fill = NA, na.rm = TRUE),
+          PPT_3d  = RcppRoll::roll_sum(PPT, n = 3,  align = "right", fill = NA, na.rm = FALSE),
+          PPT_7d  = RcppRoll::roll_sum(PPT, n = 7,  align = "right", fill = NA, na.rm = FALSE),
+          PPT_14d = RcppRoll::roll_sum(PPT, n = 14, align = "right", fill = NA, na.rm = FALSE),
+          PPT_21d = RcppRoll::roll_sum(PPT, n = 21, align = "right", fill = NA, na.rm = FALSE),
+          PPT_30d = RcppRoll::roll_sum(PPT, n = 30, align = "right", fill = NA, na.rm = FALSE),
           
           PPT_3d_lag7  = dplyr::lag(PPT_3d, 7),
           PPT_7d_lag7  = dplyr::lag(PPT_7d, 7),
@@ -801,6 +940,27 @@ process_era5_data <- function(
       data.table::setorder(ppt_lags, lon, lat, date)
     }
     
+    trim_dates <- function(x) {
+      x <- as.data.frame(x)
+      x[x$date >= start_date & x$date <= end_date, , drop = FALSE]
+    }
+    daily <- trim_dates(daily)
+    lags_3d <- trim_dates(lags_3d)
+    lags_7d <- trim_dates(lags_7d)
+    lags_14d <- trim_dates(lags_14d)
+    lags_21d <- trim_dates(lags_21d)
+    lags_30d <- trim_dates(lags_30d)
+    lags_3d_lag7 <- trim_dates(lags_3d_lag7)
+    lags_7d_lag7 <- trim_dates(lags_7d_lag7)
+    lags_14d_lag7 <- trim_dates(lags_14d_lag7)
+    lags_21d_lag7 <- trim_dates(lags_21d_lag7)
+    lags_30d_lag7 <- trim_dates(lags_30d_lag7)
+    ppt_lags <- trim_dates(ppt_lags)
+    report_missing(daily, c("maxTM", "minHRM", "meanVVM10", "meanPPT24H"),
+                         "DAILY FEATURES")
+    report_missing(ppt_lags, setdiff(names(ppt_lags), c("lon", "lat", "date")),
+                         "DAILY RAINFALL WINDOWS")
+
     # ---- write outputs ----
     admin_tokens <- sanitize_slug(admin_name)
     if (!length(admin_tokens)) admin_tokens <- "all"
@@ -919,6 +1079,7 @@ process_era5_data <- function(
       dataset_token
     )
     
+    hourly <- hourly[date >= start_date & date <= end_date]
     prefix <- paste0(base_prefix, "_hourly")
     p_hourly <- file.path(out_dir, paste0(prefix, ".Rds"))
     

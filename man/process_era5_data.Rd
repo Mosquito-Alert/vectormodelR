@@ -58,6 +58,8 @@ For \code{aggregation_unit = "region"} or \code{"cell"}, invisibly returns a lis
 \code{ppt_lags} contains accumulated precipitation windows of 3, 7, 14, 21,
 and 30 days, plus the same windows lagged by 7 days. For
 \code{aggregation_unit = "hourly"}, returns a list with \code{hourly} and \code{paths}.
+Missing hours are inserted as NA and reported with message(). Incomplete
+windows remain NA. Daily rainfall uses UTC interval boundaries.
 The hourly table includes current-hour weather values plus short-window
 precipitation and temperature/humidity summaries for each cell.
 }
@@ -75,6 +77,15 @@ so downstream calculations use one standard variable schema.
 Temperature and dewpoint values are treated as Kelvin and converted to Celsius
 with \code{x - 273.15}. This is intentional: in some GRIBs, \code{terra} may label the
 layers as \verb{[C]}, but the values can still be Kelvin, e.g. 272–295.
+
+Input precipitation must be from the standard hourly CDS GRIB products,
+with GRIB validity timestamps, not already de-accumulated ERA5-Land data.
+ERA5-Land hourly rain is differenced within forecast cycles; its daily total
+uses the following midnight accumulation. ERA5 single-level rain is already
+hourly and is assigned to UTC days using interval-ending timestamps.
+Missing cell-hours are inserted, reported, and propagated through windows.
+Missing hourly values also make daily temperature/humidity/wind summaries NA.
+Padding is read from available CSVs; this function does not download it.
 
 Rolling weather summaries use rolling means for temperature, humidity, wind,
 and MWI-type indices. Accumulated precipitation is handled separately in
